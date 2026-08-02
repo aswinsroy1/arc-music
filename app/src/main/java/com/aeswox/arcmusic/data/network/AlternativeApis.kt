@@ -82,6 +82,14 @@ interface MusicBrainzService {
         @Query("fmt") format: String = "json",
         @Query("limit") limit: Int = 100
     ): MusicBrainzReleaseResponse
+
+    @GET("ws/2/release")
+    suspend fun searchReleases(
+        @Query("query") query: String,
+        @Query("inc") include: String = "recordings+release-groups",
+        @Query("fmt") format: String = "json",
+        @Query("limit") limit: Int = 100
+    ): MusicBrainzReleaseResponse
 }
 
 @JsonClass(generateAdapter = true)
@@ -93,7 +101,16 @@ data class MusicBrainzReleaseResponse(
 data class MusicBrainzRelease(
     val id: String,
     val title: String,
-    val media: List<MusicBrainzMedia>?
+    val media: List<MusicBrainzMedia>?,
+    @Json(name = "release-group") val releaseGroup: MusicBrainzReleaseGroup? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class MusicBrainzReleaseGroup(
+    val id: String,
+    val title: String,
+    @Json(name = "primary-type") val primaryType: String?,
+    @Json(name = "secondary-types") val secondaryTypes: List<String>?
 )
 
 @JsonClass(generateAdapter = true)

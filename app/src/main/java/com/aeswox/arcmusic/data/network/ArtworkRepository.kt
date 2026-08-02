@@ -162,21 +162,46 @@ class ArtworkRepository @Inject constructor(
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
             val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
 
-            val releaseResponse = musicBrainzService.getReleases(artistMbid = mbid, limit = 100)
+            val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
+            val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
             val releases = releaseResponse.releases ?: return null
+            
+            // 1. Filter out unwanted secondary types (live, compilations, soundtracks, etc.)
+            val validReleases = releases.filter { release ->
+                val rg = release.releaseGroup
+                if (rg == null) return@filter false
+                val secondaryTypes = rg.secondaryTypes ?: emptyList()
+                val isUnwanted = secondaryTypes.any { type ->
+                    type.equals("Live", ignoreCase = true) ||
+                    type.equals("Compilation", ignoreCase = true) ||
+                    type.equals("Interview", ignoreCase = true) ||
+                    type.equals("Spokenword", ignoreCase = true) ||
+                    type.equals("Audiobook", ignoreCase = true) ||
+                    type.equals("Soundtrack", ignoreCase = true)
+                }
+                !isUnwanted
+            }
+            
+            // 2. Group by release-group to treat all editions of one album as a single entity
+            val groupedByRg = validReleases.groupBy { it.releaseGroup?.id ?: it.title }
             
             var missingAlbums = 0
             var missingTracks = 0
             
-            releases.forEach { release ->
-                val releaseTitle = release.title.lowercase()
-                val localMatch = localAlbums.entries.find { 
-                    it.key.lowercase() == releaseTitle || 
-                    releaseTitle.contains(it.key.lowercase()) || 
-                    it.key.lowercase().contains(releaseTitle) 
-                }
+            groupedByRg.forEach { (_, rgReleases) ->
+                // Use the canonical release group title (e.g. "Midnight Memories" instead of "Midnight Memories (Deluxe)")
+                val rgTitle = rgReleases.first().releaseGroup?.title?.lowercase() ?: rgReleases.first().title.lowercase()
                 
-                val officialTrackCount = release.media?.sumOf { it.trackCount ?: 0 } ?: 0
+                // 3. Find the highest track count among all editions of this album
+                val officialTrackCount = rgReleases.maxOfOrNull { r -> 
+                    r.media?.sumOf { it.trackCount ?: 0 } ?: 0 
+                } ?: 0
+
+                val localMatch = localAlbums.entries.find { 
+                    it.key.lowercase() == rgTitle || 
+                    rgTitle.contains(it.key.lowercase()) || 
+                    it.key.lowercase().contains(rgTitle) 
+                }
                 
                 if (localMatch == null) {
                     missingAlbums++

@@ -129,3 +129,13 @@
   - `CollectionHealthScreen.kt`: Updated `CollectionHealthGapsSection` to honestly handle the case where the user hasn't favorited any artists, changing the GapCard labels appropriately.
 - **Verified**: App builds cleanly and background sync is correctly gated.
 
+**Date: August 2, 2026**
+- **Goal**: Diagnose and fix inflated discography-gap numbers for MusicBrainz sync (e.g. 91 missing tracks / 14 missing albums for One Direction).
+- **Investigation**: Tested the API directly. Discovered two bugs:
+  1. The API call `ws/2/release` with limit 100 had no type or status filters, returning singles/bootlegs and truncating newer albums.
+  2. Double counting: MusicBrainz returns multiple editions of the same album as separate `release` entries (e.g. Deluxe, Japanese). The code counted missing tracks across *all* editions.
+- **Changed**: 
+  - `AlternativeApis.kt`: Updated `MusicBrainzService` to use a robust `searchReleases` query (`query="arid:MBID AND status:official AND (primarytype:album OR primarytype:ep)"`). Updated `MusicBrainzRelease` to map `release-group` to correctly extract secondary types and IDs.
+  - `ArtworkRepository.kt`: Refactored `fetchDiscographyGaps` to filter out live/compilation albums using `release-group.secondary-types`, group the releases by `release-group.id` to ensure each album is only checked once, and use the maximum track count edition per album to match against local data.
+- **Verified**: One Direction correctly groups down to their core studio albums (Up All Night, Take Me Home, Midnight Memories, Four, Made in the A.M.), eliminating massive inflation.
+
