@@ -121,5 +121,11 @@
   - `AlternativeApis.kt` / `ArtworkRepository.kt`: Implemented `fetchDiscographyGaps()` which calls MusicBrainz `getReleases()` for owned artists and fuzzy-matches against local albums to compute gaps.
   - `MusicViewModel.kt`: Added `CollectionHealthState` and exposed `healthState`. Calculates duplicates (title/artist/fuzzy duration match), health score, and aggregates missing/corrupted data. Added a background sync to fetch gaps for artists lacking cached values.
   - `CollectionHealthScreen.kt`: Rewired the entire UI to observe `healthState`. Implemented `DuplicateReviewSheet` allowing the user to select and delete low-quality duplicates.
-- **Verified**: App builds cleanly.
+- **Goal Update**: Scoped discography gaps strictly to favorited artists.
+- **Changed**:
+  - `Artist.kt`: Confirmed `isFavorite` already existed. No migration needed.
+  - `ArtistDetailsScreen.kt`: Added a favorite toggle button to `ArtistHeroSection`.
+  - `MusicViewModel.kt`: Restored `toggleArtistFavorite` function and updated background gap sync logic to only process `artists.filter { it.isFavorite }`. Also aggregated `missingTracksCount`/`missingAlbumsCount` strictly for favorited artists and added `favoritedArtistsCount` to `CollectionHealthState`.
+  - `CollectionHealthScreen.kt`: Updated `CollectionHealthGapsSection` to honestly handle the case where the user hasn't favorited any artists, changing the GapCard labels appropriately.
+- **Verified**: App builds cleanly and background sync is correctly gated.
 

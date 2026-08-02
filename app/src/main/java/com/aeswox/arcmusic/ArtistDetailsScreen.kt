@@ -188,13 +188,36 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            Text(
-                text = artist?.name ?: "Unknown Artist",
-                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 48.sp,
-                lineHeight = 54.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = artist?.name ?: "Unknown Artist",
+                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 48.sp,
+                    lineHeight = 54.sp
+                )
+                
+                if (artist != null) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    IconButton(
+                        onClick = { viewModel.toggleArtistFavorite(listOf(artist.id), !artist.isFavorite) },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f))
+                    ) {
+                        Icon(
+                            imageVector = if (artist.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (artist.isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (artist.isFavorite) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(24.dp))
             

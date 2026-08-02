@@ -82,7 +82,8 @@ fun CollectionHealthScreen(
                 item {
                     CollectionHealthGapsSection(
                         missingTracks = healthState.missingTracksFromOwnedArtists,
-                        missingAlbums = healthState.missingAlbumsFromOwnedArtists
+                        missingAlbums = healthState.missingAlbumsFromOwnedArtists,
+                        favoritedArtistsCount = healthState.favoritedArtistsCount
                     )
                 }
                 
@@ -269,7 +270,7 @@ fun HealthBreakdownItem(
 }
 
 @Composable
-fun CollectionHealthGapsSection(missingTracks: Int, missingAlbums: Int) {
+fun CollectionHealthGapsSection(missingTracks: Int, missingAlbums: Int, favoritedArtistsCount: Int) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -293,18 +294,33 @@ fun CollectionHealthGapsSection(missingTracks: Int, missingAlbums: Int) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            GapCard(
-                count = missingTracks.toString(),
-                label = "Missing tracks",
-                subLabel = "From owned artists",
-                modifier = Modifier.weight(1f)
-            )
-            GapCard(
-                count = missingAlbums.toString(),
-                label = "Missing albums",
-                subLabel = "From owned artists",
-                modifier = Modifier.weight(1f)
-            )
+            if (favoritedArtistsCount > 0) {
+                GapCard(
+                    count = missingTracks.toString(),
+                    label = "Missing tracks",
+                    subLabel = "From favorite artists",
+                    modifier = Modifier.weight(1f)
+                )
+                GapCard(
+                    count = missingAlbums.toString(),
+                    label = "Missing albums",
+                    subLabel = "From favorite artists",
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                GapCard(
+                    count = "-",
+                    label = "Missing tracks",
+                    subLabel = "Favorite artists to track gaps",
+                    modifier = Modifier.weight(1f)
+                )
+                GapCard(
+                    count = "-",
+                    label = "Missing albums",
+                    subLabel = "Favorite artists to track gaps",
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }

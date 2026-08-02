@@ -20,6 +20,7 @@
 - Wired Queue generation for Home screen sections (Recently Played, Random Picks, Recommended) and exposed real queue state in `QueueScreen.kt`.
 - Improved `ArtworkRepository` to fetch artist images via MusicBrainz MBID -> TheAudioDB, avoiding name collisions for more accurate results.
 - Wired `CollectionHealthScreen.kt` with real data computation (missing artwork, missing metadata, duplicate songs, corrupted tags, low-quality files) and a full MusicBrainz background sync for discography gaps (missing tracks/albums). Also implemented the "Review & Clean Up" duplicate song flow.
+- Scoped MusicBrainz discography gap sync strictly to favorited artists. Added an artist-level favorite toggle to `ArtistDetailsScreen.kt` and updated `CollectionHealthScreen.kt` to accurately reflect gaps or an empty state based on favorited artists.
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.

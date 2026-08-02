@@ -83,7 +83,8 @@ data class CollectionHealthState(
     val corruptedTagsCount: Int = 0,
     val lowQualityCount: Int = 0,
     val missingTracksFromOwnedArtists: Int = 0,
-    val missingAlbumsFromOwnedArtists: Int = 0
+    val missingAlbumsFromOwnedArtists: Int = 0,
+    val favoritedArtistsCount: Int = 0
 )
 
 enum class ThemeMode { System, Light, Dark }
@@ -589,8 +590,9 @@ class MusicViewModel @Inject constructor(
                     (minOf(25f, (lowQuality.size.toFloat() / trackCount) * 25f))
                 ).toInt()
 
-                val missingTracks = artists.sumOf { it.missingTracksCount ?: 0 }
-                val missingAlbums = artists.sumOf { it.missingAlbumsCount ?: 0 }
+                val favoritedArtists = artists.filter { it.isFavorite }
+                val missingTracks = favoritedArtists.sumOf { it.missingTracksCount ?: 0 }
+                val missingAlbums = favoritedArtists.sumOf { it.missingAlbumsCount ?: 0 }
 
                 CollectionHealthState(
                     healthScore = healthScore.coerceIn(0, 100),
@@ -600,7 +602,8 @@ class MusicViewModel @Inject constructor(
                     corruptedTagsCount = corrupted.size,
                     lowQualityCount = lowQuality.size,
                     missingTracksFromOwnedArtists = missingTracks,
-                    missingAlbumsFromOwnedArtists = missingAlbums
+                    missingAlbumsFromOwnedArtists = missingAlbums,
+                    favoritedArtistsCount = favoritedArtists.size
                 )
             }.collectLatest { state ->
                 _healthState.value = state
@@ -612,7 +615,7 @@ class MusicViewModel @Inject constructor(
             libraryArtists.collectLatest { artists ->
                 val albums = libraryAlbums.value
                 val albumMap = albums.associate { it.title to it.trackCount }
-                artists.forEach { artist ->
+                artists.filter { it.isFavorite }.forEach { artist ->
                     if (artist.missingTracksCount == null || artist.missingAlbumsCount == null) {
                         val gaps = repository.fetchDiscographyGaps(artist.name, albumMap)
                         if (gaps != null) {
