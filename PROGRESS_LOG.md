@@ -112,3 +112,14 @@
   - `ArtworkRepository.kt`: Added `fetchArtistImageViaMusicBrainz` and inserted it as step 1.5 in the fallback chain. This grabs the MBID from `MusicBrainzService` and looks it up in `TheAudioDbService`, completely bypassing name-collision issues.
 - **Verified**: Ran a test script against `Laufey` and `Mac DeMarco` confirming the MusicBrainz -> TheAudioDB chain successfully returns an image URL for them.
 - **Known Issue**: Last.fm API Key is still a placeholder (`"YOUR_LAST_FM_API_KEY"`). Last.fm fetch will consistently fail until a real key is acquired.
+
+## Collection Health Rewiring
+- **Goal**: Wire real computations into the Collection Health screen.
+- **Changed**:
+  - `TrackDao.kt` / `MusicRepository.kt`: Added queries `getTracksMissingArtwork()`, `getTracksMissingMetadata()`, `getLowQualityTracks()`, and `getCorruptedTracks()`.
+  - `Artist.kt` / `MusicDatabase.kt`: Bumped schema to v11 (added `MIGRATION_10_11`) and added `missingTracksCount`/`missingAlbumsCount` to the `Artist` entity for caching discography gaps.
+  - `AlternativeApis.kt` / `ArtworkRepository.kt`: Implemented `fetchDiscographyGaps()` which calls MusicBrainz `getReleases()` for owned artists and fuzzy-matches against local albums to compute gaps.
+  - `MusicViewModel.kt`: Added `CollectionHealthState` and exposed `healthState`. Calculates duplicates (title/artist/fuzzy duration match), health score, and aggregates missing/corrupted data. Added a background sync to fetch gaps for artists lacking cached values.
+  - `CollectionHealthScreen.kt`: Rewired the entire UI to observe `healthState`. Implemented `DuplicateReviewSheet` allowing the user to select and delete low-quality duplicates.
+- **Verified**: App builds cleanly.
+

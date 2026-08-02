@@ -1,0 +1,747 @@
+Created At: 2026-08-02T15:28:48Z
+Completed At: 2026-08-02T15:28:48Z
+File Path: `file:///C:/Users/aswin/OneDrive/Desktop/Arc%20Music/app/src/main/java/com/aeswox/arcmusic/MusicViewModel.kt`
+Total Lines: 738
+Total Bytes: 30976
+Showing lines 1 to 738
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: package com.aeswox.arcmusic
+2: 
+3: import androidx.lifecycle.ViewModel
+4: import androidx.lifecycle.viewModelScope
+5: import dagger.hilt.android.lifecycle.HiltViewModel
+6: import javax.inject.Inject
+7: import kotlinx.coroutines.flow.SharingStarted
+8: import kotlinx.coroutines.flow.combine
+9: import kotlinx.coroutines.flow.map
+10: import kotlinx.coroutines.flow.stateIn
+11: import kotlinx.coroutines.flow.onEach
+12: import kotlinx.coroutines.flow.flow
+13: import kotlinx.coroutines.launch
+14: import com.aeswox.arcmusic.db.MusicRepository
+15: import com.aeswox.arcmusic.db.entities.Track
+16: import com.aeswox.arcmusic.db.entities.Album
+17: import com.aeswox.arcmusic.db.entities.Artist
+18: import com.aeswox.arcmusic.db.entities.PlayHistory
+19: import com.aeswox.arcmusic.db.entities.Playlist
+20: 
+21: import kotlinx.coroutines.flow.MutableStateFlow
+22: import kotlinx.coroutines.flow.StateFlow
+23: import kotlinx.coroutines.flow.collectLatest
+24: import kotlinx.coroutines.flow.asStateFlow
+25: import kotlinx.coroutines.flow.Flow
+26: import kotlinx.coroutines.flow.debounce
+27: import kotlinx.coroutines.flow.flatMapLatest
+28: import kotlinx.coroutines.flow.flowOf
+29: 
+30: sealed class SearchResultsUiState {
+31:     object Empty : SearchResultsUiState()
+32:     data class Success(
+33:         val tracks: List<Track>,
+34:         val albums: List<Album>,
+35:         val artists: List<Artist>,
+36:         val playlists: List<Playlist>
+37:     ) : SearchResultsUiState()
+38: }
+39: 
+40: // --- Listening Stats data model ---
+41: 
+42: data class ArtistStatEntry(
+43:     val artistName: String,
+44:     val photoUri: String?,
+45:     val totalMinutes: Long
+46: )
+47: 
+48: data class GenreStatEntry(
+49:     val genre: String,
+50:     val totalMinutes: Long
+51: )
+52: 
+53: /**
+54:  * All values pre-computed from PlayHistory + Track on the ViewModel side.
+55:  * @param totalMinutes  Approximate total (each play = full track duration, skipped or not).
+56:  * @param weekOverWeekPct  Non-null only when there is enough prior-week data for a meaningful comparison.
+57:  * @param weeklyMinutesByDay  7 entries (Mon..Sun of current week), 0 if no plays that day.
+58:  * @param topArtists  Ranked by approximate listening time.
+59:  * @param topGenres  Ranked by library track count (not listening time).
+60:  * @param nightOwlMinutesByHour  24 values of total minutes per hour-of-day — null if < 30 play events.
+61:  */
+62: data class ListeningStatsData(
+63:     val totalMinutes: Long,
+64:     val weekOverWeekPct: Int?,          // null = hide the trend line
+65:     val weeklyMinutesByDay: List<Long>, // 7 entries Mon-Sun
+66:     val topArtists: List<ArtistStatEntry>,
+67:     val topGenres: List<GenreStatEntry>,
+68:     val nightOwlMinutesByHour: List<Long> // 24 values of total minutes per hour-of-day
+69: )
+70: 
+71: enum class ThemeMode { System, Light, Dark }
+72: 
+73: @HiltViewModel
+74: class MusicViewModel @Inject constructor(
+75:     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+76:     private val repository: MusicRepository,
+77:     private val musicPlayerConnection: com.aeswox.arcmusic.playback.MusicPlayerConnection,
+78:     private val lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository
+79: ) : ViewModel() {
+80: 
+81:     val randomPicks: StateFlow<List<Track>>
+82:     val recentlyPlayed: StateFlow<List<Track>>
+83:     val recommended: StateFlow<List<Track>>
+84:     
+85:     val libraryAlbums: StateFlow<List<Album>>
+86:     val libraryArtists: StateFlow<List<Artist>>
+87:     val libraryTracks: StateFlow<List<Track>>
+88:     val libraryPlaylists: StateFlow<List<Playlist>>
+89:     val favoriteTracks: StateFlow<List<Track>>
+90:     val favoriteAlbums: StateFlow<List<Album>>
+91:     val favoriteArtists: StateFlow<List<Artist>>
+92:     
+93:     val allGenres: StateFlow<List<String>>
+94:     val recentSearches: StateFlow<List<com.aeswox.arcmusic.db.entities.SearchHistory>>
+95:     
+96:     val genreTopTracks: StateFlow<List<Track>>
+97:     val genreTopAlbums: StateFlow<List<Album>>
+98:     val genreTopArtists: StateFlow<List<Artist>>
+99:     
+100:     private val _searchQuery = MutableStateFlow("")
+101:     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+102: 
+103:     private val _lyricsUiState = MutableStateFlow<com.aeswox.arcmusic.data.model.Lyrics?>(null)
+104:     val lyricsUiState: StateFlow<com.aeswox.arcmusic.data.model.Lyrics?> = _lyricsUiState.asStateFlow()
+105:     val currentPlaybackPosition: StateFlow<Long> = musicPlayerConnection.currentPosition
+106: 
+107:     private val _currentlyPlaying = MutableStateFlow<Track?>(null)
+108:     val currentlyPlaying: StateFlow<Track?> = _currentlyPlaying.asStateFlow()
+109: 
+110:     init {
+111:         viewModelScope.launch {
+112:             currentlyPlaying.collectLatest { track ->
+113:                 if (track != null) {
+114:                     _lyricsUiState.value = null // Reset while fetching
+115:                     _lyricsUiState.value = lyricsRepository.getLyrics(track)
+116:                 } else {
+117:                     _lyricsUiState.value = null
+118:                 }
+119:             }
+120:         }
+121:     }
+122: 
+123:     @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+124:     val searchResults: StateFlow<SearchResultsUiState> = _searchQuery
+125:         .debounce(300L)
+126:         .flatMapLatest { query ->
+127:             if (query.isBlank()) {
+128:                 kotlinx.coroutines.flow.flowOf(SearchResultsUiState.Empty)
+129:             } else {
+130:                 kotlinx.coroutines.flow.combine(
+131:                     repository.searchTracks(query),
+132:                     repository.searchAlbums(query),
+133:                     repository.searchArtists(query),
+134:                     repository.searchPlaylists(query)
+135:                 ) { tracks, albums, artists, playlists ->
+136:                     SearchResultsUiState.Success(tracks, albums, artists, playlists)
+137:                 }
+138:             }
+139:         }
+140:         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchResultsUiState.Empty)
+141: 
+142:     fun updateSearchQuery(query: String) {
+143:         _searchQuery.value = query
+144:     }
+145: 
+146:     fun saveRecentSearch(query: String) {
+147:         if (query.isNotBlank()) {
+148:             viewModelScope.launch {
+149:                 repository.addRecentSearch(query.trim())
+150:             }
+151:         }
+152:     }
+153: 
+154:     fun deleteRecentSearch(query: String) {
+155:         viewModelScope.launch {
+156:             repository.deleteRecentSearch(query)
+157:         }
+158:     }
+159: 
+160:     fun clearAllRecentSearches() {
+161:         viewModelScope.launch {
+162:             repository.clearRecentSearches()
+163:         }
+164:     }
+165:     
+166:     val isPlaying: StateFlow<Boolean> = musicPlayerConnection.isPlaying
+167: 
+168:     val deviceVolume = musicPlayerConnection.deviceVolume
+169:     val deviceMaxVolume = musicPlayerConnection.deviceMaxVolume
+170: 
+171:     val sleepTimerTriggerTime: StateFlow<Long> = musicPlayerConnection.sleepTimerTriggerTime
+172:     val sleepTimerPauseWhenSongEnd: StateFlow<Boolean> = musicPlayerConnection.sleepTimerPauseWhenSongEnd
+173: 
+174:     val currentQueueIndex: StateFlow<Int> = musicPlayerConnection.currentMediaItemIndex
+175: 
+176:     val currentQueue: StateFlow<List<Track>> = musicPlayerConnection.currentQueue.map { mediaItems ->
+177:         mediaItems.mapNotNull { mediaItem ->
+178:             val artworkUriStr = mediaItem.mediaMetadata.artworkUri?.toString()
+179:             val extras = mediaItem.mediaMetadata.extras
+180:             Track(
+181:                 id = mediaItem.mediaId,
+182:                 title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
+183:                 artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown",
+184:                 albumArtist = null,
+185:                 albumId = null,
+186:                 album = "",
+187:                 genre = null,
+188:                 composer = null,
+189:                 year = null,
+190:                 trackNumber = null,
+191:                 discNumber = null,
+192:                 durationMs = extras?.getLong("durationMs") ?: 0L,
+193:                 filePath = "",
+194:                 fileSizeBytes = 0L,
+195:                 bitrate = null,
+196:                 codec = null,
+197:                 artworkUri = artworkUriStr,
+198:                 sampleRate = null,
+199:                 bitDepth = null,
+200:                 dateAdded = 0L,
+201:                 dateModified = 0L,
+202:                 source = com.aeswox.arcmusic.db.entities.TrackSource.LOCAL,
+203:                 isFavorite = false,
+204:                 playCount = 0,
+205:                 lastPlayedAt = null,
+206:                 remoteId = null
+207:             )
+208:         }
+209:     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+210:     
+211:     private val _scanResult = MutableStateFlow<com.aeswox.arcmusic.db.ScanResult?>(null)
+212:     val scanResult: StateFlow<com.aeswox.arcmusic.db.ScanResult?> = _scanResult.asStateFlow()
+213: 
+214:     private val _isScanning = MutableStateFlow(false)
+215:     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+216:     
+217:     private val _isLibraryLoaded = MutableStateFlow(false)
+218:     val isLibraryLoaded: StateFlow<Boolean> = _isLibraryLoaded.asStateFlow()
+219: 
+220:     private val _isMiniPlayerVisible = MutableStateFlow(true)
+221:     val isMiniPlayerVisible: StateFlow<Boolean> = _isMiniPlayerVisible.asStateFlow()
+222: 
+223:     fun setMiniPlayerVisible(visible: Boolean) {
+224:         _isMiniPlayerVisible.value = visible
+225:     }
+226: 
+227:     fun scanMediaStore() {
+228:         if (_isScanning.value) return
+229:         viewModelScope.launch {
+230:             _isScanning.value = true
+231:             try {
+232:                 val result = repository.scanMediaStore()
+233:                 repository.fetchMissingArtwork() // Fetch Deezer art for missing images
+234:                 _scanResult.value = result
+235:             } catch (e: Exception) {
+236:                 _scanResult.value = null
+237:             } finally {
+238:                 _isScanning.value = false
+239:             }
+240:         }
+241:     }
+242: 
+243:     fun getAlbumById(id: String): Flow<Album?> = repository.getAlbumById(id)
+244:     fun getTracksByAlbum(albumTitle: String): Flow<List<Track>> = repository.getTracksByAlbum(albumTitle)
+245:     fun getAlbumsByArtist(artistName: String): Flow<List<Album>> = repository.getAlbumsByArtist(artistName)
+246:     
+247:     fun getPlaylist(playlistName: String): Flow<Playlist?> {
+248:         return repository.getPlaylist(playlistName)
+249:     }
+250: 
+251:     fun getTracksForPlaylist(playlistName: String): Flow<List<Track>> {
+252:         return repository.getTracksForPlaylist(playlistName)
+253:     }
+254: 
+255:     fun getPlaylistsContainingTracks(trackIds: List<String>): Flow<List<String>> {
+256:         return repository.getPlaylistsContainingTracks(trackIds)
+257:     }
+258: 
+259:     fun getArtistById(id: String): Flow<Artist?> = repository.getArtistById(id)
+260:     fun getTracksByArtist(artistName: String): Flow<List<Track>> = repository.getTracksByArtist(artistName)
+261: 
+262:     fun searchArtistImagesOnInternet(artistName: String): Flow<List<String>> = flow {
+263:         emit(repository.searchArtistImages(artistName))
+264:     }
+265: 
+266:     fun updateArtistImage(artistId: String, newUri: String) {
+267:         viewModelScope.launch {
+268:             repository.updateArtistPhoto(artistId, newUri)
+269:         }
+270:     }
+271:     
+272:     // Temporary EAC3 test
+273:     private var testPlayer: androidx.media3.exoplayer.ExoPlayer? = null
+274:     fun testEac3Playback(context: android.content.Context) {
+275:         viewModelScope.launch {
+276:             try {
+277:                 // Find an EAC3 file in the database
+278:                 val eac3Track = repository.getEac3Track()
+279:                     val testFilePath = eac3Track?.filePath ?: "/sdcard/Android/data/com.aeswox.arcmusic/files/sample.eac3"
+280:                     android.util.Log.d("EAC3_TEST", "Attempting playback on: $testFilePath")
+281:                     testPlayer?.release()
+282:                     testPlayer = androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+283:                         setMediaItem(androidx.media3.common.MediaItem.fromUri(testFilePath))
+284:                         prepare()
+285:                         play()
+286:                         addListener(object : androidx.media3.common.Player.Listener {
+287:                             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+288:                                 android.util.Log.e("EAC3_TEST", "Player Error: ${error.message}", error)
+289:                             }
+290:                         })
+291:                     }
+292:             } catch (e: Exception) {
+293:                 e.printStackTrace()
+294:             }
+295:         }
+296:     }
+297:     
+298:     fun setCurrentlyPlaying(song: Track?, contextQueue: List<Track>? = null) {
+299:         _currentlyPlaying.value = song
+300:         setMiniPlayerVisible(true)
+301:         song?.filePath?.let { path ->
+302:             val sourceList = if (!contextQueue.isNullOrEmpty()) contextQueue else listOf(song)
+303:             
+304:             // Limit to 300 tracks: keep up to 50 previous tracks, and the rest upcoming
+305:             val originalIndex = sourceList.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+306:             val startWindow = maxOf(0, originalIndex - 50)
+307:             val endWindow = minOf(sourceList.size, startWindow + 300)
+308:             val limitedSourceList = sourceList.subList(startWindow, endWindow)
+309: 
+310:             val queue = limitedSourceList.mapNotNull { track ->
+311:                 androidx.media3.common.MediaItem.Builder()
+312:                     .setUri(track.filePath)
+313:                     .setMediaId(track.id)
+314:                     .setMediaMetadata(
+315:                         androidx.media3.common.MediaMetadata.Builder()
+316:                             .setTitle(track.title)
+317:                             .setArtist(track.artist)
+318:                             .setArtworkUri(track.artworkUri?.let { android.net.Uri.parse(it) })
+319:                             .setExtras(android.os.Bundle().apply {
+320:                                 putLong("durationMs", track.durationMs)
+321:                             })
+322:                             .build()
+323:                     )
+324:                     .build()
+325:             }
+326:             if (queue.isNotEmpty() && queue.any { it.mediaId == song.id }) {
+327:                 val startIndex = queue.indexOfFirst { it.mediaId == song.id }.coerceAtLeast(0)
+328:                 musicPlayerConnection.playQueue(queue, startIndex)
+329:             } else {
+330:                 musicPlayerConnection.playQueue(queue, 0)
+331:             }
+332:         }
+333:     }
+334:     
+335:     fun togglePlayPause() {
+336:         if (musicPlayerConnection.isPlaying.value) {
+337:             musicPlayerConnection.pause()
+338:         } else {
+339:             musicPlayerConnection.play()
+340:         }
+341:     }
+342: 
+343:     fun pause() {
+344:         musicPlayerConnection.pause()
+345:     }
+346: 
+347:     fun stop() {
+348:         musicPlayerConnection.pause()
+349:     }
+350:     
+351:     fun setDeviceVolume(volume: Int) {
+352:         musicPlayerConnection.setDeviceVolume(volume)
+353:     }
+354:     
+355:     fun startSleepTimer(minute: Int) {
+356:         musicPlayerConnection.sleepTimerManager?.start(minute)
+357:     }
+358: 
+359:     fun clearSleepTimer() {
+360:         musicPlayerConnection.sleepTimerManager?.clear()
+361:     }
+362: 
+363:     fun skipToNext() {
+364:         musicPlayerConnection.skipToNext()
+365:     }
+366: 
+367:     fun skipToPrevious() {
+368:         musicPlayerConnection.skipToPrevious()
+369:     }
+370: 
+371:     fun skipToQueueItem(index: Int) {
+372:         musicPlayerConnection.skipToQueueItem(index)
+373:     }
+374: 
+375:     val currentPosition: StateFlow<Long> = musicPlayerConnection.currentPosition
+376:     val duration: StateFlow<Long> = musicPlayerConnection.duration
+377: 
+378:     fun deleteTracks(trackIds: List<String>) {
+379:         viewModelScope.launch {
+380:             repository.deleteTracks(trackIds)
+381:             // No need to manually refresh libraryTracks, Room Flow will emit new list
+382:         }
+383:     }
+384:     
+385:     fun toggleFavorite(trackIds: List<String>, isFavorite: Boolean) {
+386:         viewModelScope.launch {
+387:             trackIds.forEach { id ->
+388:                 repository.toggleFavorite(id, isFavorite)
+389:             }
+390:         }
+391:     }
+392: 
+393:     fun toggleAlbumFavorite(albumIds: List<String>, isFavorite: Boolean) {
+394:         viewModelScope.launch {
+395:             albumIds.forEach { id ->
+396:                 repository.toggleAlbumFavorite(id, isFavorite)
+397:             }
+398:         }
+399:     }
+400: 
+401:     fun toggleArtistFavorite(artistIds: List<String>, isFavorite: Boolean) {
+402:         viewModelScope.launch {
+403:             artistIds.forEach { id ->
+404:                 repository.toggleArtistFavorite(id, isFavorite)
+405:             }
+406:         }
+407:     }
+408: 
+409:     fun deleteAlbums(albumTitles: List<String>) {
+410:         viewModelScope.launch {
+411:             repository.deleteAlbums(albumTitles)
+412:         }
+413:     }
+414: 
+415:     fun deleteArtists(artistNames: List<String>) {
+416:         viewModelScope.launch {
+417:             repository.deleteArtists(artistNames)
+418:         }
+419:     }
+420: 
+421:     fun deletePlaylists(playlistTitles: List<String>) {
+422:         viewModelScope.launch {
+423:             repository.deletePlaylists(playlistTitles)
+424:         }
+425:     }
+426: 
+427:     fun createPlaylist(name: String, description: String?, coverArtUri: String?, trackIds: List<String>) {
+428:         viewModelScope.launch {
+429:             var finalCoverArtUri = coverArtUri
+430:             if (coverArtUri != null && coverArtUri.startsWith("content://")) {
+431:                 try {
+432:                     val playlistId = java.util.UUID.randomUUID().toString()
+433:                     val destinationFile = java.io.File(context.filesDir, "playlist_covers/${playlistId}.jpg")
+434:                     destinationFile.parentFile?.mkdirs()
+435:                     context.contentResolver.openInputStream(android.net.Uri.parse(coverArtUri))?.use { input ->
+436:                         java.io.FileOutputStream(destinationFile).use { output ->
+437:                             input.copyTo(output)
+438:                         }
+439:                     }
+440:                     finalCoverArtUri = destinationFile.toURI().toString() // Room will save this string
+441:                 } catch (e: Exception) {
+442:                     e.printStackTrace()
+443:                 }
+444:             }
+445:             repository.createPlaylist(name, description, finalCoverArtUri, trackIds)
+446:         }
+447:     }
+448: 
+449:     fun addTracksToPlaylist(playlistId: String, trackIds: List<String>) {
+450:         viewModelScope.launch {
+451:             repository.addTracksToPlaylist(playlistId, trackIds)
+452:         }
+453:     }
+454: 
+455:     fun seekTo(positionFraction: Float) {
+456:         val dur = duration.value
+457:         if (dur > 0) {
+458:             musicPlayerConnection.seekTo((positionFraction * dur).toLong())
+459:         }
+460:     }
+461: 
+462:     val listeningStats: StateFlow<ListeningStatsData>
+463: 
+464:     init {
+465:         randomPicks = repository.getRandomTracks(20).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+466:         recentlyPlayed = repository.getRecentlyPlayedTracks(4).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+467:         recommended = repository.getRandomTracks(10).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+468:         
+469:         libraryAlbums = repository.getAllAlbums().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+470:         allGenres = repository.getAllGenres()
+471:             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+472:             
+473:         recentSearches = repository.getRecentSearches(5)
+474:             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+475: 
+476:         val genreFilter = MutableStateFlow<String?>(null)
+477:         libraryArtists = repository.getAllArtists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+478:         libraryPlaylists = repository.getAllPlaylists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+479:         libraryTracks = repository.getAllTracks()
+480:             .onEach { 
+481:                 if (!_isLibraryLoaded.value) {
+482:                     kotlinx.coroutines.delay(150)
+483:                     _isLibraryLoaded.value = true 
+484:                 }
+485:             }
+486:             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+487:             
+488:         favoriteTracks = libraryTracks.map { tracks -> tracks.filter { it.isFavorite } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+489:         favoriteAlbums = libraryAlbums.map { albums -> albums.filter { it.isFavorite } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+490:         favoriteArtists = libraryArtists.map { artists -> artists.filter { it.isFavorite } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+491:         
+492:         genreTopTracks = repository.getRandomTracks(10).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+493:         genreTopAlbums = repository.getAllAlbums().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+494:         genreTopArtists = repository.getAllArtists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+495: 
+496:         // --- Listening Stats: computed from PlayHistory + Track library ---
+497:         listeningStats = combine(
+498:             repository.getFullPlayHistory(),
+499:             repository.getAllTracks()
+500:         ) { history, tracks ->
+501:             computeListeningStats(history, tracks)
+502:         }.stateIn(
+503:             viewModelScope,
+504:             SharingStarted.Eagerly,
+505:             ListeningStatsData(0L, null, List(7) { 0L }, emptyList(), emptyList(), List(24) { 0L })
+506:         )
+507: 
+508:         viewModelScope.launch {
+509:             musicPlayerConnection.currentlyPlayingItem.collect { mediaItem ->
+510:                 if (mediaItem != null) {
+511:                     var currentTrack = randomPicks.value.find { it.id == mediaItem.mediaId }
+512:                         ?: recentlyPlayed.value.find { it.id == mediaItem.mediaId }
+513:                         ?: libraryTracks.value.find { it.id == mediaItem.mediaId }
+514:                         
+515:                     if (currentTrack == null) {
+516:                         val artworkUriStr = mediaItem.mediaMetadata.artworkUri?.toString()
+517:                         val extras = mediaItem.mediaMetadata.extras
+518:                         currentTrack = Track(
+519:                             id = mediaItem.mediaId,
+520:                             title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
+521:                             artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown",
+522:                             albumArtist = null,
+523:                             albumId = null,
+524:                             album = "",
+525:                             genre = null,
+526:                             composer = null,
+527:                             year = null,
+528:                             trackNumber = null,
+529:                             discNumber = null,
+530:                             durationMs = extras?.getLong("durationMs") ?: 0L,
+531:                             filePath = "",
+532:                             fileSizeBytes = 0L,
+533:                             bitrate = null,
+534:                             codec = null,
+535:                             artworkUri = artworkUriStr,
+536:                             sampleRate = null,
+537:                             bitDepth = null,
+538:                             dateAdded = 0L,
+539:                             dateModified = 0L,
+540:                             source = com.aeswox.arcmusic.db.entities.TrackSource.LOCAL,
+541:                             isFavorite = false,
+542:                             playCount = 0,
+543:                             lastPlayedAt = null,
+544:                             remoteId = null
+545:                         )
+546:                     }
+547:                     if (_currentlyPlaying.value?.id != currentTrack.id) {
+548:                         _currentlyPlaying.value = currentTrack
+549:                     }
+550:                 } else {
+551:                     _currentlyPlaying.value = null
+552:                 }
+553:             }
+554:         }
+555:     }
+556: 
+557:     private val _themeMode = MutableStateFlow(ThemeMode.Light)
+558:     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+559: 
+560:     private val _tintTransparency = MutableStateFlow(0.4f)
+561:     val tintTransparency: StateFlow<Float> = _tintTransparency.asStateFlow()
+562:     
+563:     private val _noiseFactor = MutableStateFlow(0.06f)
+564:     val noiseFactor: StateFlow<Float> = _noiseFactor.asStateFlow()
+565:     
+566:     private val _glowIntensity = MutableStateFlow(0.6f)
+567:     val glowIntensity: StateFlow<Float> = _glowIntensity.asStateFlow()
+568:     
+569:     private val _lightThemeForNowPlaying = MutableStateFlow(false)
+570:     val lightThemeForNowPlaying: StateFlow<Boolean> = _lightThemeForNowPlaying.asStateFlow()
+571:     
+572:     fun setThemeMode(mode: ThemeMode) {
+573:         _themeMode.value = mode
+574:     }
+575: 
+576:     fun setTintTransparency(value: Float) {
+577:         _tintTransparency.value = value
+578:     }
+579:     
+580:     fun setNoiseFactor(value: Float) {
+581:         _noiseFactor.value = value
+582:     }
+583: 
+584:     fun setGlowIntensity(value: Float) {
+585:         _glowIntensity.value = value
+586:     }
+587:     
+588:     fun setLightThemeForNowPlaying(value: Boolean) {
+589:         _lightThemeForNowPlaying.value = value
+590:     }
+591: 
+592:     // ---------------------------------------------------------------------------
+593:     // Stats computation — pure function, called inside combine() on IO thread.
+594:     // ---------------------------------------------------------------------------
+595: 
+596:     private fun getEffectivePlayedMs(ph: PlayHistory, track: Track?): Long {
+597:         return when {
+598:             ph.playedMs > 0L -> ph.playedMs
+599:             ph.playedMs == -1L -> 0L // Currently playing or skipped immediately
+600:             else -> track?.durationMs ?: 0L // Legacy row fallback
+601:         }
+602:     }
+603: 
+604:     private fun computeListeningStats(
+605:         history: List<PlayHistory>,
+606:         tracks: List<Track>
+607:     ): ListeningStatsData {
+608:         if (history.isEmpty() || tracks.isEmpty()) {
+609:             return ListeningStatsData(
+610:                 totalMinutes = 0,
+611:                 weekOverWeekPct = null,
+612:                 weeklyMinutesByDay = List(7) { 0L },
+613:                 topArtists = emptyList(),
+614:                 topGenres = computeTopGenresByCount(tracks),
+615:                 nightOwlMinutesByHour = List(24) { 0L }
+616:             )
+617:         }
+618: 
+619:         val trackById: Map<String, Track> = tracks.associateBy { it.id }
+620: 
+621:         // --- Total listening time (actual played ms, not full duration) ---
+622:         val totalMs = history.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+623:         val totalMinutes = totalMs / 60_000L
+624: 
+625:         // --- Week-over-week trend ---
+626:         val now = System.currentTimeMillis()
+627:         val thisWeekStart = now - 7L * 24 * 3600 * 1000
+628:         val prevWeekStart = now - 14L * 24 * 3600 * 1000
+629: 
+630:         val thisWeekMs = history
+631:             .filter { it.timestamp >= thisWeekStart }
+632:             .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+633: 
+634:         // Only show the trend if we have actual history in the *prior* week
+635:         val prevWeekHistory = history.filter { it.timestamp in prevWeekStart until thisWeekStart }
+636:         val weekOverWeekPct: Int? = if (prevWeekHistory.isEmpty()) {
+637:             null // Not enough history yet — hide the line
+638:         } else {
+639:             val prevWeekMs = prevWeekHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+640:             if (prevWeekMs == 0L) null
+641:             else ((thisWeekMs - prevWeekMs) * 100L / prevWeekMs).toInt()
+642:         }
+643: 
+644:         // --- Weekly activity: minutes per day of current 7-day window (Mon..Sun) ---
+645:         val cal = java.util.Calendar.getInstance()
+646:         cal.timeInMillis = now
+647:         // Roll back to start of today
+648:         cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+649:         cal.set(java.util.Calendar.MINUTE, 0)
+650:         cal.set(java.util.Calendar.SECOND, 0)
+651:         cal.set(java.util.Calendar.MILLISECOND, 0)
+652:         val dayMs = 24L * 3600 * 1000
+653: 
+654:         // Build 7 buckets: index 0 = 6 days ago, index 6 = today
+655:         val weeklyMinutesByDay = (6 downTo 0).map { daysAgo ->
+656:             val dayStart = cal.timeInMillis - daysAgo * dayMs
+657:             val dayEnd = dayStart + dayMs
+658:             history
+659:                 .filter { it.timestamp in dayStart until dayEnd }
+660:                 .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+661:         }
+662: 
+663:         // --- Top Artists (by approximate listening time) ---
+664:         val artistMinutes = mutableMapOf<String, Long>()
+665:         history.forEach { ph ->
+666:             val track = trackById[ph.trackId] ?: return@forEach
+667:             val artist = track.artist.ifBlank { return@forEach }
+668:             val playedMin = getEffectivePlayedMs(ph, track) / 60_000L
+669:             artistMinutes[artist] = (artistMinutes[artist] ?: 0L) + playedMin
+670:         }
+671:         // Build artist entries — photoUri comes from the Artists table via libraryArtists,
+672:         // but since we only have Track here, we leave photoUri null (placeholder shown in UI).
+673:         val topArtists = artistMinutes.entries
+674:             .sortedByDescending { it.value }
+675:             .take(8)
+676:             .map { (name, minutes) -> ArtistStatEntry(name, null, minutes) }
+677: 
+678:         // --- Top Genres (ranked by actual listening time) ---
+679:         val topGenres = computeTopGenresByListeningTime(history, trackById)
+680: 
+681:         // --- Listening Personality: computed from any available history ---
+682:         val nightOwlData: List<Long> = run {
+683:             val minutesByHour = LongArray(24)
+684:             history.forEach { ph ->
+685:                 val track = trackById[ph.trackId]
+686:                 val durationMin = getEffectivePlayedMs(ph, track) / 60_000L
+687:                 val hourCal = java.util.Calendar.getInstance()
+688:                 hourCal.timeInMillis = ph.timestamp
+689:                 val hour = hourCal.get(java.util.Calendar.HOUR_OF_DAY)
+690:                 minutesByHour[hour] += durationMin
+691:             }
+692:             minutesByHour.toList()
+693:         }
+694: 
+695:         return ListeningStatsData(
+696:             totalMinutes = totalMinutes,
+697:             weekOverWeekPct = weekOverWeekPct,
+698:             weeklyMinutesByDay = weeklyMinutesByDay,
+699:             topArtists = topArtists,
+700:             topGenres = topGenres,
+701:             nightOwlMinutesByHour = nightOwlData
+702:         )
+703:     }
+704: 
+705:     /** Ranks genres by total listening minutes accumulated in play history. */
+706:     private fun computeTopGenresByListeningTime(
+707:         history: List<PlayHistory>,
+708:         trackById: Map<String, Track>
+709:     ): List<GenreStatEntry> {
+710:         val genreMinutes = mutableMapOf<String, Long>()
+711:         history.forEach { ph ->
+712:             val track = trackById[ph.trackId] ?: return@forEach
+713:             val genre = track.genre?.trim()?.takeIf { it.isNotEmpty() } ?: return@forEach
+714:             val playedMin = getEffectivePlayedMs(ph, track) / 60_000L
+715:             genreMinutes[genre] = (genreMinutes[genre] ?: 0L) + playedMin
+716:         }
+717:         return genreMinutes.entries
+718:             .sortedByDescending { it.value }
+719:             .take(4)
+720:             .map { (genre, minutes) -> GenreStatEntry(genre, minutes) }
+721:     }
+722: 
+723:     /** Fallback: rank genres by number of tracks in the library (used when no history exists). */
+724:     private fun computeTopGenresByCount(tracks: List<Track>): List<GenreStatEntry> {
+725:         return tracks
+726:             .mapNotNull { it.genre?.trim()?.takeIf { g -> g.isNotEmpty() } }
+727:             .groupingBy { it }
+728:             .eachCount()
+729:             .entries
+730:             .sortedByDescending { it.value }
+731:             .take(4)
+732:             .map { GenreStatEntry(it.key, 0L) }  // 0 minutes — no history to calculate from
+733:     }
+734: }
+735: 
+736: 
+737: 
+738: 
+The above content shows the entire, complete file contents of the requested file.
+

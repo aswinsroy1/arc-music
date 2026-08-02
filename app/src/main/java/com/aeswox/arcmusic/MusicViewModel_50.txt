@@ -1,0 +1,36 @@
+Created At: 2026-08-02T15:16:16Z
+Completed At: 2026-08-02T15:16:16Z
+File Path: `file:///C:/Users/aswin/OneDrive/Desktop/Arc%20Music/PROGRESS_LOG.md`
+Total Lines: 106
+Total Bytes: 9548
+Showing lines 80 to 106
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+80: 
+81: - Renamed 'Popular' to 'Tracks'.
+82: - Created ArtistTracksScreen and ArtistAlbumsScreen to display full lists of a specific artist's tracks and albums.
+83: - Wired 'See all' buttons in ArtistDetailsScreen to navigate to these new dedicated screens using the routes artist_tracks/{artistId} and artist_albums/{artistId}.
+84: 
+85: ## Play History Logging (2026-07-27)
+86: - **Goal**: Wire real `PlayHistory` logging so play events are persisted and `getRecentlyPlayedTracks()` returns meaningful data.
+87: - **Changed**:
+88:   - `TrackDao.kt`: Added `incrementPlayCountAndUpdateLastPlayed(trackId, timestamp)` — atomic SQL `UPDATE`, avoids read-modify-write.
+89:   - `PlayHistoryDao.kt`: Added `markMostRecentCompleted(trackId)` — uses `MAX(id)` subquery to target the single latest row per track.
+90:   - `MusicRepository.kt`: Added `logPlayStart(trackId)` (inserts `PlayHistory` + increments playCount/lastPlayedAt) and `markPlayCompleted(trackId)`.
+91:   - `MusicPlayerConnection.kt`: Injected `MusicRepository`. `PlayerListener.onMediaItemTransition` logs play-start for each distinct new track (guarded by `lastLoggedMediaId`). `onPlaybackStateChanged(STATE_ENDED)` marks completion. Skipped tracks remain `completed = false`.
+92:   - `PlaybackModule.kt`: Passes `MusicRepository` to `MusicPlayerConnection` provider.
+93: - **Architectural decision**: All logging in `MusicPlayerConnection`, not `MusicViewModel` — fires regardless of ViewModel lifecycle, zero double-logging risk.
+94: - **Build**: `BUILD SUCCESSFUL in 1m 16s`. No errors.
+95: - **Acceptance check**: No device connected at write time. Run `check_play_history.ps1` after playing ≥3 tracks (let ≥1 finish naturally, skip ≥1).
+96: 
+97: ## 2026-07-28
+98: - **Goal**: Fix queue-building at entry points and wire the real Queue screen.
+99: - **Changed**:
+100:   - `MainActivity.kt`: Updated `onSongClick` signature to `(Track, List<Track>?) -> Unit` so that `RecentlyPlayedSection`, `RandomPicksSection`, and `RecommendedDownloadsSection` can pass the full context queue into `setCurrentlyPlaying()`.
+101:   - `MusicPlayerConnection.kt`: Added `currentQueue` and `currentMediaItemIndex` StateFlows, populated by overriding `PlayerListener.onTimelineChanged()`. Added `skipToQueueItem(index)` to allow jumping to a track in the queue.
+102:   - `MusicViewModel.kt`: Mapped `MusicPlayerConnection.currentQueue` (List<MediaItem>) into `List<Track>` state flow for UI consumption, handling metadata fallback mapping similarly to `currentlyPlaying`.
+103:   - `QueueScreen.kt`: Wired UI to use real `currentQueue`, `currentQueueIndex`, and `currentlyPlaying` flows from ViewModel. Replaced empty state/hardcoded list logic with slicing `currentQueue` for "Up Next". Clicking tracks jumps playback.
+104: - **Audited**: Verified that Search results, Genre Hub, and Playlist sections are currently populated by hardcoded UI and are not wired, so they were left as is.
+105: - **Build**: Compiled and successfully verified.
+106: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+

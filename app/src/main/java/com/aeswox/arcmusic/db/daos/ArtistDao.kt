@@ -30,6 +30,9 @@ interface ArtistDao {
     @Query("UPDATE artists SET bioText = :bioText WHERE id = :artistId")
     suspend fun updateArtistBio(artistId: String, bioText: String?)
 
+    @Query("UPDATE artists SET missingTracksCount = :missingTracks, missingAlbumsCount = :missingAlbums WHERE id = :artistId")
+    suspend fun updateArtistGaps(artistId: String, missingTracks: Int, missingAlbums: Int)
+
     @Query("SELECT * FROM artists WHERE name LIKE :query || '%' OR name LIKE '% ' || :query || '%' LIMIT 10")
     fun searchArtists(query: String): Flow<List<Artist>>
 }

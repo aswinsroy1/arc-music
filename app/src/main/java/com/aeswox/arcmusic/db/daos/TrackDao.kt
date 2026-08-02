@@ -48,6 +48,18 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE genre IS NULL OR genre = ''")
     fun getTracksMissingGenre(): Flow<List<Track>>
 
+    @Query("SELECT * FROM tracks WHERE artworkUri IS NULL OR artworkUri = ''")
+    fun getTracksMissingArtwork(): Flow<List<Track>>
+
+    @Query("SELECT * FROM tracks WHERE title IS NULL OR title = '' OR artist IS NULL OR artist = '' OR album IS NULL OR album = '' OR genre IS NULL OR genre = ''")
+    fun getTracksMissingMetadata(): Flow<List<Track>>
+
+    @Query("SELECT * FROM tracks WHERE bitrate < 192000")
+    fun getLowQualityTracks(): Flow<List<Track>>
+
+    @Query("SELECT * FROM tracks WHERE durationMs = 0 OR durationMs IS NULL")
+    fun getCorruptedTracks(): Flow<List<Track>>
+
     @Query("UPDATE tracks SET playCount = playCount + 1, lastPlayedAt = :timestamp WHERE id = :trackId")
     suspend fun incrementPlayCountAndUpdateLastPlayed(trackId: String, timestamp: Long)
 

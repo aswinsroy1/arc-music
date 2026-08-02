@@ -68,6 +68,24 @@ data class ListeningStatsData(
     val nightOwlMinutesByHour: List<Long> // 24 values of total minutes per hour-of-day
 )
 
+// --- Collection Health data model ---
+data class DuplicateGroup(
+    val title: String,
+    val artist: String,
+    val tracks: List<Track>
+)
+
+data class CollectionHealthState(
+    val healthScore: Int = 100,
+    val missingArtworkCount: Int = 0,
+    val missingMetadataCount: Int = 0,
+    val duplicateGroups: List<DuplicateGroup> = emptyList(),
+    val corruptedTagsCount: Int = 0,
+    val lowQualityCount: Int = 0,
+    val missingTracksFromOwnedArtists: Int = 0,
+    val missingAlbumsFromOwnedArtists: Int = 0
+)
+
 enum class ThemeMode { System, Light, Dark }
 
 @HiltViewModel
@@ -100,6 +118,9 @@ class MusicViewModel @Inject constructor(
     val genreTopTracks: StateFlow<List<Track>>
     val genreTopAlbums: StateFlow<List<Album>>
     val genreTopArtists: StateFlow<List<Artist>>
+    
+    private val _healthState = MutableStateFlow(CollectionHealthState())
+    val healthState: StateFlow<CollectionHealthState> = _healthState.asStateFlow()
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -517,6 +538,90 @@ class MusicViewModel @Inject constructor(
             SharingStarted.Eagerly,
             ListeningStatsData(0L, null, List(7) { 0L }, emptyList(), emptyList(), List(24) { 0L })
         )
+
+        // --- Collection Health computation ---
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            combine(
+                combine(
+                    repository.getTracksMissingArtwork(),
+                    repository.getTracksMissingMetadata(),
+                    repository.getLowQualityTracks()
+                ) { a, b, c -> Triple(a, b, c) },
+                combine(
+                    repository.getCorruptedTracks(),
+                    libraryTracks,
+                    libraryArtists
+                ) { a, b, c -> Triple(a, b, c) }
+            ) { triple1, triple2 ->
+                val missingArtwork = triple1.first
+                val missingMetadata = triple1.second
+                val lowQuality = triple1.third
+                val corrupted = triple2.first
+                val tracks = triple2.second
+                val artists = triple2.third
+
+                if (tracks.isEmpty()) {
+                    return@combine CollectionHealthState()
+                }
+
+                // Calculate duplicates (Group by title + artist, then fuzzy duration ±5s)
+                val duplicateGroups = tracks.groupBy { "${it.title.lowercase()}_${it.artist.lowercase()}" }
+                    .filter { it.value.size > 1 }
+                    .map { entry -> 
+                        val groupedByDuration = entry.value.groupBy { it.durationMs / 5000 }
+                        groupedByDuration.values.filter { it.size > 1 }.map { duplicates ->
+                            DuplicateGroup(
+                                title = duplicates.first().title,
+                                artist = duplicates.first().artist,
+                                tracks = duplicates
+                            )
+                        }
+                    }
+                    .flatten()
+
+                val trackCount = tracks.size.coerceAtLeast(1).toFloat()
+                
+                // Score weighting: 25% each (Artwork, Metadata, Duplicates, Quality)
+                val healthScore = 100 - (
+                    (minOf(25f, (missingArtwork.size.toFloat() / trackCount) * 25f)) +
+                    (minOf(25f, (missingMetadata.size.toFloat() / trackCount) * 25f)) +
+                    (minOf(25f, (duplicateGroups.size.toFloat() / trackCount) * 25f)) +
+                    (minOf(25f, (lowQuality.size.toFloat() / trackCount) * 25f))
+                ).toInt()
+
+                val missingTracks = artists.sumOf { it.missingTracksCount ?: 0 }
+                val missingAlbums = artists.sumOf { it.missingAlbumsCount ?: 0 }
+
+                CollectionHealthState(
+                    healthScore = healthScore.coerceIn(0, 100),
+                    missingArtworkCount = missingArtwork.size,
+                    missingMetadataCount = missingMetadata.size,
+                    duplicateGroups = duplicateGroups,
+                    corruptedTagsCount = corrupted.size,
+                    lowQualityCount = lowQuality.size,
+                    missingTracksFromOwnedArtists = missingTracks,
+                    missingAlbumsFromOwnedArtists = missingAlbums
+                )
+            }.collectLatest { state ->
+                _healthState.value = state
+            }
+        }
+        
+        // Background sync for discography gaps
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            libraryArtists.collectLatest { artists ->
+                val albums = libraryAlbums.value
+                val albumMap = albums.associate { it.title to it.trackCount }
+                artists.forEach { artist ->
+                    if (artist.missingTracksCount == null || artist.missingAlbumsCount == null) {
+                        val gaps = repository.fetchDiscographyGaps(artist.name, albumMap)
+                        if (gaps != null) {
+                            repository.updateArtistGaps(artist.id, gaps.first, gaps.second)
+                        }
+                    }
+                }
+            }
+        }
 
         viewModelScope.launch {
             musicPlayerConnection.currentlyPlayingItem.collect { mediaItem ->

@@ -1,0 +1,115 @@
+Created At: 2026-08-02T15:14:02Z
+Completed At: 2026-08-02T15:14:02Z
+File Path: `file:///C:/Users/aswin/OneDrive/Desktop/Arc%20Music/PROGRESS_LOG.md`
+Total Lines: 106
+Total Bytes: 9548
+Showing lines 1 to 106
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: # Progress Log
+2: 
+3: ## 2026-07-25
+4: - **Changed**:
+5:   - Renamed package structure from `com.example` to `com.aeswox.arcmusic`.
+6:   - Updated `namespace` and `applicationId` to `com.aeswox.arcmusic` in `app/build.gradle.kts`.
+7:   - Set `minSdk = 31` in `app/build.gradle.kts`.
+8:   - Changed app name to "Arc Music" in `strings.xml`.
+9:   - Created `ArcMusicApplication` annotated with `@HiltAndroidApp` and registered it in `AndroidManifest.xml`.
+10:   - Created placeholder Hilt modules (`DatabaseModule`, `NetworkModule`).
+11:   - Migrated `MusicViewModel` from `AndroidViewModel` to `@HiltViewModel` using constructor injection.
+12:   - Updated compose navigation call sites to use `hiltViewModel()` instead of `viewModel()`.
+13:   - Used the `android.newDsl=false` workaround in `gradle.properties` to allow Hilt to work with AGP 9.1.1.
+14:   - Verified build succeeds with Hilt integrated.
+15: 
+16: ## Database Schema Refactor
+17: - Designed and implemented the real Room relational schema covering `Track`, `Album`, `Artist`, `Playlist`, `PlaylistTrack`, and `PlayHistory` entities.
+18: - Created specialized DAOs (`TrackDao`, `AlbumDao`, `ArtistDao`, `PlaylistDao`, `PlayHistoryDao`) with queries supporting current UI needs.
+19: - Updated `MusicDatabase` to increment version to 2, adding the new DAOs and utilizing destructive migration.
+20: - Updated `DatabaseModule` to provide the new DAOs into the dependency graph.
+21: - Kept the legacy `SongEntity` as a pure data class (removed Room annotations) and stubbed `MusicRepository` methods to allow UI compilation to pass while the data source is detached.
+22: 
+23: - **Verified**:
+24:   - All file references and package declarations were properly updated.
+25:   - Running a Gradle assemble to verify compilation success.
+26: - **Deviations**:
+27:   - Could not read `arc-music-build-plan.md` as it was not found in the project root. Created initial `STATUS.md` and `PROGRESS_LOG.md` as per rules.
+28: 
+29: ## MediaStore Scanning
+30: - Requested `READ_MEDIA_AUDIO` (API 33+) and `READ_EXTERNAL_STORAGE` (API 31-32) permissions in AndroidManifest.xml.
+31: - Implemented Accompanist permissions logic in `MusicHomeScreen` to trigger the permission request.
+32: - Added a "Scan MediaStore" button to `MusicHomeScreen` to invoke the scan.
+33: - Created `MediaStoreScanner` to query `MediaStore.Audio.Media.EXTERNAL_CONTENT_URI` and extract track metadata.
+34: - Implemented `MusicRepository.scanMediaStore()` to map scanned tracks into Room entities (`Track`, `Album`, `Artist`), populate missing required fields with defaults, and save them.
+35: - Updated `DatabaseModule` to inject `MediaStoreScanner` into `MusicRepository`.
+36: - Added state flow in `MusicViewModel` to observe and display the count of scanned entities in the UI.
+37: - **Verified**:
+38:   - Successfully compiles without syntax errors. Instantiations of Room Entities matched the schema definition.
+39: 
+40: ## Playback Engine & Wiring
+41: - Setup `MediaSessionService` (`PlaybackService`) and `MediaController` wrapper (`MusicPlayerConnection`) for playback using AndroidX Media3/ExoPlayer.
+42: - Exposed state flows (`isPlaying`, `currentlyPlayingItem`) from the connection to sync the UI with playback state.
+43: - Rewired `MusicViewModel` and UI components (MiniPlayer, NowPlayingScreen) to use these new state flows and invoke `MusicPlayerConnection.play()`, `pause()`, `skipToNext()`, `skipToPrevious()`.
+44: - Implemented queue generation so that playing a song from the UI loads the containing list into the MediaController queue and starts at the clicked item's index.
+45: - Temporarily updated `Song` class to hold `extraData` (storing the real file paths mapped from the database) without altering the visual structure of the UI components pending the rewiring phase.
+46: - **Verified**:
+47:   - EAC3 hardware decode tested successfully.
+48:   - Successfully compiles after typing fixes (`id` conversions, nullability fixes).
+49: 
+50: ## Playback Bug Fixes (Thumbnails, Seekbar, Titles, FLAC Seeking)
+51: - Added `albumId` extraction to `MediaStoreScanner` and updated schema version to supply `content://media/external/audio/albumart/<id>` to UI.
+52: - Mapped explicit `MediaMetadata` into `MediaItem` so ExoPlayer exposes title and artwork URI robustly.
+53: - Attached `currentPosition` and `duration` flows from ExoPlayer into `MusicViewModel`, wiring it seamlessly to `NowPlayingScreen`'s `Slider`.
+54: - Implemented immediate UI updates upon Slider drag release to eliminate visual stutter while waiting for ExoPlayer to seek.
+55: - Adjusted `DefaultLoadControl` and `SeekParameters.CLOSEST_SYNC` in `PlaybackService` to significantly eliminate seeking buffer delays, especially perceptible in heavy FLAC files.
+56: - **Verified**: Builds successfully. UI no longer crashes. Slider format is mm:ss.
+57: 
+58: ## Library Rewiring
+59: - Completed rewiring UI components (LibraryComponents, GenreHub, Queue, NowPlaying, etc.) to use real database entities (Track, Album, Artist) instead of placeholder dummy classes.
+60: - Replaced local `Track` dummy class in LibraryComponents with a new `LibraryUiItem` wrapper and mapped entities correctly.
+61: - Fixed numerous compilation errors introduced by the removal of `SongEntity`.
+62: - **Verified**: The app builds successfully in 57s. All UI screens compile cleanly with the new schema.
+63: 
+64: ## Album Details Rewiring
+65: - Modified `MainActivity.kt` navigation to accept and pass `albumId` to `album_details/{albumId}` and `artistId` to `artist_details/{artistId}`.
+66: - Updated `LibraryComponents.kt` and `MusicHomeScreen.kt` to pass the correct entity IDs to navigation callbacks.
+67: - Updated `MusicRepository.kt` and `MusicViewModel.kt` to expose `getAlbumById`, `getTracksByAlbum`, and `getAlbumsByArtist` queries via Flow.
+68: - Rewired `AlbumDetailsScreen.kt` to collect real data flows from `MusicViewModel` and replaced all hardcoded UI placeholders with dynamic content.
+69: - Wired UI actions in `AlbumDetailsScreen.kt` to Play/Shuffle track lists, expand track listings, and navigate to the related artist or discography.
+70: - **Verified**: Screen cleanly compiles and the UI is fully dynamic.
+71: 
+72: ## Artist Details Rewiring
+73: - Updated MusicRepository.kt and MusicViewModel.kt to expose getArtistById and getTracksByArtist queries via Flow.
+74: - Rewired ArtistDetailsScreen.kt to collect real data flows from MusicViewModel and replaced all hardcoded UI placeholders with dynamic content.
+75: - Wired UI actions in ArtistDetailsScreen.kt to Play/Shuffle track lists, and navigate to related albums.
+76: - Replaced the hardcoded Conan Gray bio with the artist's real bio or a placeholder message if absent.
+77: - Verified that the UI compiles and dynamically loads the real artist photo, track play counts, and related albums without relying on external APIs.
+78: - **Verified**: Screen cleanly compiles and the UI is fully dynamic.
+79: 
+80: 
+81: - Renamed 'Popular' to 'Tracks'.
+82: - Created ArtistTracksScreen and ArtistAlbumsScreen to display full lists of a specific artist's tracks and albums.
+83: - Wired 'See all' buttons in ArtistDetailsScreen to navigate to these new dedicated screens using the routes artist_tracks/{artistId} and artist_albums/{artistId}.
+84: 
+85: ## Play History Logging (2026-07-27)
+86: - **Goal**: Wire real `PlayHistory` logging so play events are persisted and `getRecentlyPlayedTracks()` returns meaningful data.
+87: - **Changed**:
+88:   - `TrackDao.kt`: Added `incrementPlayCountAndUpdateLastPlayed(trackId, timestamp)` — atomic SQL `UPDATE`, avoids read-modify-write.
+89:   - `PlayHistoryDao.kt`: Added `markMostRecentCompleted(trackId)` — uses `MAX(id)` subquery to target the single latest row per track.
+90:   - `MusicRepository.kt`: Added `logPlayStart(trackId)` (inserts `PlayHistory` + increments playCount/lastPlayedAt) and `markPlayCompleted(trackId)`.
+91:   - `MusicPlayerConnection.kt`: Injected `MusicRepository`. `PlayerListener.onMediaItemTransition` logs play-start for each distinct new track (guarded by `lastLoggedMediaId`). `onPlaybackStateChanged(STATE_ENDED)` marks completion. Skipped tracks remain `completed = false`.
+92:   - `PlaybackModule.kt`: Passes `MusicRepository` to `MusicPlayerConnection` provider.
+93: - **Architectural decision**: All logging in `MusicPlayerConnection`, not `MusicViewModel` — fires regardless of ViewModel lifecycle, zero double-logging risk.
+94: - **Build**: `BUILD SUCCESSFUL in 1m 16s`. No errors.
+95: - **Acceptance check**: No device connected at write time. Run `check_play_history.ps1` after playing ≥3 tracks (let ≥1 finish naturally, skip ≥1).
+96: 
+97: ## 2026-07-28
+98: - **Goal**: Fix queue-building at entry points and wire the real Queue screen.
+99: - **Changed**:
+100:   - `MainActivity.kt`: Updated `onSongClick` signature to `(Track, List<Track>?) -> Unit` so that `RecentlyPlayedSection`, `RandomPicksSection`, and `RecommendedDownloadsSection` can pass the full context queue into `setCurrentlyPlaying()`.
+101:   - `MusicPlayerConnection.kt`: Added `currentQueue` and `currentMediaItemIndex` StateFlows, populated by overriding `PlayerListener.onTimelineChanged()`. Added `skipToQueueItem(index)` to allow jumping to a track in the queue.
+102:   - `MusicViewModel.kt`: Mapped `MusicPlayerConnection.currentQueue` (List<MediaItem>) into `List<Track>` state flow for UI consumption, handling metadata fallback mapping similarly to `currentlyPlaying`.
+103:   - `QueueScreen.kt`: Wired UI to use real `currentQueue`, `currentQueueIndex`, and `currentlyPlaying` flows from ViewModel. Replaced empty state/hardcoded list logic with slicing `currentQueue` for "Up Next". Clicking tracks jumps playback.
+104: - **Audited**: Verified that Search results, Genre Hub, and Playlist sections are currently populated by hardcoded UI and are not wired, so they were left as is.
+105: - **Build**: Compiled and successfully verified.
+106: 
+The above content shows the entire, complete file contents of the requested file.
+

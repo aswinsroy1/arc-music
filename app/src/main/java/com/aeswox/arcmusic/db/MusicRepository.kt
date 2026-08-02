@@ -169,6 +169,14 @@ class MusicRepository(
         artistDao.updateArtistFavoriteStatus(artistId, isFavorite)
     }
 
+    suspend fun updateArtistGaps(artistId: String, missingTracks: Int, missingAlbums: Int) = withContext(Dispatchers.IO) {
+        artistDao.updateArtistGaps(artistId, missingTracks, missingAlbums)
+    }
+
+    suspend fun fetchDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<Int, Int>? {
+        return artworkRepository.fetchDiscographyGaps(artistName, localAlbums)
+    }
+
     fun getAllPlaylists(): Flow<List<Playlist>> = playlistDao.getAllPlaylists()
 
     fun getPlaylistsContainingTracks(trackIds: List<String>): Flow<List<String>> = playlistDao.getPlaylistsContainingTracks(trackIds)
@@ -277,6 +285,12 @@ class MusicRepository(
     fun searchPlaylists(query: String): Flow<List<Playlist>> = playlistDao.searchPlaylists(query)
     
     fun getAllGenres(): Flow<List<String>> = trackDao.getAllGenres()
+
+    // Collection Health
+    fun getTracksMissingArtwork(): Flow<List<Track>> = trackDao.getTracksMissingArtwork()
+    fun getTracksMissingMetadata(): Flow<List<Track>> = trackDao.getTracksMissingMetadata()
+    fun getLowQualityTracks(): Flow<List<Track>> = trackDao.getLowQualityTracks()
+    fun getCorruptedTracks(): Flow<List<Track>> = trackDao.getCorruptedTracks()
 
     // Search History
     fun getRecentSearches(limit: Int = 4): Flow<List<SearchHistory>> = searchHistoryDao.getRecentSearches(limit)

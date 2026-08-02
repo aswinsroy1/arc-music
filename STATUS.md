@@ -19,6 +19,7 @@
 - Wired real PlayHistory logging: `MusicPlayerConnection.PlayerListener` now inserts a `play_history` row and increments `Track.playCount`/`Track.lastPlayedAt` on every `onMediaItemTransition`. Natural track completion (`STATE_ENDED`) marks the most recent row `completed = true`. Logic lives entirely in `MusicPlayerConnection` (injected with `MusicRepository`), not split across ViewModel.
 - Wired Queue generation for Home screen sections (Recently Played, Random Picks, Recommended) and exposed real queue state in `QueueScreen.kt`.
 - Improved `ArtworkRepository` to fetch artist images via MusicBrainz MBID -> TheAudioDB, avoiding name collisions for more accurate results.
+- Wired `CollectionHealthScreen.kt` with real data computation (missing artwork, missing metadata, duplicate songs, corrupted tags, low-quality files) and a full MusicBrainz background sync for discography gaps (missing tracks/albums). Also implemented the "Review & Clean Up" duplicate song flow.
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.

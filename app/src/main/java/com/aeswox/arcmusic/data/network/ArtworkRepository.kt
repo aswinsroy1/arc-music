@@ -156,4 +156,41 @@ class ArtworkRepository @Inject constructor(
         }
         return null
     }
+
+    suspend fun fetchDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<Int, Int>? {
+        try {
+            val mbResponse = musicBrainzService.searchArtist(query = artistName)
+            val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
+
+            val releaseResponse = musicBrainzService.getReleases(artistMbid = mbid, limit = 100)
+            val releases = releaseResponse.releases ?: return null
+            
+            var missingAlbums = 0
+            var missingTracks = 0
+            
+            releases.forEach { release ->
+                val releaseTitle = release.title.lowercase()
+                val localMatch = localAlbums.entries.find { 
+                    it.key.lowercase() == releaseTitle || 
+                    releaseTitle.contains(it.key.lowercase()) || 
+                    it.key.lowercase().contains(releaseTitle) 
+                }
+                
+                val officialTrackCount = release.media?.sumOf { it.trackCount ?: 0 } ?: 0
+                
+                if (localMatch == null) {
+                    missingAlbums++
+                    missingTracks += officialTrackCount
+                } else {
+                    if (officialTrackCount > localMatch.value) {
+                        missingTracks += (officialTrackCount - localMatch.value)
+                    }
+                }
+            }
+            return Pair(missingTracks, missingAlbums)
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "Gap calculation error for $artistName", e)
+            return null
+        }
+    }
 }

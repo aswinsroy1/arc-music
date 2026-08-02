@@ -21,7 +21,7 @@ import com.aeswox.arcmusic.db.daos.*
         SearchHistory::class,
         TrackFts::class
     ], 
-    version = 10, 
+    version = 11, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -74,6 +74,13 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE artists ADD COLUMN missingTracksCount INTEGER")
+                db.execSQL("ALTER TABLE artists ADD COLUMN missingAlbumsCount INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -81,7 +88,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
