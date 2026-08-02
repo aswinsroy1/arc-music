@@ -1,0 +1,71 @@
+package com.aeswox.arcmusic.playback
+
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+
+@AndroidEntryPoint
+class PlaybackService : MediaSessionService() {
+
+    @Inject
+    lateinit var equalizerManager: EqualizerManager
+
+    private var mediaSession: MediaSession? = null
+    private lateinit var player: ExoPlayer
+
+    override fun onCreate() {
+        super.onCreate()
+        
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .setUsage(C.USAGE_MEDIA)
+            .build()
+            
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                50000, 
+                50000, 
+                250, // bufferForPlaybackMs 
+                500  // bufferForPlaybackAfterRebufferMs
+            )
+            .build()
+            
+        player = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, true)
+            .setHandleAudioBecomingNoisy(true)
+            .setLoadControl(loadControl)
+            .setDeviceVolumeControlEnabled(true)
+            .build()
+            
+        player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
+
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onAudioSessionIdChanged(
+                eventTime: AnalyticsListener.EventTime,
+                audioSessionId: Int
+            ) {
+                equalizerManager.attachToAudioSession(audioSessionId)
+            }
+        })
+            
+        mediaSession = MediaSession.Builder(this, player).build()
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        return mediaSession
+    }
+
+    override fun onDestroy() {
+        mediaSession?.run {
+            player.release()
+            release()
+            mediaSession = null
+        }
+        super.onDestroy()
+    }
+}
