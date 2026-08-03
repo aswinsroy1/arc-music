@@ -522,6 +522,8 @@ class MusicViewModel @Inject constructor(
                     missingTracks.addAll(gaps.first)
                     missingAlbums.addAll(gaps.second)
                 }
+                // Delay to respect MusicBrainz 1 request/sec rate limit
+                kotlinx.coroutines.delay(1200)
             }
             
             if (!hasAnyGaps) {

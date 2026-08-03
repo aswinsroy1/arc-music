@@ -163,6 +163,9 @@ class ArtworkRepository @Inject constructor(
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
             val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
 
+            // Respect MusicBrainz rate limiting (1 req/s) between the two endpoints
+            kotlinx.coroutines.delay(1200)
+
             val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
             val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
             val releases = releaseResponse.releases ?: return null
@@ -224,6 +227,9 @@ class ArtworkRepository @Inject constructor(
         try {
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
             val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
+            
+            // Respect MusicBrainz rate limiting (1 req/s) between the two endpoints
+            kotlinx.coroutines.delay(1200)
 
             val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
             val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
