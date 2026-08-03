@@ -101,7 +101,7 @@ sealed class MissingContentUiState {
         val missingAlbums: Map<String, List<MissingContentItem>>,
         val missingTracks: Map<String, List<MissingContentItem>>
     ) : MissingContentUiState()
-    object Empty : MissingContentUiState()
+    data class Empty(val message: String = "Nothing missing! Favorite more artists to track gaps.") : MissingContentUiState()
 }
 
 enum class ThemeMode { System, Light, Dark }
@@ -503,7 +503,7 @@ class MusicViewModel @Inject constructor(
             _missingContentUiState.value = MissingContentUiState.Loading
             val favoritedArtists = libraryArtists.value.filter { it.isFavorite }
             if (favoritedArtists.isEmpty()) {
-                _missingContentUiState.value = MissingContentUiState.Empty
+                _missingContentUiState.value = MissingContentUiState.Empty()
                 return@launch
             }
             
@@ -515,19 +515,31 @@ class MusicViewModel @Inject constructor(
             
             var hasAnyGaps = false
 
+            var errorMessage = ""
+
             for (artist in favoritedArtists) {
-                val gaps = repository.getDetailedDiscographyGaps(artist.name, albumMap)
-                if (gaps != null && (gaps.first.isNotEmpty() || gaps.second.isNotEmpty())) {
-                    hasAnyGaps = true
-                    missingTracks.addAll(gaps.first)
-                    missingAlbums.addAll(gaps.second)
+                try {
+                    val gaps = repository.getDetailedDiscographyGaps(artist.name, albumMap)
+                    if (gaps == null) {
+                        errorMessage += "[${artist.name}: gaps returned null] "
+                    } else if (gaps.first.isNotEmpty() || gaps.second.isNotEmpty()) {
+                        hasAnyGaps = true
+                        missingTracks.addAll(gaps.first)
+                        missingAlbums.addAll(gaps.second)
+                    } else {
+                        errorMessage += "[${artist.name}: 0 gaps] "
+                    }
+                } catch (e: Exception) {
+                    errorMessage += "[${artist.name} Exc: ${e.message}] "
                 }
                 // Delay to respect MusicBrainz 1 request/sec rate limit
                 kotlinx.coroutines.delay(1200)
             }
             
             if (!hasAnyGaps) {
-                _missingContentUiState.value = MissingContentUiState.Empty
+                val baseMsg = "Nothing missing! Favorite more artists to track gaps."
+                val debugMsg = if (errorMessage.isNotEmpty()) "\n\nDEBUG INFO:\n$errorMessage" else ""
+                _missingContentUiState.value = MissingContentUiState.Empty(baseMsg + debugMsg)
             } else {
                 _missingContentUiState.value = MissingContentUiState.Success(
                     missingAlbums = missingAlbums.groupBy { it.artistName },

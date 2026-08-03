@@ -120,9 +120,9 @@ fun MissingContentScreen(
                         }
                     }
                     is MissingContentUiState.Empty -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
                             Text(
-                                text = "Nothing missing! Favorite more artists to track gaps.",
+                                text = state.message,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

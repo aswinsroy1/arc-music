@@ -147,3 +147,7 @@
   - `MissingContentScreen.kt`: Updated search intents to correctly construct album-specific queries (`album:<Title> artist:<Artist>` for Spotify, and `<Title> album <Artist>` for YouTube Music) when the item is an album.
 - **Verified**: The Missing Tracks tab is no longer empty when an artist has completely missing albums, and search intents properly respect item type.
 
+- **Goal (Follow-up)**: Fix Missing Content screen failing to load data entirely (both tracks and albums empty).
+- **Changed**:
+  - Added a 1.2 second delay inside `MusicViewModel.loadMissingContent` and `ArtworkRepository.getDetailedDiscographyGaps` to respect MusicBrainz's strict 1 req/sec rate limit. Rapid sequential requests were causing HTTP 503 errors, resulting in empty data.
+- **Verified**: Builds cleanly, pushed to remote.
