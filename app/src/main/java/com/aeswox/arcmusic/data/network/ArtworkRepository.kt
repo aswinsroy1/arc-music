@@ -1,6 +1,7 @@
 package com.aeswox.arcmusic.data.network
 
 import android.util.Log
+import com.aeswox.arcmusic.MissingContentItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
@@ -215,6 +216,62 @@ class ArtworkRepository @Inject constructor(
             return Pair(missingTracks, missingAlbums)
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "Gap calculation error for $artistName", e)
+            return null
+        }
+    }
+
+    suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
+        try {
+            val mbResponse = musicBrainzService.searchArtist(query = artistName)
+            val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
+
+            val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
+            val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
+            val releases = releaseResponse.releases ?: return null
+            
+            val validReleases = releases.filter { release ->
+                val rg = release.releaseGroup
+                if (rg == null) return@filter false
+                val secondaryTypes = rg.secondaryTypes ?: emptyList()
+                !secondaryTypes.any { type ->
+                    type.equals("Live", ignoreCase = true) ||
+                    type.equals("Compilation", ignoreCase = true) ||
+                    type.equals("Interview", ignoreCase = true) ||
+                    type.equals("Spokenword", ignoreCase = true) ||
+                    type.equals("Audiobook", ignoreCase = true) ||
+                    type.equals("Soundtrack", ignoreCase = true)
+                }
+            }
+            
+            val groupedByRg = validReleases.groupBy { it.releaseGroup?.id ?: it.title }
+            
+            val missingAlbums = mutableListOf<MissingContentItem>()
+            val missingTracks = mutableListOf<MissingContentItem>()
+            
+            groupedByRg.forEach { (_, rgReleases) ->
+                val rgTitle = rgReleases.first().releaseGroup?.title ?: rgReleases.first().title
+                val officialTrackCount = rgReleases.maxOfOrNull { r -> 
+                    r.media?.sumOf { it.trackCount ?: 0 } ?: 0 
+                } ?: 0
+
+                val localMatch = localAlbums.entries.find { 
+                    it.key.lowercase() == rgTitle.lowercase() || 
+                    rgTitle.lowercase().contains(it.key.lowercase()) || 
+                    it.key.lowercase().contains(rgTitle.lowercase()) 
+                }
+                
+                if (localMatch == null) {
+                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
+                    missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl))
+                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount))
+                } else if (officialTrackCount > localMatch.value) {
+                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
+                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount - localMatch.value))
+                }
+            }
+            return Pair(missingTracks, missingAlbums)
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "Detailed gap calculation error for $artistName", e)
             return null
         }
     }

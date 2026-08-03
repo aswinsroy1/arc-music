@@ -194,7 +194,15 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 CollectionHealthScreen(
                                     onNavigateBack = { navController.popBackStack() },
+                                    onNavigateToMissingContent = { navController.navigate("missing_content") },
                                     glowIntensity = glowIntensity
+                                )
+                            }
+                        }
+                        composable("missing_content") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                MissingContentScreen(
+                                    onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }

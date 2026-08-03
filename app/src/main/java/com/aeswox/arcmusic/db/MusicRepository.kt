@@ -177,6 +177,10 @@ class MusicRepository(
         return artworkRepository.fetchDiscographyGaps(artistName, localAlbums)
     }
 
+    suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>? {
+        return artworkRepository.getDetailedDiscographyGaps(artistName, localAlbums)
+    }
+
     fun getAllPlaylists(): Flow<List<Playlist>> = playlistDao.getAllPlaylists()
 
     fun getPlaylistsContainingTracks(trackIds: List<String>): Flow<List<String>> = playlistDao.getPlaylistsContainingTracks(trackIds)

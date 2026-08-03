@@ -22,6 +22,9 @@
 - Wired `CollectionHealthScreen.kt` with real data computation (missing artwork, missing metadata, duplicate songs, corrupted tags, low-quality files) and a full MusicBrainz background sync for discography gaps (missing tracks/albums). Also implemented the "Review & Clean Up" duplicate song flow.
 - Scoped MusicBrainz discography gap sync strictly to favorited artists. Added an artist-level favorite toggle to `ArtistDetailsScreen.kt` and updated `CollectionHealthScreen.kt` to accurately reflect gaps or an empty state based on favorited artists.
 - Diagnosed and fixed the inflated discography-gap issue (e.g. 91 missing tracks for One Direction). The bug was twofold: MusicBrainz's `release` endpoint was returning un-filtered release editions truncated by a 100 limit (missing newer albums) and iterating over all editions of the same album caused massive double-counting. Fixed by querying `release` using the search endpoint (`query="arid:... AND status:official AND (primarytype:album OR primarytype:ep)"`), filtering out compilations/live albums locally, grouping by `release-group`, and picking the max track-count edition per distinct album to match against local data.
+- Built `MissingContentScreen.kt` to display discography gaps broken down by Tracks and Albums, grouped by artist. Re-used MusicBrainz logic to compute gaps and fetch cover art via Deezer.
+- Fixed Missing Tracks tab showing empty by adding completely missing albums to both track and album gap lists, ensuring accurate representation of missing tracks.
+- Updated action buttons on Missing Content screen to use explicit YouTube Music and Spotify search intents, with album-specific search queries.
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.

@@ -27,6 +27,7 @@ import com.aeswox.arcmusic.db.entities.Track
 @Composable
 fun CollectionHealthScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToMissingContent: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MusicViewModel = hiltViewModel(),
     glowIntensity: Float = 0.6f
@@ -83,7 +84,8 @@ fun CollectionHealthScreen(
                     CollectionHealthGapsSection(
                         missingTracks = healthState.missingTracksFromOwnedArtists,
                         missingAlbums = healthState.missingAlbumsFromOwnedArtists,
-                        favoritedArtistsCount = healthState.favoritedArtistsCount
+                        favoritedArtistsCount = healthState.favoritedArtistsCount,
+                        onNavigateToMissingContent = onNavigateToMissingContent
                     )
                 }
                 
@@ -270,7 +272,12 @@ fun HealthBreakdownItem(
 }
 
 @Composable
-fun CollectionHealthGapsSection(missingTracks: Int, missingAlbums: Int, favoritedArtistsCount: Int) {
+fun CollectionHealthGapsSection(
+    missingTracks: Int, 
+    missingAlbums: Int, 
+    favoritedArtistsCount: Int,
+    onNavigateToMissingContent: () -> Unit = {}
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -299,12 +306,14 @@ fun CollectionHealthGapsSection(missingTracks: Int, missingAlbums: Int, favorite
                     count = missingTracks.toString(),
                     label = "Missing tracks",
                     subLabel = "From favorite artists",
+                    onClick = onNavigateToMissingContent,
                     modifier = Modifier.weight(1f)
                 )
                 GapCard(
                     count = missingAlbums.toString(),
                     label = "Missing albums",
                     subLabel = "From favorite artists",
+                    onClick = onNavigateToMissingContent,
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -330,13 +339,14 @@ fun GapCard(
     count: String,
     label: String,
     subLabel: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(32.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
-            .clickable { }
+            .clickable { onClick() }
             .padding(20.dp)
     ) {
         Column {

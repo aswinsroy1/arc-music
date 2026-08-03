@@ -87,6 +87,23 @@ data class CollectionHealthState(
     val favoritedArtistsCount: Int = 0
 )
 
+data class MissingContentItem(
+    val title: String,
+    val artistName: String,
+    val isAlbum: Boolean,
+    val imageUrl: String? = null,
+    val missingCount: Int = 0
+)
+
+sealed class MissingContentUiState {
+    object Loading : MissingContentUiState()
+    data class Success(
+        val missingAlbums: Map<String, List<MissingContentItem>>,
+        val missingTracks: Map<String, List<MissingContentItem>>
+    ) : MissingContentUiState()
+    object Empty : MissingContentUiState()
+}
+
 enum class ThemeMode { System, Light, Dark }
 
 @HiltViewModel
@@ -122,6 +139,9 @@ class MusicViewModel @Inject constructor(
     
     private val _healthState = MutableStateFlow(CollectionHealthState())
     val healthState: StateFlow<CollectionHealthState> = _healthState.asStateFlow()
+    
+    private val _missingContentUiState = MutableStateFlow<MissingContentUiState>(MissingContentUiState.Loading)
+    val missingContentUiState: StateFlow<MissingContentUiState> = _missingContentUiState.asStateFlow()
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -475,6 +495,43 @@ class MusicViewModel @Inject constructor(
     fun addTracksToPlaylist(playlistId: String, trackIds: List<String>) {
         viewModelScope.launch {
             repository.addTracksToPlaylist(playlistId, trackIds)
+        }
+    }
+
+    fun loadMissingContent() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _missingContentUiState.value = MissingContentUiState.Loading
+            val favoritedArtists = libraryArtists.value.filter { it.isFavorite }
+            if (favoritedArtists.isEmpty()) {
+                _missingContentUiState.value = MissingContentUiState.Empty
+                return@launch
+            }
+            
+            val albums = libraryAlbums.value
+            val albumMap = albums.associate { it.title to it.trackCount }
+            
+            val missingAlbums = mutableListOf<MissingContentItem>()
+            val missingTracks = mutableListOf<MissingContentItem>()
+            
+            var hasAnyGaps = false
+
+            for (artist in favoritedArtists) {
+                val gaps = repository.getDetailedDiscographyGaps(artist.name, albumMap)
+                if (gaps != null && (gaps.first.isNotEmpty() || gaps.second.isNotEmpty())) {
+                    hasAnyGaps = true
+                    missingTracks.addAll(gaps.first)
+                    missingAlbums.addAll(gaps.second)
+                }
+            }
+            
+            if (!hasAnyGaps) {
+                _missingContentUiState.value = MissingContentUiState.Empty
+            } else {
+                _missingContentUiState.value = MissingContentUiState.Success(
+                    missingAlbums = missingAlbums.groupBy { it.artistName },
+                    missingTracks = missingTracks.groupBy { it.artistName }
+                )
+            }
         }
     }
 

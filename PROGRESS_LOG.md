@@ -139,3 +139,11 @@
   - `ArtworkRepository.kt`: Refactored `fetchDiscographyGaps` to filter out live/compilation albums using `release-group.secondary-types`, group the releases by `release-group.id` to ensure each album is only checked once, and use the maximum track count edition per album to match against local data.
 - **Verified**: One Direction correctly groups down to their core studio albums (Up All Night, Take Me Home, Midnight Memories, Four, Made in the A.M.), eliminating massive inflation.
 
+## Missing Content Screen Bug Fixes (2026-08-03)
+- **Goal**: Fix Missing Tracks showing empty and Album action buttons using track-search logic.
+- **Changed**:
+  - `ArtworkRepository.kt`: Modified `getDetailedDiscographyGaps` to add completely missing albums (`localMatch == null`) to *both* the `missingAlbums` and `missingTracks` lists, properly syncing the Tracks tab with the aggregate missing track count.
+  - `MissingContentScreen.kt`: Replaced the generic `PlayArrow` icon with a green `Search` icon for Spotify, and a red `SmartDisplay` icon for YouTube Music.
+  - `MissingContentScreen.kt`: Updated search intents to correctly construct album-specific queries (`album:<Title> artist:<Artist>` for Spotify, and `<Title> album <Artist>` for YouTube Music) when the item is an album.
+- **Verified**: The Missing Tracks tab is no longer empty when an artist has completely missing albums, and search intents properly respect item type.
+
