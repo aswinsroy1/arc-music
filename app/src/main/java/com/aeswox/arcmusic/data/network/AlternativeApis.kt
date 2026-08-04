@@ -53,6 +53,13 @@ interface TheAudioDbService {
         @Path("apiKey") apiKey: String = ApiKeys.THE_AUDIO_DB_API_KEY,
         @Query("i") mbid: String
     ): TheAudioDbResponse
+
+    @GET("api/v1/json/{apiKey}/searchalbum.php")
+    suspend fun searchAlbum(
+        @Path("apiKey") apiKey: String = ApiKeys.THE_AUDIO_DB_API_KEY,
+        @Query("s") artist: String,
+        @Query("a") album: String
+    ): TheAudioDbAlbumResponse
 }
 
 @JsonClass(generateAdapter = true)
@@ -64,6 +71,16 @@ data class TheAudioDbResponse(
 data class TheAudioDbArtist(
     val strArtistThumb: String?,
     val strBiographyEN: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class TheAudioDbAlbumResponse(
+    val album: List<TheAudioDbAlbum>?
+)
+
+@JsonClass(generateAdapter = true)
+data class TheAudioDbAlbum(
+    val strAlbumThumb: String?
 )
 
 // --- MusicBrainz ---
@@ -187,7 +204,7 @@ interface ItunesService {
     suspend fun searchAlbum(
         @Query("term") term: String,
         @Query("entity") entity: String = "album",
-        @Query("limit") limit: Int = 10
+        @Query("limit") limit: Int = 100
     ): ItunesSearchResponse
 }
 

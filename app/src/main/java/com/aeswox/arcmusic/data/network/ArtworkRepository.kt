@@ -124,8 +124,18 @@ class ArtworkRepository @Inject constructor(
     suspend fun fetchAlbumCover(albumTitle: String, artistName: String): String? {
         val cleanAlbum = albumTitle.replace(Regex("(?i)\\s*-\\s*EP$|\\s*\\(.*?Edition\\)$|\\s*\\[.*?\\]$"), "").trim()
 
-        // 1. Try iTunes (most reliable, high quality, no region blocks)
+        // 1. Try TheAudioDB (high precision, exact match on artist + album)
         try {
+            val tadbResponse = theAudioDbService.searchAlbum(artist = artistName, album = cleanAlbum)
+            val tadbUrl = tadbResponse.album?.firstOrNull()?.strAlbumThumb
+            if (!tadbUrl.isNullOrBlank()) return tadbUrl
+        } catch (e: Exception) {
+            Log.w("ArtworkRepository", "TheAudioDB fetch failed for $cleanAlbum by $artistName", e)
+        }
+
+        // 2. Try iTunes (high quality, reliable, but search matching can be fuzzy)
+        try {
+            // We search for just the album name because iTunes sometimes suppresses exact matches when artist is included in term
             val response = itunesService.searchAlbum(term = cleanAlbum)
             val exactMatch = response.results?.firstOrNull {
                 it.collectionName.contains(cleanAlbum, ignoreCase = true) && 
@@ -138,11 +148,11 @@ class ArtworkRepository @Inject constructor(
             Log.w("ArtworkRepository", "iTunes fetch failed for $cleanAlbum", e)
         }
 
-        // 2. Try Deezer Album
+        // 3. Try Deezer Album (often blocked by region but good if available)
         val direct = deezerRepository.fetchAlbumCover(cleanAlbum, artistName)
         if (direct != null) return direct
         
-        // 3. Try Deezer Track Fallback
+        // 4. Try Deezer Track Fallback
         return try {
             deezerRepository.fetchTrackArtwork(trackTitle = cleanAlbum, artistName = artistName)
         } catch (e: Exception) { null }
