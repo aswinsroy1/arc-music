@@ -109,6 +109,24 @@ class ArtworkRepository @Inject constructor(
         allImages.distinct()
     }
     
+    private fun isFuzzyMatch(official: String, local: String): Boolean {
+        val off = official.trim().lowercase()
+        val loc = local.trim().lowercase()
+        
+        // Ignore blank or placeholder metadata
+        if (loc.isBlank() || loc == "unknown" || loc == "unknown album" || loc == "null") return false
+        if (off.isBlank() || off == "unknown" || off == "unknown album" || off == "null") return false
+        
+        if (off == loc) return true
+        
+        // Only allow .contains() if the string is reasonably long (e.g. > 3 chars)
+        // to prevent a 1-character album name from matching everything.
+        if (loc.length > 3 && off.contains(loc)) return true
+        if (off.length > 3 && loc.contains(off)) return true
+        
+        return false
+    }
+
     suspend fun checkUrlExists(url: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
@@ -418,11 +436,7 @@ class ArtworkRepository @Inject constructor(
                     r.media?.sumOf { it.trackCount ?: 0 } ?: 0 
                 } ?: 0
 
-                val localMatch = localAlbums.entries.find { 
-                    it.key.lowercase() == rgTitle.lowercase() || 
-                    rgTitle.lowercase().contains(it.key.lowercase()) || 
-                    it.key.lowercase().contains(rgTitle.lowercase()) 
-                }
+                val localMatch = localAlbums.entries.find { isFuzzyMatch(rgTitle, it.key) }
                 
                 if (localMatch == null) {
                     // Entirely missing album — fetch cover from Cover Art Archive (bypasses Deezer region blocks)
@@ -437,9 +451,7 @@ class ArtworkRepository @Inject constructor(
                 } else if (officialTrackCount > localMatch.value) {
                     // Partial album — prefer local artwork; only go online if none available locally
                     val localArtwork: String? = localAlbumCovers.entries.find { (albumTitle, _) ->
-                        albumTitle.lowercase() == rgTitle.lowercase() ||
-                        rgTitle.lowercase().contains(albumTitle.lowercase()) ||
-                        albumTitle.lowercase().contains(rgTitle.lowercase())
+                        isFuzzyMatch(rgTitle, albumTitle)
                     }?.value
 
                     val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
@@ -455,15 +467,13 @@ class ArtworkRepository @Inject constructor(
                     } else emptyList()
 
                     val myLocalTracksForAlbum = localTracks.entries.find { 
-                        it.key.lowercase() == rgTitle.lowercase() || 
-                        rgTitle.lowercase().contains(it.key.lowercase()) || 
-                        it.key.lowercase().contains(rgTitle.lowercase()) 
+                        isFuzzyMatch(rgTitle, it.key)
                     }?.value?.map { it.lowercase() } ?: emptyList()
                     
                     val actualMissingTrackNames = if (officialTracks.isNotEmpty()) {
                         officialTracks.filter { officialTitle ->
                             !myLocalTracksForAlbum.any { localTitle ->
-                                localTitle.contains(officialTitle.lowercase()) || officialTitle.lowercase().contains(localTitle)
+                                isFuzzyMatch(officialTitle, localTitle)
                             }
                         }
                     } else emptyList()
