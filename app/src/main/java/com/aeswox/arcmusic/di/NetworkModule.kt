@@ -94,5 +94,14 @@ object NetworkModule {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(com.aeswox.arcmusic.data.network.LrcLibApiService::class.java)
+    @Provides
+    @Singleton
+    fun provideItunesService(moshi: Moshi, okHttpClient: OkHttpClient): com.aeswox.arcmusic.data.network.ItunesService {
+        return Retrofit.Builder()
+            .baseUrl("https://itunes.apple.com/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(com.aeswox.arcmusic.data.network.ItunesService::class.java)
     }
 }

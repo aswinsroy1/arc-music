@@ -181,3 +181,25 @@ data class MusicBrainzRelation(
 data class MusicBrainzUrl(
     val resource: String
 )
+
+interface ItunesService {
+    @GET("search")
+    suspend fun searchAlbum(
+        @Query("term") term: String,
+        @Query("entity") entity: String = "album",
+        @Query("limit") limit: Int = 10
+    ): ItunesSearchResponse
+}
+
+@JsonClass(generateAdapter = true)
+data class ItunesSearchResponse(
+    val resultCount: Int,
+    val results: List<ItunesAlbum>?
+)
+
+@JsonClass(generateAdapter = true)
+data class ItunesAlbum(
+    val artistName: String,
+    val collectionName: String,
+    val artworkUrl100: String?
+)

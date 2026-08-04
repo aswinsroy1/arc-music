@@ -14,6 +14,7 @@ class ArtworkRepository @Inject constructor(
     private val lastFmService: LastFmService,
     private val theAudioDbService: TheAudioDbService,
     private val musicBrainzService: MusicBrainzService,
+    private val itunesService: ItunesService,
     private val settingsRepository: com.aeswox.arcmusic.data.SettingsRepository
 ) {
     suspend fun fetchBestArtistImage(artistName: String, trackTitle: String? = null): String? = withContext(Dispatchers.IO) {
@@ -108,14 +109,40 @@ class ArtworkRepository @Inject constructor(
         allImages.distinct()
     }
     
+    suspend fun checkUrlExists(url: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            connection.requestMethod = "HEAD"
+            connection.connectTimeout = 3000
+            connection.readTimeout = 3000
+            connection.responseCode == 200 || connection.responseCode == 307
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun fetchAlbumCover(albumTitle: String, artistName: String): String? {
-        // Strip common MB suffixes so Deezer can find it (e.g. "LALISA - EP" -> "LALISA")
         val cleanAlbum = albumTitle.replace(Regex("(?i)\\s*-\\s*EP$|\\s*\\(.*?Edition\\)$|\\s*\\[.*?\\]$"), "").trim()
 
-        // Primary: search by album + artist directly
+        // 1. Try iTunes (most reliable, high quality, no region blocks)
+        try {
+            val response = itunesService.searchAlbum(term = cleanAlbum)
+            val exactMatch = response.results?.firstOrNull {
+                it.collectionName.contains(cleanAlbum, ignoreCase = true) && 
+                (it.artistName.contains(artistName, ignoreCase = true) || artistName.contains(it.artistName, ignoreCase = true))
+            }
+            // Replace 100x100 with higher resolution 600x600 if it exists
+            val itunesUrl = exactMatch?.artworkUrl100?.replace("100x100bb", "600x600bb")
+            if (itunesUrl != null) return itunesUrl
+        } catch (e: Exception) {
+            Log.w("ArtworkRepository", "iTunes fetch failed for $cleanAlbum", e)
+        }
+
+        // 2. Try Deezer Album
         val direct = deezerRepository.fetchAlbumCover(cleanAlbum, artistName)
         if (direct != null) return direct
-        // Fallback: search via a track query which is more reliable for lesser-known releases
+        
+        // 3. Try Deezer Track Fallback
         return try {
             deezerRepository.fetchTrackArtwork(trackTitle = cleanAlbum, artistName = artistName)
         } catch (e: Exception) { null }
@@ -390,8 +417,9 @@ class ArtworkRepository @Inject constructor(
                 if (localMatch == null) {
                     // Entirely missing album — fetch cover from Cover Art Archive (bypasses Deezer region blocks)
                     val rgId = rgReleases.first().releaseGroup?.id
-                    val imageUrl = if (rgId != null) {
-                        "https://coverartarchive.org/release-group/$rgId/front"
+                    val caaUrl = if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else null
+                    val imageUrl = if (caaUrl != null && checkUrlExists(caaUrl)) {
+                        caaUrl
                     } else {
                         fetchAlbumCover(rgTitle, artistName)
                     }
@@ -431,9 +459,15 @@ class ArtworkRepository @Inject constructor(
                     } else emptyList()
                     
                     val finalCount = if (actualMissingTrackNames.isNotEmpty()) actualMissingTrackNames.size else (officialTrackCount - localMatch.value)
-                    // Use local artwork if available; fallback to Cover Art Archive, then Deezer
+                    // Use local artwork if available; fallback to Cover Art Archive, then iTunes/Deezer
                     val rgId = rgReleases.first().releaseGroup?.id
-                    val imageUrl = localArtwork ?: if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else fetchAlbumCover(rgTitle, artistName)
+                    val caaUrl = if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else null
+                    
+                    val imageUrl = localArtwork ?: if (caaUrl != null && checkUrlExists(caaUrl)) {
+                        caaUrl
+                    } else {
+                        fetchAlbumCover(rgTitle, artistName)
+                    }
                     missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames))
                 }
             }
