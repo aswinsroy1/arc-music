@@ -2,7 +2,7 @@ package com.aeswox.arcmusic
 
 import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -183,6 +184,7 @@ fun MissingContentScreen(
 
 @Composable
 fun MissingItemRow(item: MissingContentItem) {
+    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
 
     Column(
@@ -191,6 +193,7 @@ fun MissingItemRow(item: MissingContentItem) {
             .clickable { expanded = !expanded }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
+        // Header row: thumbnail, title/subtitle, chevron or action button
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -215,17 +218,18 @@ fun MissingItemRow(item: MissingContentItem) {
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                val subText = if (item.missingCount > 0) "${item.missingCount} missing tracks" else "Full Album"
+                val subText = if (item.isAlbum) "Full Album" else "${item.missingCount} missing tracks"
                 Text(
                     text = subText,
                     style = MaterialTheme.typography.bodyMedium,
@@ -233,40 +237,121 @@ fun MissingItemRow(item: MissingContentItem) {
                     maxLines = 1
                 )
             }
-            
-            Column {
-                if (item.isAlbum) {
-                    IconButton(onClick = { /* TODO */ }) {
-                        Icon(
-                            imageVector = Icons.Default.SmartDisplay,
-                            contentDescription = "Search YouTube",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
+
+            // Entire albums: show a YouTube Music button directly
+            // Partial albums: show expand/collapse chevron
+            if (item.isAlbum) {
+                IconButton(onClick = {
+                    val query = "${item.title} album ${item.artistName}"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}"))
+                    try { context.startActivity(intent) } catch (e: Exception) {}
+                }) {
                     Icon(
-                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Expand",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(12.dp)
+                        imageVector = Icons.Default.SmartDisplay,
+                        contentDescription = "Search YouTube Music",
+                        tint = Color(0xFFFF0000)
                     )
                 }
+            } else {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse" else "Expand missing tracks",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(12.dp)
+                )
             }
         }
-        
-        if (expanded && !item.isAlbum && item.missingTrackNames.isNotEmpty()) {
+
+        // Expanded track list — only for partial albums
+        AnimatedVisibility(visible = expanded && !item.isAlbum) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 72.dp, top = 8.dp, bottom = 8.dp)
+                    .padding(top = 12.dp, bottom = 4.dp)
             ) {
-                item.missingTrackNames.forEachIndexed { index, trackName ->
+                if (item.missingTrackNames.isEmpty()) {
                     Text(
-                        text = "${index + 1}. $trackName",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Track names unavailable — tap below to search the album",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(start = 80.dp, bottom = 8.dp)
                     )
+                    // Show album-level search buttons as fallback
+                    Row(
+                        modifier = Modifier.padding(start = 80.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilledTonalIconButton(onClick = {
+                            val query = "${item.title} ${item.artistName}"
+                            val ytIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}"))
+                            try { context.startActivity(ytIntent) } catch (e: Exception) {}
+                        }) {
+                            Icon(Icons.Default.SmartDisplay, contentDescription = "YouTube Music", tint = Color(0xFFFF0000), modifier = Modifier.size(20.dp))
+                        }
+                        FilledTonalIconButton(onClick = {
+                            val query = "album:${item.title} artist:${item.artistName}"
+                            val spIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/${Uri.encode(query)}"))
+                            try { context.startActivity(spIntent) } catch (e: Exception) {}
+                        }) {
+                            Icon(Icons.Default.Search, contentDescription = "Spotify", tint = Color(0xFF1DB954), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                } else {
+                    item.missingTrackNames.forEachIndexed { index, trackName ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 80.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${index + 1}. $trackName",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2
+                            )
+                            // YouTube Music search for this specific track
+                            IconButton(
+                                onClick = {
+                                    val ytQuery = "$trackName ${item.artistName}"
+                                    val ytIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(ytQuery)}"))
+                                    try { context.startActivity(ytIntent) } catch (e: Exception) {}
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SmartDisplay,
+                                    contentDescription = "Search on YouTube Music",
+                                    tint = Color(0xFFFF0000),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            // Spotify search for this specific track
+                            IconButton(
+                                onClick = {
+                                    val spQuery = "$trackName ${item.artistName}"
+                                    val spIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/${Uri.encode(spQuery)}"))
+                                    try { context.startActivity(spIntent) } catch (e: Exception) {}
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search on Spotify",
+                                    tint = Color(0xFF1DB954),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        if (index < item.missingTrackNames.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 80.dp, end = 8.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
                 }
             }
         }

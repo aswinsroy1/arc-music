@@ -109,7 +109,13 @@ class ArtworkRepository @Inject constructor(
     }
     
     suspend fun fetchAlbumCover(albumTitle: String, artistName: String): String? {
-        return deezerRepository.fetchAlbumCover(albumTitle, artistName)
+        // Primary: search by album + artist directly
+        val direct = deezerRepository.fetchAlbumCover(albumTitle, artistName)
+        if (direct != null) return direct
+        // Fallback: search via a track query ("artist:X album:Y") which is more reliable for lesser-known releases
+        return try {
+            deezerRepository.fetchTrackArtwork("$artistName", albumTitle)
+        } catch (e: Exception) { null }
     }
     
     suspend fun fetchTrackArtwork(trackTitle: String, artistName: String): String? {
@@ -143,15 +149,60 @@ class ArtworkRepository @Inject constructor(
         null
     }
 
-    private suspend fun fetchArtistImageViaMusicBrainz(artistName: String): String? {
+    /**
+     * Returns the MBID for the given artist name, using local track titles to disambiguate
+     * between artists who share the same name (e.g. Lisa from BLACKPINK vs. Japanese Lisa).
+     * Strategy: rank candidates by how many of their release-group titles overlap with
+     * [localAlbumTitles]. The candidate with the highest overlap wins.
+     */
+    private suspend fun resolveArtistMbid(artistName: String, localAlbumTitles: Set<String> = emptySet()): String? {
         try {
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
-            val mbid = mbResponse.artists?.firstOrNull()?.id
-            if (mbid != null) {
-                val tadbResponse = theAudioDbService.searchArtistByMbid(mbid = mbid)
-                val tadbImg = tadbResponse.artists?.firstOrNull()?.strArtistThumb
-                if (!tadbImg.isNullOrBlank()) return tadbImg
+            val candidates = mbResponse.artists ?: return null
+            if (candidates.isEmpty()) return null
+
+            // If we have local albums, try to pick the candidate whose discography best overlaps
+            if (localAlbumTitles.isNotEmpty()) {
+                var bestMbid: String? = null
+                var bestScore = -1
+
+                for (candidate in candidates.take(5)) { // Only check top 5 candidates to limit requests
+                    kotlinx.coroutines.delay(1200)
+                    try {
+                        val q = "arid:${candidate.id} AND status:official AND (primarytype:album OR primarytype:ep)"
+                        val releases = musicBrainzService.searchReleases(query = q, limit = 25).releases ?: continue
+                        val rgTitles = releases.mapNotNull { it.releaseGroup?.title ?: it.title }.map { it.lowercase() }.toSet()
+                        val localLower = localAlbumTitles.map { it.lowercase() }.toSet()
+                        val overlap = rgTitles.count { rg -> localLower.any { local -> rg.contains(local) || local.contains(rg) } }
+                        Log.d("ArtworkRepository", "Candidate ${candidate.name} (${candidate.id}): overlap=$overlap")
+                        if (overlap > bestScore) {
+                            bestScore = overlap
+                            bestMbid = candidate.id
+                        }
+                        // If we found an artist with ≥1 local album match, take it immediately
+                        if (bestScore >= 1) break
+                    } catch (e: Exception) {
+                        Log.w("ArtworkRepository", "Failed to fetch releases for candidate ${candidate.id}", e)
+                    }
+                }
+
+                if (bestMbid != null && bestScore >= 1) return bestMbid
             }
+
+            // Fallback: just return the top result
+            return candidates.firstOrNull()?.id
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "MBID resolution error for $artistName", e)
+            return null
+        }
+    }
+
+    private suspend fun fetchArtistImageViaMusicBrainz(artistName: String, localAlbumTitles: Set<String> = emptySet()): String? {
+        try {
+            val mbid = resolveArtistMbid(artistName, localAlbumTitles) ?: return null
+            val tadbResponse = theAudioDbService.searchArtistByMbid(mbid = mbid)
+            val tadbImg = tadbResponse.artists?.firstOrNull()?.strArtistThumb
+            if (!tadbImg.isNullOrBlank()) return tadbImg
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "MusicBrainz MBID error for $artistName", e)
         }
@@ -225,10 +276,11 @@ class ArtworkRepository @Inject constructor(
 
     suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>, localTracks: Map<String, List<String>> = emptyMap()): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
         try {
-            val mbResponse = musicBrainzService.searchArtist(query = artistName)
-            val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
+            // Use local album titles to disambiguate between artists with the same name
+            val localAlbumTitles = localAlbums.keys.toSet()
+            val mbid = resolveArtistMbid(artistName, localAlbumTitles) ?: return null
+            Log.i("ArtworkRepository", "Resolved MBID for $artistName: $mbid")
             
-            // Respect MusicBrainz rate limiting (1 req/s) between the two endpoints
             kotlinx.coroutines.delay(1200)
 
             val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
