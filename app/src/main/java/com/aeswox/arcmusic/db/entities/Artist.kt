@@ -11,5 +11,6 @@ data class Artist(
     val bioText: String?,
     val isFavorite: Boolean = false,
     val missingTracksCount: Int? = null,
-    val missingAlbumsCount: Int? = null
+    val missingAlbumsCount: Int? = null,
+    val hasScannedMissingContent: Boolean = false
 )

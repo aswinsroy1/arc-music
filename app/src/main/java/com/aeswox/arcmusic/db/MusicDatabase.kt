@@ -19,9 +19,10 @@ import com.aeswox.arcmusic.db.daos.*
         PlaylistTrack::class, 
         PlayHistory::class,
         SearchHistory::class,
-        TrackFts::class
+        TrackFts::class,
+        CachedMissingContent::class
     ], 
-    version = 11, 
+    version = 12, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -31,6 +32,7 @@ abstract class MusicDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun playHistoryDao(): PlayHistoryDao
     abstract fun searchHistoryDao(): SearchHistoryDao
+    abstract fun missingContentDao(): MissingContentDao
 
     companion object {
         @Volatile
@@ -78,6 +80,22 @@ abstract class MusicDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE artists ADD COLUMN missingTracksCount INTEGER")
                 db.execSQL("ALTER TABLE artists ADD COLUMN missingAlbumsCount INTEGER")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE artists ADD COLUMN hasScannedMissingContent INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `cached_missing_content` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `artistName` TEXT NOT NULL,
+                        `isAlbum` INTEGER NOT NULL,
+                        `imageUrl` TEXT,
+                        `missingCount` INTEGER NOT NULL
+                    )
+                """.trimIndent())
             }
         }
 

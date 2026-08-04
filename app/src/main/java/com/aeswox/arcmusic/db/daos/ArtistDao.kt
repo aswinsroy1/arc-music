@@ -24,6 +24,9 @@ interface ArtistDao {
     @Query("UPDATE artists SET isFavorite = :isFavorite WHERE id = :artistId")
     suspend fun updateArtistFavoriteStatus(artistId: String, isFavorite: Boolean)
 
+    @Query("UPDATE artists SET hasScannedMissingContent = :hasScanned WHERE id = :artistId")
+    suspend fun updateHasScannedMissingContent(artistId: String, hasScanned: Boolean)
+
     @Query("UPDATE artists SET photoUri = :photoUri WHERE id = :artistId")
     suspend fun updateArtistPhoto(artistId: String, photoUri: String?)
 

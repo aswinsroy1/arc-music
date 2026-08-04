@@ -43,8 +43,15 @@ object DatabaseModule {
     fun providePlayHistoryDao(database: MusicDatabase) = database.playHistoryDao()
 
     @Provides
+    @Singleton
     fun provideSearchHistoryDao(database: MusicDatabase): SearchHistoryDao {
         return database.searchHistoryDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMissingContentDao(database: MusicDatabase): MissingContentDao {
+        return database.missingContentDao()
     }
 
     @Provides
@@ -56,10 +63,11 @@ object DatabaseModule {
         playlistDao: PlaylistDao,
         playHistoryDao: PlayHistoryDao,
         searchHistoryDao: SearchHistoryDao,
+        missingContentDao: MissingContentDao,
         mediaStoreScanner: MediaStoreScanner,
         artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
     ): MusicRepository {
-        return MusicRepository(trackDao, albumDao, artistDao, playlistDao, playHistoryDao, searchHistoryDao, mediaStoreScanner, artworkRepository)
+        return MusicRepository(trackDao, albumDao, artistDao, playlistDao, playHistoryDao, searchHistoryDao, missingContentDao, mediaStoreScanner, artworkRepository)
     }
 
     @Provides

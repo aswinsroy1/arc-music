@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SmartDisplay
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.MusicVideo
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*

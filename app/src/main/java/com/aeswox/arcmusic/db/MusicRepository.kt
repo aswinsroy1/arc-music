@@ -18,6 +18,7 @@ class MusicRepository(
     private val playlistDao: PlaylistDao,
     private val playHistoryDao: PlayHistoryDao,
     private val searchHistoryDao: SearchHistoryDao,
+    private val missingContentDao: MissingContentDao,
     private val mediaStoreScanner: MediaStoreScanner,
     private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
 ) {
@@ -177,8 +178,34 @@ class MusicRepository(
         return artworkRepository.fetchDiscographyGaps(artistName, localAlbums)
     }
 
-    suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>? {
-        return artworkRepository.getDetailedDiscographyGaps(artistName, localAlbums)
+    suspend fun getDetailedDiscographyGaps(artist: Artist, localAlbums: Map<String, Int>): Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>? {
+        if (artist.hasScannedMissingContent) {
+            val cached = missingContentDao.getByArtistName(artist.name)
+            val missingTracks = cached.filter { !it.isAlbum }.map { 
+                com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount)
+            }
+            val missingAlbums = cached.filter { it.isAlbum }.map { 
+                com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount)
+            }
+            return Pair(missingTracks, missingAlbums)
+        }
+
+        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums)
+        if (result != null) {
+            val (missingTracks, missingAlbums) = result
+            val cachedItems = (missingTracks + missingAlbums).map { 
+                com.aeswox.arcmusic.db.entities.CachedMissingContent(
+                    title = it.title,
+                    artistName = it.artistName,
+                    isAlbum = it.isAlbum,
+                    imageUrl = it.imageUrl,
+                    missingCount = it.missingCount
+                )
+            }
+            missingContentDao.insertAll(cachedItems)
+            artistDao.updateHasScannedMissingContent(artist.id, true)
+        }
+        return result
     }
 
     fun getAllPlaylists(): Flow<List<Playlist>> = playlistDao.getAllPlaylists()

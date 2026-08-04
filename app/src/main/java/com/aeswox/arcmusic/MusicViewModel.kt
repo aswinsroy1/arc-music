@@ -519,7 +519,7 @@ class MusicViewModel @Inject constructor(
 
             for (artist in favoritedArtists) {
                 try {
-                    val gaps = repository.getDetailedDiscographyGaps(artist.name, albumMap)
+                    val gaps = repository.getDetailedDiscographyGaps(artist, albumMap)
                     if (gaps == null) {
                         errorMessage += "[${artist.name}: gaps returned null] "
                     } else {
