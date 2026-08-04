@@ -109,12 +109,15 @@ class ArtworkRepository @Inject constructor(
     }
     
     suspend fun fetchAlbumCover(albumTitle: String, artistName: String): String? {
+        // Strip common MB suffixes so Deezer can find it (e.g. "LALISA - EP" -> "LALISA")
+        val cleanAlbum = albumTitle.replace(Regex("(?i)\\s*-\\s*EP$|\\s*\\(.*?Edition\\)$|\\s*\\[.*?\\]$"), "").trim()
+
         // Primary: search by album + artist directly
-        val direct = deezerRepository.fetchAlbumCover(albumTitle, artistName)
+        val direct = deezerRepository.fetchAlbumCover(cleanAlbum, artistName)
         if (direct != null) return direct
-        // Fallback: search via a track query ("artist:X album:Y") which is more reliable for lesser-known releases
+        // Fallback: search via a track query which is more reliable for lesser-known releases
         return try {
-            deezerRepository.fetchTrackArtwork("$artistName", albumTitle)
+            deezerRepository.fetchTrackArtwork(trackTitle = cleanAlbum, artistName = artistName)
         } catch (e: Exception) { null }
     }
     
@@ -161,6 +164,32 @@ class ArtworkRepository @Inject constructor(
         localTrackTitles: Set<String> = emptySet()
     ): String? {
         try {
+            // NEW: If we have local track titles, try a recording search to directly find the MBID.
+            // This bypasses the issue where searchArtist doesn't include the correct artist in the top 5 (e.g., BLACKPINK Lisa).
+            if (localTrackTitles.isNotEmpty()) {
+                // Use up to 3 local tracks to build an OR query
+                val trackQueries = localTrackTitles.take(3).joinToString(" OR ") { "recording:\"$it\"" }
+                val query = "artist:\"$artistName\" AND ($trackQueries)"
+                try {
+                    val recResponse = musicBrainzService.searchRecording(query = query, limit = 10)
+                    val artistIds = recResponse.recordings?.flatMap { r -> 
+                        r.artistCredit?.mapNotNull { it.artist?.id } ?: emptyList() 
+                    } ?: emptyList()
+                    
+                    if (artistIds.isNotEmpty()) {
+                        // Find the artist ID that occurs most frequently in the top recording results
+                        val mostFrequentId = artistIds.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+                        if (mostFrequentId != null) {
+                            Log.i("ArtworkRepository", "Disambiguated '$artistName' via track search -> $mostFrequentId")
+                            return mostFrequentId
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("ArtworkRepository", "Track-based MBID resolution failed for $artistName", e)
+                }
+                kotlinx.coroutines.delay(1200) // rate limit before next search
+            }
+
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
             val candidates = mbResponse.artists ?: return null
             if (candidates.isEmpty()) return null

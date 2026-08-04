@@ -98,11 +98,36 @@ interface MusicBrainzService {
         @Query("inc") include: String = "recordings",
         @Query("fmt") format: String = "json"
     ): MusicBrainzRelease
+
+    @GET("ws/2/recording")
+    suspend fun searchRecording(
+        @Query("query") query: String,
+        @Query("fmt") format: String = "json",
+        @Query("limit") limit: Int = 10
+    ): MusicBrainzRecordingResponse
 }
 
 @JsonClass(generateAdapter = true)
 data class MusicBrainzReleaseResponse(
     val releases: List<MusicBrainzRelease>?
+)
+
+@JsonClass(generateAdapter = true)
+data class MusicBrainzRecordingResponse(
+    val recordings: List<MusicBrainzRecording>?
+)
+
+@JsonClass(generateAdapter = true)
+data class MusicBrainzRecording(
+    val id: String,
+    val title: String,
+    @Json(name = "artist-credit") val artistCredit: List<MusicBrainzArtistCredit>?
+)
+
+@JsonClass(generateAdapter = true)
+data class MusicBrainzArtistCredit(
+    val name: String,
+    val artist: MusicBrainzArtist?
 )
 
 @JsonClass(generateAdapter = true)
