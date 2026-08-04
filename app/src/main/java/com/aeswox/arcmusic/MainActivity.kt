@@ -202,7 +202,8 @@ class MainActivity : ComponentActivity() {
                         composable("missing_content") {
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 MissingContentScreen(
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = { navController.popBackStack() },
+                                    viewModel = viewModel
                                 )
                             }
                         }

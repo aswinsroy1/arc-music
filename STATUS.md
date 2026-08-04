@@ -25,6 +25,7 @@
 - Built `MissingContentScreen.kt` to display discography gaps broken down by Tracks and Albums, grouped by artist. Re-used MusicBrainz logic to compute gaps and fetch cover art via Deezer.
 - Fixed Missing Tracks tab showing empty by adding completely missing albums to both track and album gap lists, ensuring accurate representation of missing tracks.
 - Updated action buttons on Missing Content screen to use explicit YouTube Music and Spotify search intents, with album-specific search queries.
+- Fixed a bug where `MissingContentScreen` incorrectly displayed a debug empty state due to an uninitialized ViewModel. Wired the screen to the shared `MusicViewModel` in `MainActivity` so `libraryArtists` is correctly populated.
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.

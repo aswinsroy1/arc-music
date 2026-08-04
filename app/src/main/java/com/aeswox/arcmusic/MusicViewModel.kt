@@ -522,12 +522,17 @@ class MusicViewModel @Inject constructor(
                     val gaps = repository.getDetailedDiscographyGaps(artist.name, albumMap)
                     if (gaps == null) {
                         errorMessage += "[${artist.name}: gaps returned null] "
-                    } else if (gaps.first.isNotEmpty() || gaps.second.isNotEmpty()) {
-                        hasAnyGaps = true
-                        missingTracks.addAll(gaps.first)
-                        missingAlbums.addAll(gaps.second)
                     } else {
-                        errorMessage += "[${artist.name}: 0 gaps] "
+                        // Update the cached counts in DB with the accurate new logic counts
+                        repository.updateArtistGaps(artist.id, gaps.first.size, gaps.second.size)
+
+                        if (gaps.first.isNotEmpty() || gaps.second.isNotEmpty()) {
+                            hasAnyGaps = true
+                            missingTracks.addAll(gaps.first)
+                            missingAlbums.addAll(gaps.second)
+                        } else {
+                            errorMessage += "[${artist.name}: 0 gaps] "
+                        }
                     }
                 } catch (e: Exception) {
                     errorMessage += "[${artist.name} Exc: ${e.message}] "

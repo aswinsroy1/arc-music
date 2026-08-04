@@ -151,3 +151,10 @@
 - **Changed**:
   - Added a 1.2 second delay inside `MusicViewModel.loadMissingContent` and `ArtworkRepository.getDetailedDiscographyGaps` to respect MusicBrainz's strict 1 req/sec rate limit. Rapid sequential requests were causing HTTP 503 errors, resulting in empty data.
 - **Verified**: Builds cleanly, pushed to remote.
+
+- **Goal (Follow-up 2)**: Fix Missing Content screen showing debug text ("No favorited artists found in memory. libraryArtists size = 0") despite having favorited artists.
+- **Root Cause**: `MissingContentScreen` was instantiating a new, uninitialized `MusicViewModel` via `hiltViewModel()` instead of using the shared Activity-scoped instance. Since the DB fetch is asynchronous, `libraryArtists.value` was empty when `loadMissingContent()` executed in its `LaunchedEffect`.
+- **Changed**:
+  - `MainActivity.kt`: Passed the shared `viewModel` to `MissingContentScreen` to reuse the pre-loaded data.
+  - `MusicViewModel.kt`: Removed the raw debug string and reverted to the default `MissingContentUiState.Empty()` message.
+- **Verified**: The screen now properly reads the populated `libraryArtists` state from the shared ViewModel and calculates gaps correctly.
