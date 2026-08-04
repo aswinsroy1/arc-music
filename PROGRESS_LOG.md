@@ -158,3 +158,15 @@
   - `MainActivity.kt`: Passed the shared `viewModel` to `MissingContentScreen` to reuse the pre-loaded data.
   - `MusicViewModel.kt`: Removed the raw debug string and reverted to the default `MissingContentUiState.Empty()` message.
 - **Verified**: The screen now properly reads the populated `libraryArtists` state from the shared ViewModel and calculates gaps correctly.
+
+## Missing Content Screen — Bug Fixes & Real Caching (2026-08-04)
+- **Bug 1 — Expand shows nothing**: Root cause confirmed: the MusicBrainz `/ws/2/release` search endpoint never returns inline `recordings` data regardless of the `inc=recordings` parameter — that only works on the single-release lookup endpoint `/ws/2/release/{mbid}`. All previous `officialTracks` lists were empty. Fixed by adding `getReleaseById(mbid)` to `MusicBrainzService` and doing a per-album lookup (with a 1.2s rate-limit delay) to fetch the real tracklist before diffing against local files.
+- **Bug 2 — Cache not persisting across restarts**: `scanMediaStore()` was re-creating `Artist` objects from scan results without preserving `hasScannedMissingContent`, so every restart wiped the flag back to `false`. Fixed by preserving all existing fields (`missingTracksCount`, `missingAlbumsCount`, `hasScannedMissingContent`) from the database when re-inserting artists.
+- **Bug 2 — Cache duplicates on re-fetch**: `MissingContentDao.insertAll` used `REPLACE` strategy but the `id` is auto-generated, so re-fetching stacked up duplicate rows rather than replacing them. Fixed with a `deleteAllByArtist()` call before every `insertAll()` in the new `persistMissingContent()` helper.
+- **Bug 2 — No staleness policy**: Added `cachedAt: Long` column to `CachedMissingContent` (DB migration 13→14), and a `getOldestCachedAt()` DAO query. Both `getDetailedDiscographyGaps()` and `toggleArtistFavorite()` now check if the cache is older than 7 days before re-fetching.
+- **Bug 3 — Auto-scan on favorite**: `toggleArtistFavorite()` now immediately launches a background scan via `backgroundScope` (a `CoroutineScope(SupervisorJob() + Dispatchers.IO)` scoped to the repository, replacing the previous fragile `GlobalScope.launch`). The scan respects the same 7-day staleness gate — it will not re-fetch if the cache is still fresh.
+- **Build**: `BUILD SUCCESSFUL in 1m 22s`. No errors.
+- **Acceptance checks** (require device):
+  1. Tap a Partial Album → confirm actual track names expand below it.
+  2. Force-close and reopen → check logcat for `"Serving X missing content from cache"` — no MusicBrainz requests should fire.
+  3. Favorite a brand-new artist → check logcat for `"Background scan started for X"` and confirm cached data exists after ~30s.

@@ -90,6 +90,14 @@ interface MusicBrainzService {
         @Query("fmt") format: String = "json",
         @Query("limit") limit: Int = 100
     ): MusicBrainzReleaseResponse
+
+    // Lookup a single release by MBID to get inline recordings (search endpoint does NOT return tracks)
+    @GET("ws/2/release/{mbid}")
+    suspend fun getReleaseById(
+        @Path("mbid") mbid: String,
+        @Query("inc") include: String = "recordings",
+        @Query("fmt") format: String = "json"
+    ): MusicBrainzRelease
 }
 
 @JsonClass(generateAdapter = true)

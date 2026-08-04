@@ -22,10 +22,11 @@
 - Wired `CollectionHealthScreen.kt` with real data computation (missing artwork, missing metadata, duplicate songs, corrupted tags, low-quality files) and a full MusicBrainz background sync for discography gaps (missing tracks/albums). Also implemented the "Review & Clean Up" duplicate song flow.
 - Scoped MusicBrainz discography gap sync strictly to favorited artists. Added an artist-level favorite toggle to `ArtistDetailsScreen.kt` and updated `CollectionHealthScreen.kt` to accurately reflect gaps or an empty state based on favorited artists.
 - Diagnosed and fixed the inflated discography-gap issue (e.g. 91 missing tracks for One Direction). The bug was twofold: MusicBrainz's `release` endpoint was returning un-filtered release editions truncated by a 100 limit (missing newer albums) and iterating over all editions of the same album caused massive double-counting. Fixed by querying `release` using the search endpoint (`query="arid:... AND status:official AND (primarytype:album OR primarytype:ep)"`), filtering out compilations/live albums locally, grouping by `release-group`, and picking the max track-count edition per distinct album to match against local data.
-- Built `MissingContentScreen.kt` to display discography gaps broken down by Tracks and Albums, grouped by artist. Re-used MusicBrainz logic to compute gaps and fetch cover art via Deezer.
-- Fixed Missing Tracks tab showing empty by adding completely missing albums to both track and album gap lists, ensuring accurate representation of missing tracks.
-- Updated action buttons on Missing Content screen to use explicit YouTube Music and Spotify search intents, with album-specific search queries.
-- Fixed a bug where `MissingContentScreen` incorrectly displayed a debug empty state due to an uninitialized ViewModel. Wired the screen to the shared `MusicViewModel` in `MainActivity` so `libraryArtists` is correctly populated.
+- Built `MissingContentScreen.kt` with "Partial Albums" and "Entire Albums" tabs. Tapping a Partial Album card expands it to show the exact missing track names fetched from MusicBrainz.
+- Fixed core bug: MusicBrainz's `/ws/2/release` search endpoint never returns inline `recordings`, so track names were always empty. Fixed by adding a `getReleaseById()` endpoint and doing a per-release lookup for any album that needs its tracklist.
+- Added real local caching via `CachedMissingContent` Room entity: stores track names as JSON, `cachedAt` timestamp, and uses delete-before-insert to avoid duplication on re-fetch. Staleness policy: 7 days, matching the original plan.
+- Auto-triggers discography scan the moment an artist is favorited via a structured `CoroutineScope(SupervisorJob())` in `MusicRepository`, replacing the previous fragile `GlobalScope.launch`.
+- Fixed `scanMediaStore()` to preserve the `hasScannedMissingContent` flag, preventing the DB scan from wiping the cache on every app restart.
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.
@@ -37,3 +38,4 @@
 - Project is missing the `arc-music-build-plan.md` referenced in global guidelines.
 - Acceptance check (DB query post-playback) requires a connected device — run `check_play_history.ps1` after playing tracks.
 - Last.fm API Key is still a placeholder (`"YOUR_LAST_FM_API_KEY"`) which blocks Last.fm artwork fetching from working until a real key is provided.
+- Missing content scan takes longer now (correct behaviour) because it does a per-album release lookup to MusicBrainz to get actual track names. This is only done once per artist (cached for 7 days).

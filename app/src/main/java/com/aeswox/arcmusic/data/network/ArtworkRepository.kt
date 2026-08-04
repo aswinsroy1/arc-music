@@ -267,25 +267,52 @@ class ArtworkRepository @Inject constructor(
                 }
                 
                 if (localMatch == null) {
+                    // Entirely missing album — look up actual track titles from the release with the most tracks
+                    val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
+                    val officialTracks: List<String> = if (bestRelease != null) {
+                        kotlinx.coroutines.delay(1200) // rate limit
+                        try {
+                            val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
+                            fullRelease.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
+                        } catch (e: Exception) {
+                            Log.w("ArtworkRepository", "Failed to fetch tracks for release ${bestRelease.id}", e)
+                            emptyList()
+                        }
+                    } else emptyList()
+
                     val imageUrl = fetchAlbumCover(rgTitle, artistName)
-                    val officialTracks = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }?.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
                     missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl))
                     missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount, missingTrackNames = officialTracks))
                 } else if (officialTrackCount > localMatch.value) {
-                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
-                    val officialTracks = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }?.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
+                    // Partial album — look up official track list then diff against local
+                    val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
+                    val officialTracks: List<String> = if (bestRelease != null) {
+                        kotlinx.coroutines.delay(1200) // rate limit
+                        try {
+                            val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
+                            fullRelease.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
+                        } catch (e: Exception) {
+                            Log.w("ArtworkRepository", "Failed to fetch tracks for release ${bestRelease.id}", e)
+                            emptyList()
+                        }
+                    } else emptyList()
+
                     val myLocalTracksForAlbum = localTracks.entries.find { 
                         it.key.lowercase() == rgTitle.lowercase() || 
                         rgTitle.lowercase().contains(it.key.lowercase()) || 
                         it.key.lowercase().contains(rgTitle.lowercase()) 
                     }?.value?.map { it.lowercase() } ?: emptyList()
                     
-                    val actualMissingTrackNames = officialTracks.filter { officialTitle ->
-                        !myLocalTracksForAlbum.any { it.contains(officialTitle.lowercase()) || officialTitle.lowercase().contains(it) }
-                    }
+                    val actualMissingTrackNames = if (officialTracks.isNotEmpty()) {
+                        officialTracks.filter { officialTitle ->
+                            !myLocalTracksForAlbum.any { localTitle ->
+                                localTitle.contains(officialTitle.lowercase()) || officialTitle.lowercase().contains(localTitle)
+                            }
+                        }
+                    } else emptyList()
                     
                     val finalCount = if (actualMissingTrackNames.isNotEmpty()) actualMissingTrackNames.size else (officialTrackCount - localMatch.value)
-                    
+                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
                     missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames))
                 }
             }

@@ -11,5 +11,6 @@ data class CachedMissingContent(
     val isAlbum: Boolean,
     val imageUrl: String?,
     val missingCount: Int = 0,
-    val missingTrackNamesJson: String? = null
+    val missingTrackNamesJson: String? = null,
+    val cachedAt: Long = System.currentTimeMillis()
 )

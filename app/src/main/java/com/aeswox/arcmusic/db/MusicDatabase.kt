@@ -22,7 +22,7 @@ import com.aeswox.arcmusic.db.daos.*
         TrackFts::class,
         CachedMissingContent::class
     ], 
-    version = 13, 
+    version = 14, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -105,6 +105,12 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_missing_content ADD COLUMN cachedAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -112,7 +118,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
