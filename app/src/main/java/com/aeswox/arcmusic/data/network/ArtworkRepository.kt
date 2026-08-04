@@ -388,22 +388,9 @@ class ArtworkRepository @Inject constructor(
                 }
                 
                 if (localMatch == null) {
-                    // Entirely missing album — fetch cover from online
-                    val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
-                    val officialTracks: List<String> = if (bestRelease != null) {
-                        kotlinx.coroutines.delay(1200) // rate limit
-                        try {
-                            val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
-                            fullRelease.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
-                        } catch (e: Exception) {
-                            Log.w("ArtworkRepository", "Failed to fetch tracks for release ${bestRelease.id}", e)
-                            emptyList()
-                        }
-                    } else emptyList()
-
+                    // Entirely missing album — fetch cover from online and add ONLY to missingAlbums
                     val imageUrl = fetchAlbumCover(rgTitle, artistName)
-                    missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl))
-                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount, missingTrackNames = officialTracks))
+                    missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl, missingCount = officialTrackCount))
                 } else if (officialTrackCount > localMatch.value) {
                     // Partial album — prefer local artwork; only go online if none available locally
                     val localArtwork: String? = localAlbumCovers.entries.find { (albumTitle, _) ->
