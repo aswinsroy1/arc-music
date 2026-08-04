@@ -56,7 +56,7 @@ object NetworkModule {
     @Singleton
     fun provideLastFmService(moshi: Moshi, okHttpClient: OkHttpClient): LastFmService {
         return Retrofit.Builder()
-            .baseUrl("http://ws.audioscrobbler.com/")
+            .baseUrl("https://ws.audioscrobbler.com/")
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()

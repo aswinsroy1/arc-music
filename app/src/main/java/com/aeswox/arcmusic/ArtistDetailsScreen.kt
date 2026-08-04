@@ -26,6 +26,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
+import android.net.Uri
+import java.io.File
+import java.io.FileOutputStream
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -51,14 +56,27 @@ fun ArtistDetailsScreen(
     val albums by viewModel.getAlbumsByArtist(artistId).collectAsState(initial = emptyList())
 
     val context = LocalContext.current
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val scope = rememberCoroutineScope()
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (e: Exception) {
-                // Ignore if permission taking fails
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(it)
+                    val dir = File(context.filesDir, "artist_images")
+                    if (!dir.exists()) dir.mkdirs()
+                    val extension = context.contentResolver.getType(it)?.split("/")?.lastOrNull() ?: "jpg"
+                    val localFile = File(dir, "${artistId}_custom.$extension")
+                    val outputStream = FileOutputStream(localFile)
+                    inputStream?.use { input ->
+                        outputStream.use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    viewModel.updateArtistImage(artistId, Uri.fromFile(localFile).toString())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
-            viewModel.updateArtistImage(artistId, it.toString())
         }
     }
 
@@ -125,7 +143,7 @@ fun ArtistDetailsScreen(
                         text = { Text("Change Image (Gallery)") },
                         onClick = {
                             showMenu = false
-                            galleryLauncher.launch("image/*")
+                            galleryLauncher.launch(arrayOf("image/*"))
                         }
                     )
                     DropdownMenuItem(
