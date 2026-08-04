@@ -150,46 +150,80 @@ class ArtworkRepository @Inject constructor(
     }
 
     /**
-     * Returns the MBID for the given artist name, using local track titles to disambiguate
+     * Returns the MBID for the given artist name, using local album AND track titles to disambiguate
      * between artists who share the same name (e.g. Lisa from BLACKPINK vs. Japanese Lisa).
-     * Strategy: rank candidates by how many of their release-group titles overlap with
-     * [localAlbumTitles]. The candidate with the highest overlap wins.
+     * Strategy: for each MusicBrainz candidate, fetch their releases and score by how many
+     * local album titles OR local track titles overlap. The candidate with the highest score wins.
      */
-    private suspend fun resolveArtistMbid(artistName: String, localAlbumTitles: Set<String> = emptySet()): String? {
+    private suspend fun resolveArtistMbid(
+        artistName: String,
+        localAlbumTitles: Set<String> = emptySet(),
+        localTrackTitles: Set<String> = emptySet()
+    ): String? {
         try {
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
             val candidates = mbResponse.artists ?: return null
             if (candidates.isEmpty()) return null
 
-            // If we have local albums, try to pick the candidate whose discography best overlaps
-            if (localAlbumTitles.isNotEmpty()) {
+            val hasLocalEvidence = localAlbumTitles.isNotEmpty() || localTrackTitles.isNotEmpty()
+            if (hasLocalEvidence) {
                 var bestMbid: String? = null
                 var bestScore = -1
 
-                for (candidate in candidates.take(5)) { // Only check top 5 candidates to limit requests
+                for (candidate in candidates.take(5)) {
                     kotlinx.coroutines.delay(1200)
                     try {
                         val q = "arid:${candidate.id} AND status:official AND (primarytype:album OR primarytype:ep)"
                         val releases = musicBrainzService.searchReleases(query = q, limit = 25).releases ?: continue
+
+                        // Album-title score: how many local album names match this candidate's release groups
                         val rgTitles = releases.mapNotNull { it.releaseGroup?.title ?: it.title }.map { it.lowercase() }.toSet()
-                        val localLower = localAlbumTitles.map { it.lowercase() }.toSet()
-                        val overlap = rgTitles.count { rg -> localLower.any { local -> rg.contains(local) || local.contains(rg) } }
-                        Log.d("ArtworkRepository", "Candidate ${candidate.name} (${candidate.id}): overlap=$overlap")
-                        if (overlap > bestScore) {
-                            bestScore = overlap
+                        val localAlbumLower = localAlbumTitles.map { it.lowercase() }.toSet()
+                        val albumScore = rgTitles.count { rg -> localAlbumLower.any { local -> rg.contains(local) || local.contains(rg) } }
+
+                        // Track-title score: for the best-matching release, fetch its track list and
+                        // count how many local track titles appear in it
+                        var trackScore = 0
+                        if (localTrackTitles.isNotEmpty() && albumScore == 0) {
+                            // Only do the expensive per-release lookup when album matching fails
+                            val bestRelease = releases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
+                            if (bestRelease != null) {
+                                kotlinx.coroutines.delay(1200)
+                                try {
+                                    val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
+                                    val releaseTracks = fullRelease.media
+                                        ?.flatMap { it.tracks ?: emptyList() }
+                                        ?.map { it.title.lowercase() } ?: emptyList()
+                                    val localTrackLower = localTrackTitles.map { it.lowercase() }.toSet()
+                                    trackScore = releaseTracks.count { rt ->
+                                        localTrackLower.any { lt -> rt.contains(lt) || lt.contains(rt) }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.w("ArtworkRepository", "Track lookup failed for ${bestRelease.id}", e)
+                                }
+                            }
+                        }
+
+                        val totalScore = albumScore * 2 + trackScore // album matches worth more
+                        Log.d("ArtworkRepository", "Candidate ${candidate.name} (${candidate.id}): album=$albumScore track=$trackScore total=$totalScore")
+                        if (totalScore > bestScore) {
+                            bestScore = totalScore
                             bestMbid = candidate.id
                         }
-                        // If we found an artist with ≥1 local album match, take it immediately
-                        if (bestScore >= 1) break
+                        if (bestScore >= 2) break // confident enough, stop early
                     } catch (e: Exception) {
                         Log.w("ArtworkRepository", "Failed to fetch releases for candidate ${candidate.id}", e)
                     }
                 }
 
-                if (bestMbid != null && bestScore >= 1) return bestMbid
+                if (bestMbid != null && bestScore >= 1) {
+                    Log.i("ArtworkRepository", "Disambiguated '$artistName' -> $bestMbid (score=$bestScore)")
+                    return bestMbid
+                }
             }
 
             // Fallback: just return the top result
+            Log.i("ArtworkRepository", "No disambiguation evidence for '$artistName', using top result")
             return candidates.firstOrNull()?.id
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "MBID resolution error for $artistName", e)
@@ -197,9 +231,9 @@ class ArtworkRepository @Inject constructor(
         }
     }
 
-    private suspend fun fetchArtistImageViaMusicBrainz(artistName: String, localAlbumTitles: Set<String> = emptySet()): String? {
+    private suspend fun fetchArtistImageViaMusicBrainz(artistName: String, localAlbumTitles: Set<String> = emptySet(), localTrackTitles: Set<String> = emptySet()): String? {
         try {
-            val mbid = resolveArtistMbid(artistName, localAlbumTitles) ?: return null
+            val mbid = resolveArtistMbid(artistName, localAlbumTitles, localTrackTitles) ?: return null
             val tadbResponse = theAudioDbService.searchArtistByMbid(mbid = mbid)
             val tadbImg = tadbResponse.artists?.firstOrNull()?.strArtistThumb
             if (!tadbImg.isNullOrBlank()) return tadbImg
@@ -274,11 +308,17 @@ class ArtworkRepository @Inject constructor(
         }
     }
 
-    suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>, localTracks: Map<String, List<String>> = emptyMap()): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
+    suspend fun getDetailedDiscographyGaps(
+        artistName: String,
+        localAlbums: Map<String, Int>,
+        localTracks: Map<String, List<String>> = emptyMap(),
+        localAlbumCovers: Map<String, String?> = emptyMap() // album title -> local artworkUri
+    ): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
         try {
-            // Use local album titles to disambiguate between artists with the same name
+            // Disambiguate using both album titles AND individual track titles for artists like Lisa
             val localAlbumTitles = localAlbums.keys.toSet()
-            val mbid = resolveArtistMbid(artistName, localAlbumTitles) ?: return null
+            val localTrackTitles = localTracks.values.flatten().toSet()
+            val mbid = resolveArtistMbid(artistName, localAlbumTitles, localTrackTitles) ?: return null
             Log.i("ArtworkRepository", "Resolved MBID for $artistName: $mbid")
             
             kotlinx.coroutines.delay(1200)
@@ -319,7 +359,7 @@ class ArtworkRepository @Inject constructor(
                 }
                 
                 if (localMatch == null) {
-                    // Entirely missing album — look up actual track titles from the release with the most tracks
+                    // Entirely missing album — fetch cover from online
                     val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
                     val officialTracks: List<String> = if (bestRelease != null) {
                         kotlinx.coroutines.delay(1200) // rate limit
@@ -336,7 +376,13 @@ class ArtworkRepository @Inject constructor(
                     missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl))
                     missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount, missingTrackNames = officialTracks))
                 } else if (officialTrackCount > localMatch.value) {
-                    // Partial album — look up official track list then diff against local
+                    // Partial album — prefer local artwork; only go online if none available locally
+                    val localArtwork: String? = localAlbumCovers.entries.find { (albumTitle, _) ->
+                        albumTitle.lowercase() == rgTitle.lowercase() ||
+                        rgTitle.lowercase().contains(albumTitle.lowercase()) ||
+                        albumTitle.lowercase().contains(rgTitle.lowercase())
+                    }?.value
+
                     val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
                     val officialTracks: List<String> = if (bestRelease != null) {
                         kotlinx.coroutines.delay(1200) // rate limit
@@ -364,7 +410,8 @@ class ArtworkRepository @Inject constructor(
                     } else emptyList()
                     
                     val finalCount = if (actualMissingTrackNames.isNotEmpty()) actualMissingTrackNames.size else (officialTrackCount - localMatch.value)
-                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
+                    // Use local artwork if available, only fetch online as last resort
+                    val imageUrl = localArtwork ?: fetchAlbumCover(rgTitle, artistName)
                     missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames))
                 }
             }

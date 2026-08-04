@@ -183,33 +183,29 @@ class MusicRepository(
         if (isFavorite) {
             val artist = artistDao.getArtistById(artistId).first()
             if (artist != null) {
-                val isStale = if (artist.hasScannedMissingContent) {
-                    val oldestCachedAt = missingContentDao.getOldestCachedAt(artist.name) ?: 0L
-                    (System.currentTimeMillis() - oldestCachedAt) > CACHE_STALE_MS
-                } else true
-
-                if (isStale) {
-                    // Use backgroundScope instead of GlobalScope for structured concurrency
-                    backgroundScope.launch {
-                        try {
-                            android.util.Log.i("MusicRepository", "Background scan started for ${artist.name}")
-                            val localAlbums = albumDao.getAllAlbums().first().filter { a ->
-                                ArtistUtils.splitArtists(a.artist).contains(artist.name)
-                            }.associate { it.title to it.trackCount }
-                            
-                            val localTracks = trackDao.getAllTracks().first().filter { t ->
-                                ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
-                                ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
-                            }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
-                            
-                            val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks)
-                            if (result != null) {
-                                persistMissingContent(artist.id, artist.name, result)
-                                android.util.Log.i("MusicRepository", "Background scan complete for ${artist.name}")
-                            }
-                        } catch (e: Exception) {
-                            android.util.Log.e("MusicRepository", "Background missing content scan failed for ${artist.name}", e)
+                // Always force a fresh scan when an artist is (re)favorited.
+                // This ensures bad cached data (e.g. wrong artist MBID) gets cleared immediately.
+                backgroundScope.launch {
+                    try {
+                        android.util.Log.i("MusicRepository", "Background scan started for ${artist.name}")
+                        val localAlbumObjects = albumDao.getAllAlbums().first().filter { a ->
+                            ArtistUtils.splitArtists(a.artist).contains(artist.name)
                         }
+                        val localAlbums = localAlbumObjects.associate { it.title to it.trackCount }
+                        val localAlbumCovers = localAlbumObjects.associate { it.title to it.artworkUri }
+                        
+                        val localTracks = trackDao.getAllTracks().first().filter { t ->
+                            ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
+                            ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
+                        }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
+                        
+                        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks, localAlbumCovers)
+                        if (result != null) {
+                            persistMissingContent(artist.id, artist.name, result)
+                            android.util.Log.i("MusicRepository", "Background scan complete for ${artist.name}")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MusicRepository", "Background missing content scan failed for ${artist.name}", e)
                     }
                 }
             }
@@ -237,12 +233,17 @@ class MusicRepository(
             android.util.Log.i("MusicRepository", "Cache stale for ${artist.name}, re-fetching")
         }
 
+        val localAlbumObjects = albumDao.getAllAlbums().first().filter { a ->
+            ArtistUtils.splitArtists(a.artist).contains(artist.name)
+        }
+        val localAlbumCovers = localAlbumObjects.associate { it.title to it.artworkUri }
+
         val localTracks = trackDao.getAllTracks().first().filter { t ->
             ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
             ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
         }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
         
-        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks)
+        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks, localAlbumCovers)
         if (result != null) {
             persistMissingContent(artist.id, artist.name, result)
         }
