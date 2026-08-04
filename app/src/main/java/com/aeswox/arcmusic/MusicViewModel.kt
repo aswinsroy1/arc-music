@@ -92,7 +92,8 @@ data class MissingContentItem(
     val artistName: String,
     val isAlbum: Boolean,
     val imageUrl: String? = null,
-    val missingCount: Int = 0
+    val missingCount: Int = 0,
+    val missingTrackNames: List<String> = emptyList()
 )
 
 sealed class MissingContentUiState {

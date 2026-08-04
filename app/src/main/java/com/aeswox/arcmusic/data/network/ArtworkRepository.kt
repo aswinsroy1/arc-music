@@ -223,7 +223,7 @@ class ArtworkRepository @Inject constructor(
         }
     }
 
-    suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
+    suspend fun getDetailedDiscographyGaps(artistName: String, localAlbums: Map<String, Int>, localTracks: Map<String, List<String>> = emptyMap()): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
         try {
             val mbResponse = musicBrainzService.searchArtist(query = artistName)
             val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
@@ -268,11 +268,25 @@ class ArtworkRepository @Inject constructor(
                 
                 if (localMatch == null) {
                     val imageUrl = fetchAlbumCover(rgTitle, artistName)
+                    val officialTracks = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }?.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
                     missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl))
-                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount))
+                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount, missingTrackNames = officialTracks))
                 } else if (officialTrackCount > localMatch.value) {
                     val imageUrl = fetchAlbumCover(rgTitle, artistName)
-                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = officialTrackCount - localMatch.value))
+                    val officialTracks = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }?.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
+                    val myLocalTracksForAlbum = localTracks.entries.find { 
+                        it.key.lowercase() == rgTitle.lowercase() || 
+                        rgTitle.lowercase().contains(it.key.lowercase()) || 
+                        it.key.lowercase().contains(rgTitle.lowercase()) 
+                    }?.value?.map { it.lowercase() } ?: emptyList()
+                    
+                    val actualMissingTrackNames = officialTracks.filter { officialTitle ->
+                        !myLocalTracksForAlbum.any { it.contains(officialTitle.lowercase()) || officialTitle.lowercase().contains(it) }
+                    }
+                    
+                    val finalCount = if (actualMissingTrackNames.isNotEmpty()) actualMissingTrackNames.size else (officialTrackCount - localMatch.value)
+                    
+                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames))
                 }
             }
             return Pair(missingTracks, missingAlbums)

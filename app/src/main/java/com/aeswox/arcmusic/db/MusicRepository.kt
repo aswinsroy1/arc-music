@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import com.aeswox.arcmusic.utils.ArtistUtils
 
 class MusicRepository(
@@ -113,7 +115,10 @@ class MusicRepository(
                     name = it,
                     photoUri = existing?.photoUri,
                     bioText = existing?.bioText,
-                    isFavorite = existing?.isFavorite ?: false
+                    isFavorite = existing?.isFavorite ?: false,
+                    missingTracksCount = existing?.missingTracksCount,
+                    missingAlbumsCount = existing?.missingAlbumsCount,
+                    hasScannedMissingContent = existing?.hasScannedMissingContent ?: false
                 )
             }
             
@@ -168,6 +173,43 @@ class MusicRepository(
 
     suspend fun toggleArtistFavorite(artistId: String, isFavorite: Boolean) = withContext(Dispatchers.IO) {
         artistDao.updateArtistFavoriteStatus(artistId, isFavorite)
+        if (isFavorite) {
+            val artist = artistDao.getArtistById(artistId).first()
+            if (artist != null && !artist.hasScannedMissingContent) {
+                kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                    try {
+                        val localAlbums = albumDao.getAllAlbums().first().filter { a ->
+                            ArtistUtils.splitArtists(a.artist).contains(artist.name)
+                        }.associate { it.title to it.trackCount }
+                        
+                        val localTracks = trackDao.getAllTracks().first().filter { t ->
+                            ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
+                            ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
+                        }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
+                        
+                        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks)
+                        if (result != null) {
+                            val (missingTracks, missingAlbums) = result
+                            val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
+                            val cachedItems = (missingTracks + missingAlbums).map { 
+                                com.aeswox.arcmusic.db.entities.CachedMissingContent(
+                                    title = it.title,
+                                    artistName = it.artistName,
+                                    isAlbum = it.isAlbum,
+                                    imageUrl = it.imageUrl,
+                                    missingCount = it.missingCount,
+                                    missingTrackNamesJson = if (it.missingTrackNames.isNotEmpty()) adapter.toJson(it.missingTrackNames) else null
+                                )
+                            }
+                            missingContentDao.insertAll(cachedItems)
+                            artistDao.updateHasScannedMissingContent(artist.id, true)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MusicRepository", "Background missing content scan failed", e)
+                    }
+                }
+            }
+        }
     }
 
     suspend fun updateArtistGaps(artistId: String, missingTracks: Int, missingAlbums: Int) = withContext(Dispatchers.IO) {
@@ -181,8 +223,10 @@ class MusicRepository(
     suspend fun getDetailedDiscographyGaps(artist: Artist, localAlbums: Map<String, Int>): Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>? {
         if (artist.hasScannedMissingContent) {
             val cached = missingContentDao.getByArtistName(artist.name)
+            val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
             val missingTracks = cached.filter { !it.isAlbum }.map { 
-                com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount)
+                val trackNames = it.missingTrackNamesJson?.let { json -> adapter.fromJson(json) } ?: emptyList()
+                com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount, trackNames)
             }
             val missingAlbums = cached.filter { it.isAlbum }.map { 
                 com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount)
@@ -190,16 +234,23 @@ class MusicRepository(
             return Pair(missingTracks, missingAlbums)
         }
 
-        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums)
+        val localTracks = trackDao.getAllTracks().first().filter { t ->
+            ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
+            ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
+        }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
+        
+        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks)
         if (result != null) {
             val (missingTracks, missingAlbums) = result
+            val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
             val cachedItems = (missingTracks + missingAlbums).map { 
                 com.aeswox.arcmusic.db.entities.CachedMissingContent(
                     title = it.title,
                     artistName = it.artistName,
                     isAlbum = it.isAlbum,
                     imageUrl = it.imageUrl,
-                    missingCount = it.missingCount
+                    missingCount = it.missingCount,
+                    missingTrackNamesJson = if (it.missingTrackNames.isNotEmpty()) adapter.toJson(it.missingTrackNames) else null
                 )
             }
             missingContentDao.insertAll(cachedItems)

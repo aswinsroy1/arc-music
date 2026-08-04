@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.MusicVideo
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -181,99 +183,91 @@ fun MissingContentScreen(
 
 @Composable
 fun MissingItemRow(item: MissingContentItem) {
-    val context = LocalContext.current
-    
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Album,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                modifier = Modifier.size(32.dp)
-            )
-            AsyncImage(
-                model = item.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
-            )
-            val subText = if (item.missingCount > 0) "${item.missingCount} missing tracks" else "Full Album"
-            Text(
-                text = subText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-        }
-        
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Spotify Button
-            FilledTonalIconButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_SEARCH)
-                    intent.setPackage("com.spotify.music")
-                    val query = if (item.isAlbum) "album:${item.title} artist:${item.artistName}" else "${item.title} ${item.artistName}"
-                    intent.putExtra("query", query)
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        // Fallback to web if app is not installed
-                        val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/${Uri.encode(query)}"))
-                        try { context.startActivity(fallbackIntent) } catch (e: Exception) {}
-                    }
-                },
-                modifier = Modifier.size(40.dp)
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Spotify",
-                    tint = Color(0xFF1DB954), // Spotify Green
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.Album,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.size(32.dp)
+                )
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
             
-            // YouTube Music Button
-            FilledTonalIconButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_SEARCH)
-                    intent.setPackage("com.google.android.apps.youtube.music")
-                    val query = if (item.isAlbum) "${item.title} album ${item.artistName}" else "${item.title} ${item.artistName}"
-                    intent.putExtra("query", query)
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}"))
-                        try { context.startActivity(fallbackIntent) } catch (e: Exception) {}
-                    }
-                },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.SmartDisplay,
-                    contentDescription = "Search YouTube Music",
-                    tint = Color(0xFFFF0000), // YouTube Red
-                    modifier = Modifier.size(20.dp)
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
                 )
+                val subText = if (item.missingCount > 0) "${item.missingCount} missing tracks" else "Full Album"
+                Text(
+                    text = subText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            
+            Column {
+                if (item.isAlbum) {
+                    IconButton(onClick = { /* TODO */ }) {
+                        Icon(
+                            imageVector = Icons.Default.SmartDisplay,
+                            contentDescription = "Search YouTube",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Expand",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+        }
+        
+        if (expanded && !item.isAlbum && item.missingTrackNames.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 72.dp, top = 8.dp, bottom = 8.dp)
+            ) {
+                item.missingTrackNames.forEachIndexed { index, trackName ->
+                    Text(
+                        text = "${index + 1}. $trackName",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
             }
         }
     }

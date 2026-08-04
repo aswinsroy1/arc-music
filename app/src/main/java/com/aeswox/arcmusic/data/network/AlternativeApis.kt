@@ -115,7 +115,15 @@ data class MusicBrainzReleaseGroup(
 
 @JsonClass(generateAdapter = true)
 data class MusicBrainzMedia(
-    @Json(name = "track-count") val trackCount: Int?
+    @Json(name = "track-count") val trackCount: Int?,
+    val tracks: List<MusicBrainzTrack>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class MusicBrainzTrack(
+    val id: String,
+    val title: String,
+    val number: String? = null
 )
 
 @JsonClass(generateAdapter = true)
