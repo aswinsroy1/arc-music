@@ -388,8 +388,13 @@ class ArtworkRepository @Inject constructor(
                 }
                 
                 if (localMatch == null) {
-                    // Entirely missing album — fetch cover from online and add ONLY to missingAlbums
-                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
+                    // Entirely missing album — fetch cover from Cover Art Archive (bypasses Deezer region blocks)
+                    val rgId = rgReleases.first().releaseGroup?.id
+                    val imageUrl = if (rgId != null) {
+                        "https://coverartarchive.org/release-group/$rgId/front"
+                    } else {
+                        fetchAlbumCover(rgTitle, artistName)
+                    }
                     missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl, missingCount = officialTrackCount))
                 } else if (officialTrackCount > localMatch.value) {
                     // Partial album — prefer local artwork; only go online if none available locally
@@ -426,8 +431,9 @@ class ArtworkRepository @Inject constructor(
                     } else emptyList()
                     
                     val finalCount = if (actualMissingTrackNames.isNotEmpty()) actualMissingTrackNames.size else (officialTrackCount - localMatch.value)
-                    // Use local artwork if available, only fetch online as last resort
-                    val imageUrl = localArtwork ?: fetchAlbumCover(rgTitle, artistName)
+                    // Use local artwork if available; fallback to Cover Art Archive, then Deezer
+                    val rgId = rgReleases.first().releaseGroup?.id
+                    val imageUrl = localArtwork ?: if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else fetchAlbumCover(rgTitle, artistName)
                     missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames))
                 }
             }
