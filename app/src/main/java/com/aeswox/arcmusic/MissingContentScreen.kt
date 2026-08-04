@@ -90,7 +90,7 @@ fun MissingContentScreen(
                     FilterChip(
                         selected = currentTab == 0,
                         onClick = { currentTab = 0 },
-                        label = { Text("Tracks", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)) },
+                        label = { Text("Partial Albums", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.onSurface,
                             selectedLabelColor = MaterialTheme.colorScheme.surface,
@@ -102,7 +102,7 @@ fun MissingContentScreen(
                     FilterChip(
                         selected = currentTab == 1,
                         onClick = { currentTab = 1 },
-                        label = { Text("Albums", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)) },
+                        label = { Text("Entire Albums", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.onSurface,
                             selectedLabelColor = MaterialTheme.colorScheme.surface,
@@ -133,7 +133,7 @@ fun MissingContentScreen(
                         if (itemsGrouped.isEmpty()) {
                             Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "No missing ${if (currentTab == 0) "tracks" else "albums"} found.",
+                                    text = "No ${if (currentTab == 0) "partial" else "entire"} missing albums found.",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -148,9 +148,9 @@ fun MissingContentScreen(
                                     item(key = artistName) {
                                         Text(
                                             text = artistName,
-                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                            modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
                                         )
                                     }
                                     
@@ -186,15 +186,26 @@ fun MissingItemRow(item: MissingContentItem) {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = item.imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        Box(
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-        )
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Album,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                modifier = Modifier.size(32.dp)
+            )
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         
         Spacer(modifier = Modifier.width(16.dp))
         
@@ -205,7 +216,7 @@ fun MissingItemRow(item: MissingContentItem) {
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1
             )
-            val subText = if (item.missingCount > 0) "${item.artistName} • Missing ${item.missingCount} tracks" else item.artistName
+            val subText = if (item.missingCount > 0) "${item.missingCount} missing tracks" else "Full Album"
             Text(
                 text = subText,
                 style = MaterialTheme.typography.bodyMedium,
@@ -214,9 +225,9 @@ fun MissingItemRow(item: MissingContentItem) {
             )
         }
         
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             // Spotify Button
-            IconButton(
+            FilledTonalIconButton(
                 onClick = {
                     val intent = Intent(Intent.ACTION_SEARCH)
                     intent.setPackage("com.spotify.music")
@@ -230,9 +241,7 @@ fun MissingItemRow(item: MissingContentItem) {
                         try { context.startActivity(fallbackIntent) } catch (e: Exception) {}
                     }
                 },
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -243,7 +252,7 @@ fun MissingItemRow(item: MissingContentItem) {
             }
             
             // YouTube Music Button
-            IconButton(
+            FilledTonalIconButton(
                 onClick = {
                     val intent = Intent(Intent.ACTION_SEARCH)
                     intent.setPackage("com.google.android.apps.youtube.music")
@@ -256,9 +265,7 @@ fun MissingItemRow(item: MissingContentItem) {
                         try { context.startActivity(fallbackIntent) } catch (e: Exception) {}
                     }
                 },
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.SmartDisplay,
