@@ -282,6 +282,7 @@ class MainActivity : ComponentActivity() {
                             }
                             val settingsPermissionsState = rememberMultiplePermissionsState(permissions = settingsPermissionsList)
                             val lastFmApiKey by viewModel.lastFmApiKey.collectAsState()
+                            val fanartTvApiKey by viewModel.fanartTvApiKey.collectAsState()
                             
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 SettingsScreen(
@@ -291,9 +292,11 @@ class MainActivity : ComponentActivity() {
                                     themeMode = themeMode,
                                     lightThemeForNowPlaying = lightThemeForNowPlaying,
                                     lastFmApiKey = lastFmApiKey,
+                                    fanartTvApiKey = fanartTvApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
+                                    onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
                                     onNavigateToAppearance = { navController.navigate("appearance") },
                                     onNavigateToEqualizer = { navController.navigate("equalizer") },
                                     onNavigateBack = { navController.popBackStack() },

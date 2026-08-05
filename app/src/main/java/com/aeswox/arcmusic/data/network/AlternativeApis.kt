@@ -220,3 +220,23 @@ data class ItunesAlbum(
     val collectionName: String,
     val artworkUrl100: String?
 )
+
+// --- Fanart.tv ---
+
+interface FanartTvService {
+    @GET("v3/music/{mbid}")
+    suspend fun getArtistImages(
+        @Path("mbid") mbid: String,
+        @Query("api_key") apiKey: String
+    ): FanartTvResponse
+}
+
+@JsonClass(generateAdapter = true)
+data class FanartTvResponse(
+    val artistthumb: List<FanartTvImage>?
+)
+
+@JsonClass(generateAdapter = true)
+data class FanartTvImage(
+    val url: String
+)

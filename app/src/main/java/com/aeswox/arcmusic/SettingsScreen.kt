@@ -33,9 +33,11 @@ fun SettingsScreen(
     themeMode: ThemeMode,
     lightThemeForNowPlaying: Boolean,
     lastFmApiKey: String?,
+    fanartTvApiKey: String?,
     onThemeModeChange: (ThemeMode) -> Unit,
     onLightThemeForNowPlayingChange: (Boolean) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
+    onFanartTvApiKeyChange: (String) -> Unit,
     onNavigateToAppearance: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
     onNavigateBack: () -> Unit,
@@ -67,6 +69,33 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showApiKeyDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    var showFanartTvApiKeyDialog by remember { mutableStateOf(false) }
+    var fanartTvApiKeyInput by remember { mutableStateOf("") }
+
+    if (showFanartTvApiKeyDialog) {
+        AlertDialog(
+            onDismissRequest = { showFanartTvApiKeyDialog = false },
+            title = { Text("Fanart.tv API Key") },
+            text = {
+                OutlinedTextField(
+                    value = fanartTvApiKeyInput,
+                    onValueChange = { fanartTvApiKeyInput = it },
+                    label = { Text("Enter API Key") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onFanartTvApiKeyChange(fanartTvApiKeyInput)
+                    showFanartTvApiKeyDialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFanartTvApiKeyDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -153,6 +182,19 @@ fun SettingsScreen(
                             onClick = {
                                 apiKeyInput = lastFmApiKey ?: ""
                                 showApiKeyDialog = true
+                            },
+                            showArrow = false
+                        )
+                        
+                        val isFanartKeySet = !fanartTvApiKey.isNullOrBlank()
+                        val maskedFanartKey = if (isFanartKeySet) "••••" + fanartTvApiKey!!.takeLast(4.coerceAtMost(fanartTvApiKey.length)) else "Not set"
+                        SettingsItem(
+                            icon = Icons.Outlined.Key,
+                            text = "Fanart.tv API Key",
+                            trailingText = maskedFanartKey,
+                            onClick = {
+                                fanartTvApiKeyInput = fanartTvApiKey ?: ""
+                                showFanartTvApiKeyDialog = true
                             },
                             showArrow = false
                         )

@@ -15,6 +15,7 @@ class ArtworkRepository @Inject constructor(
     private val theAudioDbService: TheAudioDbService,
     private val musicBrainzService: MusicBrainzService,
     private val itunesService: ItunesService,
+    private val fanartTvService: FanartTvService,
     private val settingsRepository: com.aeswox.arcmusic.data.SettingsRepository
 ) {
     suspend fun fetchBestArtistImage(artistName: String, trackTitle: String? = null): String? = withContext(Dispatchers.IO) {
@@ -318,6 +319,20 @@ class ArtworkRepository @Inject constructor(
     private suspend fun fetchArtistImageViaMusicBrainz(artistName: String, localAlbumTitles: Set<String> = emptySet(), localTrackTitles: Set<String> = emptySet()): String? {
         try {
             val mbid = resolveArtistMbid(artistName, localAlbumTitles, localTrackTitles) ?: return null
+            
+            // 1.5a Try Fanart.tv
+            try {
+                val fanartKey = settingsRepository.fanartTvApiKey.firstOrNull()
+                if (!fanartKey.isNullOrBlank()) {
+                    val response = fanartTvService.getArtistImages(mbid, fanartKey)
+                    val img = response.artistthumb?.firstOrNull()?.url
+                    if (!img.isNullOrBlank()) return img
+                }
+            } catch (e: Exception) {
+                Log.w("ArtworkRepository", "Fanart.tv fetch failed for $artistName", e)
+            }
+
+            // 1.5b Fallback to TheAudioDB
             val tadbResponse = theAudioDbService.searchArtistByMbid(mbid = mbid)
             val tadbImg = tadbResponse.artists?.firstOrNull()?.strArtistThumb
             if (!tadbImg.isNullOrBlank()) return tadbImg
@@ -397,7 +412,7 @@ class ArtworkRepository @Inject constructor(
         localAlbums: Map<String, Int>,
         localTracks: Map<String, List<String>> = emptyMap(),
         localAlbumCovers: Map<String, String?> = emptyMap() // album title -> local artworkUri
-    ): Pair<List<MissingContentItem>, List<MissingContentItem>>? {
+    ): Triple<List<MissingContentItem>, List<MissingContentItem>, List<MissingContentItem>>? {
         try {
             // Disambiguate using both album titles AND individual track titles for artists like Lisa
             val localAlbumTitles = localAlbums.keys.toSet()
@@ -407,7 +422,7 @@ class ArtworkRepository @Inject constructor(
             
             kotlinx.coroutines.delay(1200)
 
-            val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
+            val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep OR primarytype:single)"
             val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
             val releases = releaseResponse.releases ?: return null
             
@@ -429,14 +444,19 @@ class ArtworkRepository @Inject constructor(
             
             val missingAlbums = mutableListOf<MissingContentItem>()
             val missingTracks = mutableListOf<MissingContentItem>()
+            val missingSingles = mutableListOf<MissingContentItem>()
             
             groupedByRg.forEach { (_, rgReleases) ->
                 val rgTitle = rgReleases.first().releaseGroup?.title ?: rgReleases.first().title
-                val officialTrackCount = rgReleases.maxOfOrNull { r -> 
+                val primaryType = rgReleases.first().releaseGroup?.primaryType ?: ""
+                val isSingle = primaryType.equals("Single", ignoreCase = true)
+                val officialTrackCounts = rgReleases.map { r -> 
                     r.media?.sumOf { it.trackCount ?: 0 } ?: 0 
-                } ?: 0
+                }
+                val maxOfficialTrackCount = officialTrackCounts.maxOrNull() ?: 0
 
                 val localMatch = localAlbums.entries.find { isFuzzyMatch(rgTitle, it.key) }
+                val matchesAnyOfficialEdition = localMatch != null && officialTrackCounts.contains(localMatch.value)
                 
                 if (localMatch == null) {
                     // Entirely missing album — fetch cover from Cover Art Archive (bypasses Deezer region blocks)
@@ -447,15 +467,20 @@ class ArtworkRepository @Inject constructor(
                     } else {
                         fetchAlbumCover(rgTitle, artistName)
                     }
-                    missingAlbums.add(MissingContentItem(rgTitle, artistName, true, imageUrl, missingCount = officialTrackCount))
-                } else if (officialTrackCount > localMatch.value) {
+                    val newItem = MissingContentItem(rgTitle, artistName, true, isSingle, imageUrl, missingCount = maxOfficialTrackCount)
+                    if (isSingle) {
+                        missingSingles.add(newItem)
+                    } else {
+                        missingAlbums.add(newItem)
+                    }
+                } else if (!matchesAnyOfficialEdition && maxOfficialTrackCount > localMatch.value) {
                     // Partial album — prefer local artwork; only go online if none available locally
                     val localArtwork: String? = localAlbumCovers.entries.find { (albumTitle, _) ->
                         isFuzzyMatch(rgTitle, albumTitle)
                     }?.value
 
                     val bestRelease = rgReleases.maxByOrNull { r -> r.media?.sumOf { it.trackCount ?: 0 } ?: 0 }
-                    val officialTracks: List<String> = if (bestRelease != null) {
+                    val rawOfficialTracks: List<String> = if (bestRelease != null) {
                         kotlinx.coroutines.delay(1200) // rate limit
                         try {
                             val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
@@ -466,11 +491,16 @@ class ArtworkRepository @Inject constructor(
                         }
                     } else emptyList()
 
+                    val officialTracks = rawOfficialTracks.filter { title ->
+                        val lower = title.lowercase()
+                        !lower.contains("instrumental") && !lower.contains("inst.") && !lower.contains("karaoke") && !lower.contains("acapella")
+                    }
+
                     val myLocalTracksForAlbum = localTracks.entries.find { 
                         isFuzzyMatch(rgTitle, it.key)
                     }?.value?.map { it.lowercase() } ?: emptyList()
                     
-                    val actualMissingTrackNames = if (officialTracks.isNotEmpty()) {
+                    val actualMissingTrackNames = if (rawOfficialTracks.isNotEmpty()) {
                         officialTracks.filter { officialTitle ->
                             !myLocalTracksForAlbum.any { localTitle ->
                                 isFuzzyMatch(officialTitle, localTitle)
@@ -478,7 +508,13 @@ class ArtworkRepository @Inject constructor(
                         }
                     } else emptyList()
                     
-                    val finalCount = if (actualMissingTrackNames.isNotEmpty()) actualMissingTrackNames.size else (officialTrackCount - localMatch.value)
+                    if (rawOfficialTracks.isNotEmpty() && actualMissingTrackNames.isEmpty()) {
+                        return@forEach // User has all the non-instrumental tracks for this release
+                    }
+                    
+                    val finalCount = if (rawOfficialTracks.isNotEmpty()) actualMissingTrackNames.size else (maxOfficialTrackCount - localMatch.value)
+                    
+                    if (finalCount <= 0) return@forEach
                     // Use local artwork if available; fallback to Cover Art Archive, then iTunes/Deezer
                     val rgId = rgReleases.first().releaseGroup?.id
                     val caaUrl = if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else null
@@ -488,10 +524,15 @@ class ArtworkRepository @Inject constructor(
                     } else {
                         fetchAlbumCover(rgTitle, artistName)
                     }
-                    missingTracks.add(MissingContentItem(rgTitle, artistName, false, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames))
+                    val newItem = MissingContentItem(rgTitle, artistName, false, isSingle, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames)
+                    if (isSingle) {
+                        missingSingles.add(newItem)
+                    } else {
+                        missingTracks.add(newItem)
+                    }
                 }
             }
-            return Pair(missingTracks, missingAlbums)
+            return Triple(missingTracks, missingAlbums, missingSingles)
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "Detailed gap calculation error for $artistName", e)
             return null

@@ -91,6 +91,7 @@ data class MissingContentItem(
     val title: String,
     val artistName: String,
     val isAlbum: Boolean,
+    val isSingle: Boolean = false,
     val imageUrl: String? = null,
     val missingCount: Int = 0,
     val missingTrackNames: List<String> = emptyList()
@@ -100,7 +101,8 @@ sealed class MissingContentUiState {
     object Loading : MissingContentUiState()
     data class Success(
         val missingAlbums: Map<String, List<MissingContentItem>>,
-        val missingTracks: Map<String, List<MissingContentItem>>
+        val missingTracks: Map<String, List<MissingContentItem>>,
+        val missingSingles: Map<String, List<MissingContentItem>> = emptyMap()
     ) : MissingContentUiState()
     data class Empty(val message: String = "Nothing missing! Favorite more artists to track gaps.") : MissingContentUiState()
 }
@@ -513,6 +515,7 @@ class MusicViewModel @Inject constructor(
             
             val missingAlbums = mutableListOf<MissingContentItem>()
             val missingTracks = mutableListOf<MissingContentItem>()
+            val missingSingles = mutableListOf<MissingContentItem>()
             
             var hasAnyGaps = false
 
@@ -520,17 +523,18 @@ class MusicViewModel @Inject constructor(
 
             for (artist in favoritedArtists) {
                 try {
-                    val gaps = repository.getDetailedDiscographyGaps(artist, albumMap)
+                    val gaps = repository.getDetailedDiscographyGaps(artist)
                     if (gaps == null) {
                         errorMessage += "[${artist.name}: gaps returned null] "
                     } else {
                         // Update the cached counts in DB with the accurate new logic counts
                         repository.updateArtistGaps(artist.id, gaps.first.size, gaps.second.size)
 
-                        if (gaps.first.isNotEmpty() || gaps.second.isNotEmpty()) {
+                        if (gaps.first.isNotEmpty() || gaps.second.isNotEmpty() || gaps.third.isNotEmpty()) {
                             hasAnyGaps = true
                             missingTracks.addAll(gaps.first)
                             missingAlbums.addAll(gaps.second)
+                            missingSingles.addAll(gaps.third)
                         } else {
                             errorMessage += "[${artist.name}: 0 gaps] "
                         }
@@ -549,7 +553,8 @@ class MusicViewModel @Inject constructor(
             } else {
                 _missingContentUiState.value = MissingContentUiState.Success(
                     missingAlbums = missingAlbums.groupBy { it.artistName },
-                    missingTracks = missingTracks.groupBy { it.artistName }
+                    missingTracks = missingTracks.groupBy { it.artistName },
+                    missingSingles = missingSingles.groupBy { it.artistName }
                 )
             }
         }
@@ -793,9 +798,21 @@ class MusicViewModel @Inject constructor(
         null
     )
 
+    val fanartTvApiKey = settingsRepository.fanartTvApiKey.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        null
+    )
+
     fun setLastFmApiKey(key: String) {
         viewModelScope.launch {
             settingsRepository.setLastFmApiKey(key)
+        }
+    }
+
+    fun setFanartTvApiKey(key: String) {
+        viewModelScope.launch {
+            settingsRepository.setFanartTvApiKey(key)
         }
     }
 

@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import com.aeswox.arcmusic.utils.ArtistUtils
@@ -28,6 +29,8 @@ class MusicRepository(
 ) {
     // Dedicated scope for background tasks — survives ViewModel but is still structured
     private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    
+    private val inFlightGapsFetches = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>?>>()
     
     // 7 days in milliseconds — staleness policy for cached missing content
     private val CACHE_STALE_MS = 7L * 24 * 60 * 60 * 1000
@@ -188,22 +191,8 @@ class MusicRepository(
                 backgroundScope.launch {
                     try {
                         android.util.Log.i("MusicRepository", "Background scan started for ${artist.name}")
-                        val localAlbumObjects = albumDao.getAllAlbums().first().filter { a ->
-                            ArtistUtils.splitArtists(a.artist).contains(artist.name)
-                        }
-                        val localAlbums = localAlbumObjects.associate { it.title to it.trackCount }
-                        val localAlbumCovers = localAlbumObjects.associate { it.title to it.artworkUri }
-                        
-                        val localTracks = trackDao.getAllTracks().first().filter { t ->
-                            ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
-                            ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
-                        }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
-                        
-                        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks, localAlbumCovers)
-                        if (result != null) {
-                            persistMissingContent(artist.id, artist.name, result)
-                            android.util.Log.i("MusicRepository", "Background scan complete for ${artist.name}")
-                        }
+                        getDetailedDiscographyGaps(artist, forceRefresh = true)
+                        android.util.Log.i("MusicRepository", "Background scan complete for ${artist.name}")
                     } catch (e: Exception) {
                         android.util.Log.e("MusicRepository", "Background missing content scan failed for ${artist.name}", e)
                     }
@@ -220,61 +209,77 @@ class MusicRepository(
         return artworkRepository.fetchDiscographyGaps(artistName, localAlbums)
     }
 
-    suspend fun getDetailedDiscographyGaps(artist: Artist, localAlbums: Map<String, Int>): Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>? {
-        if (artist.hasScannedMissingContent) {
+    suspend fun getDetailedDiscographyGaps(artist: Artist, forceRefresh: Boolean = false): Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>? {
+        val currentArtist = artistDao.getArtistById(artist.id).first() ?: artist
+        if (!forceRefresh && currentArtist.hasScannedMissingContent) {
             // Check staleness — if cache is older than 7 days, re-fetch
-            val oldestCachedAt = missingContentDao.getOldestCachedAt(artist.name) ?: 0L
+            val oldestCachedAt = missingContentDao.getOldestCachedAt(currentArtist.name) ?: 0L
             val isStale = (System.currentTimeMillis() - oldestCachedAt) > CACHE_STALE_MS
             if (!isStale) {
-                android.util.Log.d("MusicRepository", "Serving ${artist.name} missing content from cache")
-                return serveCachedMissingContent(artist.name)
+                android.util.Log.d("MusicRepository", "Serving ${currentArtist.name} missing content from cache")
+                return serveCachedMissingContent(currentArtist.name)
             }
             // Cache is stale — fall through to re-fetch
-            android.util.Log.i("MusicRepository", "Cache stale for ${artist.name}, re-fetching")
+            android.util.Log.i("MusicRepository", "Cache stale for ${currentArtist.name}, re-fetching")
         }
 
-        val localAlbumObjects = albumDao.getAllAlbums().first().filter { a ->
-            ArtistUtils.splitArtists(a.artist).contains(artist.name)
-        }
-        val localAlbumCovers = localAlbumObjects.associate { it.title to it.artworkUri }
+        val deferred = inFlightGapsFetches.getOrPut(currentArtist.id) {
+            backgroundScope.async {
+                try {
+                    val localAlbumObjects = albumDao.getAllAlbums().first().filter { a ->
+                        ArtistUtils.splitArtists(a.artist).contains(currentArtist.name)
+                    }
+                    val localAlbums = localAlbumObjects.associate { it.title to it.trackCount }
+                    val localAlbumCovers = localAlbumObjects.associate { it.title to it.artworkUri }
 
-        val localTracks = trackDao.getAllTracks().first().filter { t ->
-            ArtistUtils.splitArtists(t.artist).contains(artist.name) ||
-            ArtistUtils.splitArtists(t.albumArtist).contains(artist.name)
-        }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
-        
-        val result = artworkRepository.getDetailedDiscographyGaps(artist.name, localAlbums, localTracks, localAlbumCovers)
-        if (result != null) {
-            persistMissingContent(artist.id, artist.name, result)
+                    val localTracks = trackDao.getAllTracks().first().filter { t ->
+                        ArtistUtils.splitArtists(t.artist).contains(currentArtist.name) ||
+                        ArtistUtils.splitArtists(t.albumArtist).contains(currentArtist.name)
+                    }.groupBy { it.album }.mapValues { entry -> entry.value.map { it.title } }
+                    
+                    val result = artworkRepository.getDetailedDiscographyGaps(currentArtist.name, localAlbums, localTracks, localAlbumCovers)
+                    if (result != null) {
+                        persistMissingContent(currentArtist.id, currentArtist.name, result)
+                    }
+                    result
+                } finally {
+                    inFlightGapsFetches.remove(currentArtist.id)
+                }
+            }
         }
-        return result
+        return deferred.await()
     }
 
-    private suspend fun serveCachedMissingContent(artistName: String): Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>> {
+    private suspend fun serveCachedMissingContent(artistName: String): Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>> {
         val cached = missingContentDao.getByArtistName(artistName)
         val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
-        val missingTracks = cached.filter { !it.isAlbum }.map { 
+        val missingTracks = cached.filter { !it.isAlbum && !it.isSingle }.map { 
             val trackNames = it.missingTrackNamesJson?.let { json -> adapter.fromJson(json) } ?: emptyList()
-            com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount, trackNames)
+            com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.isSingle, it.imageUrl, it.missingCount, trackNames)
         }
-        val missingAlbums = cached.filter { it.isAlbum }.map { 
-            com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.imageUrl, it.missingCount)
+        val missingAlbums = cached.filter { it.isAlbum && !it.isSingle }.map { 
+            com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.isSingle, it.imageUrl, it.missingCount)
         }
-        return Pair(missingTracks, missingAlbums)
+        val missingSingles = cached.filter { it.isSingle }.map { 
+            val trackNames = it.missingTrackNamesJson?.let { json -> adapter.fromJson(json) } ?: emptyList()
+            com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.isSingle, it.imageUrl, it.missingCount, trackNames)
+        }
+        return Triple(missingTracks, missingAlbums, missingSingles)
     }
 
     private suspend fun persistMissingContent(
         artistId: String,
         artistName: String,
-        result: Pair<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>
+        result: Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>
     ) {
-        val (missingTracks, missingAlbums) = result
+        val (missingTracks, missingAlbums, missingSingles) = result
         val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
-        val cachedItems = (missingTracks + missingAlbums).map { 
+        val cachedItems = (missingTracks + missingAlbums + missingSingles).map { 
             com.aeswox.arcmusic.db.entities.CachedMissingContent(
                 title = it.title,
                 artistName = it.artistName,
                 isAlbum = it.isAlbum,
+                isSingle = it.isSingle,
                 imageUrl = it.imageUrl,
                 missingCount = it.missingCount,
                 missingTrackNamesJson = if (it.missingTrackNames.isNotEmpty()) adapter.toJson(it.missingTrackNames) else null

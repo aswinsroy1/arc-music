@@ -2008,7 +2008,8 @@ fun ScrubberAndTimer(
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
                     contentDescription = "Dolby Atmos",
-                    modifier = Modifier.height(14.dp)
+                    modifier = Modifier.height(14.dp),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(textColor)
                 )
             } else {
                 val isLosslessCodec = codec.contains("flac") || codec.contains("alac") || codec.contains("ape") || codec.contains("dsd") || path.endsWith(".flac") || path.endsWith(".wav") || codec.contains("wav")

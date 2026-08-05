@@ -43,7 +43,7 @@ fun MissingContentScreen(
     viewModel: MusicViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.missingContentUiState.collectAsState()
-    var currentTab by remember { mutableIntStateOf(0) } // 0 for Tracks, 1 for Albums
+    var currentTab by remember { mutableIntStateOf(0) } // 0 for Tracks, 1 for Albums, 2 for Singles
     
     LaunchedEffect(Unit) {
         viewModel.loadMissingContent()
@@ -115,6 +115,18 @@ fun MissingContentScreen(
                         shape = CircleShape,
                         border = null
                     )
+                    FilterChip(
+                        selected = currentTab == 2,
+                        onClick = { currentTab = 2 },
+                        label = { Text("Singles", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.onSurface,
+                            selectedLabelColor = MaterialTheme.colorScheme.surface,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        shape = CircleShape,
+                        border = null
+                    )
                 }
 
                 when (val state = uiState) {
@@ -133,11 +145,20 @@ fun MissingContentScreen(
                         }
                     }
                     is MissingContentUiState.Success -> {
-                        val itemsGrouped = if (currentTab == 0) state.missingTracks else state.missingAlbums
+                        val itemsGrouped = when (currentTab) {
+                            0 -> state.missingTracks
+                            1 -> state.missingAlbums
+                            else -> state.missingSingles
+                        }
                         if (itemsGrouped.isEmpty()) {
+                            val tabName = when (currentTab) {
+                                0 -> "partial missing albums"
+                                1 -> "entire missing albums"
+                                else -> "missing singles"
+                            }
                             Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "No ${if (currentTab == 0) "partial" else "entire"} missing albums found.",
+                                    text = "No $tabName found.",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -229,7 +250,12 @@ fun MissingItemRow(item: MissingContentItem) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                val subText = if (item.isAlbum) "Full Album" else "${item.missingCount} missing tracks"
+                val subText = when {
+                    item.isSingle && item.isAlbum -> "Single"
+                    item.isSingle -> "${item.missingCount} missing tracks"
+                    item.isAlbum -> "Full Album"
+                    else -> "${item.missingCount} missing tracks"
+                }
                 Text(
                     text = subText,
                     style = MaterialTheme.typography.bodyMedium,

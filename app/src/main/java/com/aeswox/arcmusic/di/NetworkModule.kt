@@ -106,4 +106,15 @@ object NetworkModule {
             .build()
             .create(com.aeswox.arcmusic.data.network.ItunesService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideFanartTvService(moshi: Moshi, okHttpClient: OkHttpClient): com.aeswox.arcmusic.data.network.FanartTvService {
+        return Retrofit.Builder()
+            .baseUrl("https://webservice.fanart.tv/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(com.aeswox.arcmusic.data.network.FanartTvService::class.java)
+    }
 }
