@@ -152,7 +152,11 @@
   - Added a 1.2 second delay inside `MusicViewModel.loadMissingContent` and `ArtworkRepository.getDetailedDiscographyGaps` to respect MusicBrainz's strict 1 req/sec rate limit. Rapid sequential requests were causing HTTP 503 errors, resulting in empty data.
 - **Verified**: Builds cleanly, pushed to remote.
 
-- **Goal (Follow-up 2)**: Fix Missing Content screen showing debug text ("No favorited artists found in memory. libraryArtists size = 0") despite having favorited artists.
+- **Goal (Follow-up 2)**: Fix Missing Content Singles Fix: Updated missing content screen to also identify and show full singles in a separate tab.
+- **Concurrent Gap Fetches**: Background gap fetching processes for favorited artists now run concurrently rather than sequentially dropping operations.
+- **Fanart.tv Integration**: Added Fanart.tv as an alternative high-quality artist art fallback mechanism, configurable with a user-provided API key from Settings.
+- **Icon Rendering Fix**: Ensured the Dolby Atmos icon respects dynamic tinting (`colorFilter`) on the Now Playing screen.
+- **Repository Hygiene**: Purged over 160 leftover root-level scratch scripts (`.py`, `.ps1`, `.txt`, `.log`, `.kt`, `.sh`) accumulated from previous ad-hoc tasks, and robustly configured `.gitignore` to prevent any such file types from accidentally lingering in the repository root moving forward. Checked for stray `.env` (none found; `.env` is safely gitignored). Verified complete build integrity post-cleanup.
 - **Root Cause**: `MissingContentScreen` was instantiating a new, uninitialized `MusicViewModel` via `hiltViewModel()` instead of using the shared Activity-scoped instance. Since the DB fetch is asynchronous, `libraryArtists.value` was empty when `loadMissingContent()` executed in its `LaunchedEffect`.
 - **Changed**:
   - `MainActivity.kt`: Passed the shared `viewModel` to `MissingContentScreen` to reuse the pre-loaded data.

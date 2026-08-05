@@ -1,4 +1,0 @@
-import urllib.request
-
-url = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_z_1f8NhiW_8mcmSyiqL7RWZDpFDeKXoILNYiDmR4CPfI2FIlZFT819EuMyXyUdmGjEJWBSf0uQEAidGehVCMDK9DlfZIRVn7oMfjndksjG9C-j9sbflNcKXmIs5K2uHHQAU9yxz2t5RSbllP53--kr3KyrNqO43MKos1i4C7zzL2uzZjSp9cuNhF8bJeWZvOp5J2HcDvqxbpnlnSBanu9AWGHTOlyHWHEL0GTkOiI67-8LLjLm8KMzdNuCE9G24PXbFSAD_DCJF1"
-urllib.request.urlretrieve(url, "hero.jpg")

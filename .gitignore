@@ -25,3 +25,6 @@ app/build/
 # Root scratch files and logs
 /*.txt
 /*.log
+/*.ps1
+/*.py
+/*.sh

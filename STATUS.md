@@ -7,6 +7,10 @@
 - Updated app name to "Arc Music" and base theme to `Theme.ArcMusic`.
 - Cleaned up README.md to remove AI Studio references.
 - Added Hilt for Dependency Injection, registered ArcMusicApplication, and converted MusicViewModel.
+- Fixed missing content algorithm to also show full singles in a dedicated section on the Missing Content Screen.
+- Re-architected background gap fetches to run fully concurrently without dropping results on the floor.
+- Added Fanart.tv API key integration and updated Dolby Atmos icon tinting.
+- Repo hygiene: Cleaned up 160+ root-level scratch scripts (.py, .ps1, .txt, .log, .kt, .sh) and updated .gitignore to prevent recurrence.
 - Replaced the placeholder `SongEntity` schema with a proper relational Room schema (Track, Album, Artist, Playlist, PlaylistTrack, PlayHistory) and separated DAOs.
 - Implemented MediaStore scanning to populate the database with real local tracks, albums, and artists, including runtime permissions support and a Scan button on the Home Screen.
 - Implemented Media3/ExoPlayer integration (`PlaybackService`, `MusicPlayerConnection`) for real background audio playback.
