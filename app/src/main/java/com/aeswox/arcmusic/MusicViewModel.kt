@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import com.aeswox.arcmusic.db.MusicRepository
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
@@ -84,7 +87,8 @@ data class CollectionHealthState(
     val lowQualityCount: Int = 0,
     val missingTracksFromOwnedArtists: Int = 0,
     val missingAlbumsFromOwnedArtists: Int = 0,
-    val favoritedArtistsCount: Int = 0
+    val favoritedArtistsCount: Int = 0,
+    val missingArtworkTracks: List<Track> = emptyList()
 )
 
 data class MissingContentItem(
@@ -107,6 +111,59 @@ sealed class MissingContentUiState {
     data class Empty(val message: String = "Nothing missing! Favorite more artists to track gaps.") : MissingContentUiState()
 }
 
+// ---------------------------------------------------------------------------
+// Collection Growth data models
+// ---------------------------------------------------------------------------
+
+sealed class GrowthCard {
+    data class CompleteCollection(
+        val missingAlbumTitle: String,
+        val artistName: String,
+        val ownedCount: Int,
+        val totalCount: Int,
+        val imageUrl: String?
+    ) : GrowthCard()
+
+    data class NewRelease(
+        val albumTitle: String,
+        val artistName: String,
+        val releaseType: String,
+        val releaseDateStr: String,
+        val imageUrl: String?
+    ) : GrowthCard()
+
+    data class Discovery(
+        val suggestedArtistName: String,
+        val becauseOfArtist: String,
+        val sharedGenre: String?,
+        val imageUrl: String?
+    ) : GrowthCard()
+
+    data class MissingTracks(
+        val albumTitle: String,
+        val artistName: String,
+        val missingCount: Int,
+        val ownedCount: Int,
+        val totalCount: Int,
+        val imageUrl: String?
+    ) : GrowthCard()
+}
+
+data class CollectionGrowthData(
+    val completeCollectionCards: List<GrowthCard.CompleteCollection>,
+    val newReleaseCards: List<GrowthCard.NewRelease>,
+    val discoveryCards: List<GrowthCard.Discovery>,
+    val missingTracksCards: List<GrowthCard.MissingTracks>,
+    /** True when at least one artist qualifies — either favorited or in the top-listened set. */
+    val hasQualifyingArtists: Boolean
+)
+
+sealed class CollectionGrowthUiState {
+    object Loading : CollectionGrowthUiState()
+    data class Success(val cards: List<GrowthCard>) : CollectionGrowthUiState()
+    object Empty : CollectionGrowthUiState()
+}
+
 enum class ThemeMode { System, Light, Dark }
 
 @HiltViewModel
@@ -115,7 +172,8 @@ class MusicViewModel @Inject constructor(
     private val repository: MusicRepository,
     private val musicPlayerConnection: com.aeswox.arcmusic.playback.MusicPlayerConnection,
     private val lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository,
-    private val settingsRepository: com.aeswox.arcmusic.data.SettingsRepository
+    private val settingsRepository: com.aeswox.arcmusic.data.SettingsRepository,
+    private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
 ) : ViewModel() {
 
     val randomPicks: StateFlow<List<Track>>
@@ -145,6 +203,9 @@ class MusicViewModel @Inject constructor(
     
     private val _missingContentUiState = MutableStateFlow<MissingContentUiState>(MissingContentUiState.Loading)
     val missingContentUiState: StateFlow<MissingContentUiState> = _missingContentUiState.asStateFlow()
+
+    private val _growthState = MutableStateFlow<CollectionGrowthUiState>(CollectionGrowthUiState.Loading)
+    val growthState: StateFlow<CollectionGrowthUiState> = _growthState.asStateFlow()
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -165,6 +226,23 @@ class MusicViewModel @Inject constructor(
                 } else {
                     _lyricsUiState.value = null
                 }
+            }
+        }
+        
+        // One-time background backfill for Collection Growth caches
+        viewModelScope.launch(Dispatchers.IO) {
+            val apiKey = settingsRepository.lastFmApiKey.first()
+            val favoritedArtists = repository.getAllArtists().first().filter { it.isFavorite }
+            // Extend the backfill to top-listened artists as well so the pipeline covers
+            // artists the user listens to a lot, not just those they have explicitly favorited.
+            val topListenedArtists = repository.getTopListenedArtists(10)
+            val qualifyingArtists = (favoritedArtists + topListenedArtists).distinctBy { it.id }
+            android.util.Log.d("MusicViewModel",
+                "Growth backfill: ${favoritedArtists.size} favorited, ${topListenedArtists.size} top-listened, " +
+                "${qualifyingArtists.size} qualifying")
+            for (artist in qualifyingArtists) {
+                // refreshArtistGrowthData handles staleness checks internally, so we don't forceRefresh here
+                repository.refreshArtistGrowthData(artist, apiKey, forceRefresh = false)
             }
         }
     }
@@ -449,8 +527,9 @@ class MusicViewModel @Inject constructor(
 
     fun toggleArtistFavorite(artistIds: List<String>, isFavorite: Boolean) {
         viewModelScope.launch {
+            val apiKey = settingsRepository.lastFmApiKey.first()
             artistIds.forEach { id ->
-                repository.toggleArtistFavorite(id, isFavorite)
+                repository.toggleArtistFavorite(id, isFavorite, apiKey)
             }
         }
     }
@@ -556,6 +635,67 @@ class MusicViewModel @Inject constructor(
                     missingTracks = missingTracks.groupBy { it.artistName },
                     missingSingles = missingSingles.groupBy { it.artistName }
                 )
+            }
+        }
+    }
+
+    fun loadCollectionGrowth() {
+        if (_growthState.value is CollectionGrowthUiState.Loading) {
+            // Already loading or will load — avoid duplicate triggers
+        }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _growthState.value = CollectionGrowthUiState.Loading
+            try {
+                val apiKey = lastFmApiKey.value
+                val data = repository.loadCollectionGrowthData(lastFmApiKey = apiKey)
+                if (!data.hasQualifyingArtists) {
+                    _growthState.value = CollectionGrowthUiState.Empty
+                    return@launch
+                }
+                // Interleave card types so the feed feels varied
+                val allCards = mutableListOf<GrowthCard>()
+                val lists: List<List<GrowthCard>> = listOf(
+                    data.newReleaseCards,
+                    data.completeCollectionCards,
+                    data.missingTracksCards,
+                    data.discoveryCards
+                )
+                val maxLen = lists.maxOfOrNull { it.size } ?: 0
+                for (i in 0 until maxLen) {
+                    for (list in lists) {
+                        if (i < list.size) allCards.add(list[i])
+                    }
+                }
+                _growthState.value = if (allCards.isEmpty()) {
+                    CollectionGrowthUiState.Empty
+                } else {
+                    CollectionGrowthUiState.Success(allCards)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MusicViewModel", "loadCollectionGrowth failed", e)
+                _growthState.value = CollectionGrowthUiState.Empty
+            }
+        }
+    }
+
+    fun dismissGrowthCard(card: GrowthCard) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val (cardType, title, artistName) = when (card) {
+                is GrowthCard.CompleteCollection -> Triple("complete_collection", card.missingAlbumTitle, card.artistName)
+                is GrowthCard.NewRelease -> Triple("new_release", card.albumTitle, card.artistName)
+                is GrowthCard.Discovery -> Triple("discovery", card.suggestedArtistName, card.becauseOfArtist)
+                is GrowthCard.MissingTracks -> Triple("missing_tracks", card.albumTitle, card.artistName)
+            }
+            repository.dismissGrowthCard(cardType, title, artistName)
+            // Remove card from current state immediately
+            val current = _growthState.value
+            if (current is CollectionGrowthUiState.Success) {
+                val remaining = current.cards.filter { it != card }
+                _growthState.value = if (remaining.isEmpty()) {
+                    CollectionGrowthUiState.Empty
+                } else {
+                    CollectionGrowthUiState.Success(remaining)
+                }
             }
         }
     }
@@ -685,7 +825,8 @@ class MusicViewModel @Inject constructor(
                     lowQualityCount = lowQuality.size,
                     missingTracksFromOwnedArtists = missingTracks,
                     missingAlbumsFromOwnedArtists = missingAlbums,
-                    favoritedArtistsCount = favoritedArtists.size
+                    favoritedArtistsCount = favoritedArtists.size,
+                    missingArtworkTracks = missingArtwork
                 )
             }.collectLatest { state ->
                 _healthState.value = state
@@ -958,5 +1099,75 @@ class MusicViewModel @Inject constructor(
             .sortedByDescending { it.value }
             .take(4)
             .map { GenreStatEntry(it.key, 0L) }
+    }
+        // --- Missing Artwork Fix ---
+    
+    fun embedArtworkFromUri(track: Track, uri: android.net.Uri) {
+        viewModelScope.launch {
+            try {
+                val bytes: ByteArray? = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }
+                if (bytes != null) {
+                    val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                    val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes, mimeType)
+                    if (success) {
+                        // After scan, the missing artwork state will update automatically next time we pull,
+                        // but we might want to manually trigger a local UI refresh by hiding it.
+                        val currentList = _healthState.value.missingArtworkTracks.toMutableList()
+                        currentList.removeIf { it.id == track.id }
+                        _healthState.value = _healthState.value.copy(
+                            missingArtworkTracks = currentList,
+                            missingArtworkCount = currentList.size
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private val _isAutoFindingArtwork = MutableStateFlow(false)
+    val isAutoFindingArtwork = _isAutoFindingArtwork.asStateFlow()
+    
+    private val _autoFindProgress = MutableStateFlow(0 to 0)
+    val autoFindProgress = _autoFindProgress.asStateFlow()
+
+    fun autoFindArtwork() {
+        if (_isAutoFindingArtwork.value) return
+        viewModelScope.launch {
+            _isAutoFindingArtwork.value = true
+            val missingTracks = _healthState.value.missingArtworkTracks.toList()
+            val total = missingTracks.size
+            var current = 0
+            _autoFindProgress.value = current to total
+            
+            for (track in missingTracks) {
+                try {
+                    // We only have fetchBestArtistImage in ArtworkRepository, which can fetch by track + artist
+                    val url = artworkRepository.fetchBestArtistImage(track.artist, track.title)
+                    if (url != null) {
+                        val bytes = com.aeswox.arcmusic.utils.TaggingHelper.downloadImageBytes(url)
+                        if (bytes != null) {
+                            val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes)
+                            if (success) {
+                                val currentList = _healthState.value.missingArtworkTracks.toMutableList()
+                                currentList.removeIf { it.id == track.id }
+                                _healthState.value = _healthState.value.copy(
+                                    missingArtworkTracks = currentList,
+                                    missingArtworkCount = currentList.size
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                current++
+                _autoFindProgress.value = current to total
+            }
+            _isAutoFindingArtwork.value = false
+        }
     }
 }

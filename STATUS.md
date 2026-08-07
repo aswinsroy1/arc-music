@@ -31,6 +31,20 @@
 - Added real local caching via `CachedMissingContent` Room entity: stores track names as JSON, `cachedAt` timestamp, and uses delete-before-insert to avoid duplication on re-fetch. Staleness policy: 7 days, matching the original plan.
 - Auto-triggers discography scan the moment an artist is favorited via a structured `CoroutineScope(SupervisorJob())` in `MusicRepository`, replacing the previous fragile `GlobalScope.launch`.
 - Fixed `scanMediaStore()` to preserve the `hasScannedMissingContent` flag, preventing the DB scan from wiping the cache on every app restart.
+  - **Wired `CollectionGrowthScreen.kt` with real data across all four card types:**
+  - **Reorganized UI**: Grouped into expandable/collapsible sections by type.
+  - **Complete Collection** — reads from `CachedMissingContent` (same data as Missing Content screen). Shows when ≤2 albums missing and artist is ≥50% complete. Expandable.
+  - **New Release** — queries MusicBrainz `release-group` endpoint for releases in the last 90 days not in local library. Cached 7 days. Throttled at 1.2s per artist. Expandable.
+  - **Discovery** — calls Last.fm `artist.getSimilar` + `artist.getTopTags`. Horizontal chip row + Bottom Sheet. Gated entirely on Last.fm API key presence in Settings.
+  - **Missing Tracks** — reads partial-album entries from `CachedMissingContent`. Shows progress bar (owned / total tracks). Expandable.
+  - **Dismiss** — tapping Dismiss removes the card immediately and persists the dismissal to a new `dismissed_growth_cards` Room table. Dismissed cards never reappear.
+  - **Fixed broken buttons** — "Search Jellyfin" replaced with real "Open Spotify" intents; "Mark as Downloaded" replaced with "Dismiss".
+  - **Empty state** — handled gracefully: shows icon + message if no favorited artists.
+  - **Optimized Loading** — Moved "New Release" and "Discovery" data fetches into the background, caching them locally via Room (`cached_new_releases` and `cached_discoveries` tables). The screen now loads instantly from DB. 
+  - **Background Backfill** — Triggers updates for favorited artists automatically via `refreshArtistGrowthData`, enforcing staleness thresholds (7 days).
+  - DB bumped to version 18.
+- **Extended Collection Growth pipeline to include top-listened artists**: An artist now qualifies for New Release / Discovery / Missing Tracks fetches if they are either favorited **or** in the top 10 most-listened artists (by accumulated listening time from `PlayHistory`). The two sets are merged and deduplicated by artist id so no artist is fetched twice. The top-listened set is recomputed on each backfill cycle (same 7-day staleness cadence). No DB schema changes, no UI changes, no throttling changes. `CollectionGrowthData.hasFavoritedArtists` renamed to `hasQualifyingArtists` to reflect the broader scope.
+
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.
@@ -41,5 +55,6 @@
 **Known Issues**:
 - Project is missing the `arc-music-build-plan.md` referenced in global guidelines.
 - Acceptance check (DB query post-playback) requires a connected device — run `check_play_history.ps1` after playing tracks.
-- Last.fm API Key is still a placeholder (`"YOUR_LAST_FM_API_KEY"`) which blocks Last.fm artwork fetching from working until a real key is provided.
+- Last.fm API Key must be set in Settings → Last.fm for Discovery cards to appear. Without a key, the Discovery section is silently skipped (no error).
 - Missing content scan takes longer now (correct behaviour) because it does a per-album release lookup to MusicBrainz to get actual track names. This is only done once per artist (cached for 7 days).
+- New Release cards are similarly slow on first load (per-artist MBID resolution + MusicBrainz query). Subsequent loads use the 7-day cache and are instant.

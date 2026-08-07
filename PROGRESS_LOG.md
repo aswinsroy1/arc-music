@@ -1,5 +1,39 @@
 # Progress Log
 
+## 2026-08-07 — Collection Growth: Include Top-Listened Artists in Fetch Pipeline
+
+### Goal
+Extend the existing Collection Growth fetch pipeline (New Release, Discovery, Missing Tracks/discography-gap detection) to cover the top 10 most-listened artists from `PlayHistory`, not just favorited artists.
+
+### Changed Files
+- **`db/MusicRepository.kt`**
+  - Added `getTopListenedArtists(limit: Int = 10): List<Artist>` — aggregates listening time from `play_history` (same calculation as Listening Stats' Top Artists), ranks by total accumulated minutes, and looks up the top N names in the `artists` table. Artists with no corresponding entity are silently excluded.
+  - Modified `loadCollectionGrowthData()`: fetches top-listened artists and merges with `favoritedArtists` via `(favorited + topListened).distinctBy { it.id }`. The merged set (`qualifyingArtists`) drives all four card type loops and the Discovery cap. Renamed `hasFavoritedArtists` → `hasQualifyingArtists` in the returned `CollectionGrowthData`.
+
+- **`MusicViewModel.kt`**
+  - `CollectionGrowthData.hasFavoritedArtists` renamed to `hasQualifyingArtists` (with KDoc noting it covers both favorited and top-listened).
+  - `init` backfill coroutine: now fetches `repository.getTopListenedArtists(10)`, merges with favorited artists (deduped by id), and runs `refreshArtistGrowthData()` for every qualifying artist — same staleness gates as before.
+  - `loadCollectionGrowth()` guard updated from `!data.hasFavoritedArtists` to `!data.hasQualifyingArtists`.
+
+### Key Design Decisions
+- **Threshold**: Top 10 by listening time — manageable, meaningful scope, same spirit as why favoriting was originally used.
+- **No double-fetching**: Deduplication by `artist.id` before any loop. An artist who is both favorited and top-listened triggers exactly one `refreshArtistGrowthData()` call.
+- **Re-evaluation cadence**: Top-listened set recomputed on each backfill tick (≈ every 7 days per the staleness policy). No extra timer, no extra infrastructure.
+- **No DB schema changes** — computed purely from existing `play_history + tracks` data.
+- **No UI changes** — cards render identically regardless of whether the artist qualified via favoriting or listening history.
+- **Existing favorited-artist path fully preserved** — favorited artists appear first in the merged list, and all existing cache / throttle / staleness behaviour is untouched.
+
+### Build
+`BUILD SUCCESSFUL in 1m 38s`. All warnings are pre-existing (`@Json` annotation scope, deprecated `fallbackToDestructiveMigration`). Zero new errors.
+
+### Acceptance Checks (require device)
+1. Play an artist heavily without favoriting them → check logcat for `"Background scan started for <ArtistName>"` on first launch, or `"Serving <ArtistName> missing content from cache"` on subsequent.
+2. Confirm Collection Growth cards appear for that artist (New Releases, Missing Tracks, or Complete Collection).
+3. Confirm existing favorited artist cards are unaffected.
+4. Dismiss a top-listened artist card → force-close + reopen → card should not reappear.
+
+---
+
 ## 2026-07-25
 - **Changed**:
   - Renamed package structure from `com.example` to `com.aeswox.arcmusic`.
@@ -174,3 +208,58 @@
   1. Tap a Partial Album → confirm actual track names expand below it.
   2. Force-close and reopen → check logcat for `"Serving X missing content from cache"` — no MusicBrainz requests should fire.
   3. Favorite a brand-new artist → check logcat for `"Background scan started for X"` and confirm cached data exists after ~30s.
+
+## 2026-08-06 — Collection Growth: Wire All Four Card Types
+
+### New Files
+- `db/entities/CachedNewRelease.kt` — Room entity caching recent MusicBrainz release-groups not yet in local library (7-day staleness).
+- `db/entities/DismissedGrowthCard.kt` — Room entity with composite PK `(cardType, title, artistName)` for permanent card dismissals.
+- `db/daos/NewReleaseDao.kt` — DAO for `cached_new_releases` table.
+- `db/daos/DismissedCardDao.kt` — DAO for `dismissed_growth_cards` table.
+
+### Modified Files
+- `db/MusicDatabase.kt` — Bumped to **v16**; registered new entities + DAOs; added `MIGRATION_15_16` creating both new tables.
+- `di/DatabaseModule.kt` — Added `provideNewReleaseDao`, `provideDismissedCardDao` providers; updated `MusicRepository` provider constructor.
+- `data/network/AlternativeApis.kt` — Added `LastFmService.getArtistSimilar()`, `LastFmService.getArtistTopTags()`; added all response model classes (`LastFmSimilarResponse`, `LastFmSimilarArtist`, `LastFmTopTagsResponse`, `LastFmTag`); added `MusicBrainzService.searchReleaseGroups()` + `MusicBrainzReleaseGroupResponse` / `MusicBrainzReleaseGroupItem` models.
+- `data/network/ArtworkRepository.kt` — Added `resolveArtistMbidPublic()` (public wrapper for MBID resolution); added `fetchNewReleases()` (MusicBrainz release-group query, 90-day window, 1.2s throttle); added `fetchSimilarArtists()` (Last.fm `artist.getSimilar` + `artist.getTopTags`, polite 300ms delay); added `NewReleaseItem` + `DiscoveryItem` DTOs.
+- `db/MusicRepository.kt` — Added `newReleaseDao` + `dismissedCardDao` constructor parameters; added `loadCollectionGrowthData(lastFmApiKey)` which orchestrates all four card types from existing cache + fresh fetches; added `dismissGrowthCard(type, title, artist)`; added private `fetchAndCacheNewReleases()` helper to avoid `val cannot be reassigned` in try/catch.
+- `MusicViewModel.kt` — Added `GrowthCard` sealed class with 4 subtypes; added `CollectionGrowthData` + `CollectionGrowthUiState`; added `_growthState` StateFlow; added `loadCollectionGrowth()` (interleaves card types for varied feed); added `dismissGrowthCard(card)` (persists + removes from state immediately).
+- `CollectionGrowthScreen.kt` — **Full rewrite**: LazyColumn driven by `growthState`; 4 card composables (`CompleteCollectionCard`, `NewReleaseCard`, `DiscoveryCard`, `MissingTracksCard`); fixed broken buttons (Open Spotify / Search YouTube replacing Jellyfin/Download); Dismiss on all cards; Loading + Empty states.
+- `MainActivity.kt` — Passes `viewModel = viewModel` to `CollectionGrowthScreen`.
+
+### Key Decisions
+- **Reuse, not rebuild**: Complete Collection and Missing Tracks cards read directly from `CachedMissingContent` (populated by Collection Health / Missing Content scan). No second MusicBrainz query for these.
+- **Discovery gating**: If `lastFmApiKey` is null/blank, `fetchSimilarArtists()` is skipped entirely — zero Discovery cards, no error, no UI change. Consistent with Fanart.tv gating pattern.
+- **Dismiss scope**: `dismissed_growth_cards` table is shared infrastructure but dismiss button is only on Growth cards for now, not on Missing Content screen (different UX model).
+
+### Build
+- `BUILD SUCCESSFUL in 1m 36s`. Warnings are all pre-existing (`@Json` annotation scope, deprecated `fallbackToDestructiveMigration`). Zero new errors.
+
+### Acceptance Checks (require device)
+1. Navigate to Collection Growth → confirm Loading indicator while data loads, cards appear after.
+2. Favorite 1+ artists with Collection Health gaps already scanned → confirm Complete Collection and Missing Tracks cards show real album names and counts.
+3. Tap Dismiss on any card → confirm card vanishes immediately; force-close + reopen → confirm card does not reappear.
+4. With no Last.fm API key → confirm no Discovery cards appear (no error, no crash).
+5. With a Last.fm API key set → confirm Discovery cards appear with "Since you love X" and optional genre chip.
+6. Tap "Open Spotify" → confirm Spotify search opens; tap "Search YouTube" → confirm YouTube Music search opens.
+7. With no favorited artists → confirm empty state icon + message ("Favorite some artists…").
+
+
+## Collection Growth UI Reorganization (2026-08-06)
+- **Goal**: Reorganize Collection Growth into grouped, collapsible sections.
+- **Changed**:
+  - CollectionGrowthScreen.kt: Replaced flat card list with grouped sections ('Almost Complete', 'New Releases', 'Missing Tracks', 'Discover').
+  - Converted Discovery cards to a horizontal scrolling chip row with a Bottom Sheet for details.
+  - Converted other cards to be collapsible by default, expanding to reveal full details (buttons, progress) on tap.
+- **Verified**: Builds successfully and UI reflects the grouped layout.
+
+## Collection Growth Performance (2026-08-06)
+- **Goal**: Move Collection Growth network requests to background tasks.
+- **Changed**:
+  - Migrated 'New Release' and 'Discovery' fetch logic out of synchronous UI loading into efreshArtistGrowthData background worker.
+  - Implemented Room entities CachedNewRelease and CachedDiscovery to persist the data locally.
+  - Updated MusicViewModel.init with a one-time backfill coroutine.
+  - The CollectionGrowthScreen now loads instantly and is completely offline-first.
+  - Schema bumped to Version 18 with appropriate migration strategies.
+- **Verified**: Builds successfully.
+
