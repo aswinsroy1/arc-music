@@ -28,6 +28,7 @@ import com.aeswox.arcmusic.db.entities.Track
 fun CollectionHealthScreen(
     onNavigateBack: () -> Unit,
     onNavigateToMissingContent: () -> Unit = {},
+    onNavigateToMissingArtwork: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MusicViewModel = hiltViewModel(),
     glowIntensity: Float = 0.6f
@@ -77,7 +78,10 @@ fun CollectionHealthScreen(
                 }
                 
                 item {
-                    CollectionHealthBreakdownSection(healthState)
+                    CollectionHealthBreakdownSection(
+                        state = healthState,
+                        onNavigateToMissingArtwork = onNavigateToMissingArtwork
+                    )
                 }
                 
                 item {
@@ -163,7 +167,10 @@ fun CollectionHealthScoreSection(score: Int) {
 }
 
 @Composable
-fun CollectionHealthBreakdownSection(state: CollectionHealthState) {
+fun CollectionHealthBreakdownSection(
+    state: CollectionHealthState,
+    onNavigateToMissingArtwork: () -> Unit = {}
+) {
     GlassCard {
         Column(
             modifier = Modifier.fillMaxWidth().padding(8.dp)
@@ -173,7 +180,8 @@ fun CollectionHealthBreakdownSection(state: CollectionHealthState) {
                 iconTint = if (state.missingArtworkCount > 0) Color(0xFFE53935) else Color(0xFF43A047),
                 iconBg = if (state.missingArtworkCount > 0) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
                 title = "Missing artwork",
-                subtitle = if (state.missingArtworkCount > 0) "${state.missingArtworkCount} songs missing artwork" else "All songs have artwork"
+                subtitle = if (state.missingArtworkCount > 0) "${state.missingArtworkCount} songs missing artwork" else "All songs have artwork",
+                onClick = if (state.missingArtworkCount > 0) onNavigateToMissingArtwork else null
             )
             HealthBreakdownItem(
                 icon = Icons.Default.Info,

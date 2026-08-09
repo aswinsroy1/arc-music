@@ -56,6 +56,36 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideNewReleaseDao(database: MusicDatabase): NewReleaseDao {
+        return database.newReleaseDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDismissedCardDao(database: MusicDatabase): DismissedCardDao {
+        return database.dismissedCardDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDiscoveryDao(database: MusicDatabase): DiscoveryDao {
+        return database.discoveryDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNewSongDao(database: MusicDatabase): NewSongDao {
+        return database.newSongDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTrendingDao(database: MusicDatabase): TrendingDao {
+        return database.trendingDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideMusicRepository(
         trackDao: TrackDao,
         albumDao: AlbumDao,
@@ -64,10 +94,19 @@ object DatabaseModule {
         playHistoryDao: PlayHistoryDao,
         searchHistoryDao: SearchHistoryDao,
         missingContentDao: MissingContentDao,
+        newReleaseDao: NewReleaseDao,
+        dismissedCardDao: DismissedCardDao,
+        discoveryDao: DiscoveryDao,
+        newSongDao: NewSongDao,
+        trendingDao: TrendingDao,
         mediaStoreScanner: MediaStoreScanner,
         artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
     ): MusicRepository {
-        return MusicRepository(trackDao, albumDao, artistDao, playlistDao, playHistoryDao, searchHistoryDao, missingContentDao, mediaStoreScanner, artworkRepository)
+        return MusicRepository(
+            trackDao, albumDao, artistDao, playlistDao, playHistoryDao,
+            searchHistoryDao, missingContentDao, newReleaseDao, dismissedCardDao,
+            discoveryDao, newSongDao, trendingDao, mediaStoreScanner, artworkRepository
+        )
     }
 
     @Provides

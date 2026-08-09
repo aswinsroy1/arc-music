@@ -159,7 +159,8 @@ class MainActivity : ComponentActivity() {
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
 
                     Box(modifier = Modifier.fillMaxSize()) {
-                        AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
                         
                         NavHost(
                             navController = navController,
@@ -186,7 +187,8 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 CollectionGrowthScreen(
                                     onNavigateBack = { navController.popBackStack() },
-                                    glowIntensity = glowIntensity
+                                    glowIntensity = glowIntensity,
+                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -195,6 +197,7 @@ class MainActivity : ComponentActivity() {
                                 CollectionHealthScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToMissingContent = { navController.navigate("missing_content") },
+                                    onNavigateToMissingArtwork = { navController.navigate("missing_artwork") },
                                     glowIntensity = glowIntensity
                                 )
                             }
@@ -204,6 +207,14 @@ class MainActivity : ComponentActivity() {
                                 MissingContentScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     viewModel = viewModel
+                                )
+                            }
+                        }
+                        composable("missing_artwork") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                MissingArtworkScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }
@@ -329,6 +340,7 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
+                    }
                     }
                     }
                     }
@@ -579,6 +591,7 @@ fun MusicHomeScreen(
                 }
             )
         }
+
         }
     }
 }

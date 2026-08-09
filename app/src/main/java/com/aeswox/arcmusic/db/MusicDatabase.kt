@@ -20,9 +20,14 @@ import com.aeswox.arcmusic.db.daos.*
         PlayHistory::class,
         SearchHistory::class,
         TrackFts::class,
-        CachedMissingContent::class
+        CachedMissingContent::class,
+        CachedNewRelease::class,
+        DismissedGrowthCard::class,
+        CachedDiscovery::class,
+        CachedNewSong::class,
+        CachedTrending::class
     ], 
-    version = 15, 
+    version = 19, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -33,6 +38,11 @@ abstract class MusicDatabase : RoomDatabase() {
     abstract fun playHistoryDao(): PlayHistoryDao
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun missingContentDao(): MissingContentDao
+    abstract fun newReleaseDao(): NewReleaseDao
+    abstract fun dismissedCardDao(): DismissedCardDao
+    abstract fun discoveryDao(): DiscoveryDao
+    abstract fun newSongDao(): NewSongDao
+    abstract fun trendingDao(): TrendingDao
 
     companion object {
         @Volatile
@@ -117,6 +127,76 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `cached_new_releases` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `artistName` TEXT NOT NULL,
+                        `releaseType` TEXT NOT NULL,
+                        `releaseDateStr` TEXT NOT NULL,
+                        `imageUrl` TEXT,
+                        `cachedAt` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `dismissed_growth_cards` (
+                        `cardType` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `artistName` TEXT NOT NULL,
+                        `dismissedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`cardType`, `title`, `artistName`)
+                    )
+                """.trimIndent())
+            }
+        }
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Empty migration to bump schema hash. The tables are already structurally correct.
+            }
+        }
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `cached_discoveries` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `suggestedArtistName` TEXT NOT NULL,
+                        `becauseOfArtist` TEXT NOT NULL,
+                        `sharedGenre` TEXT,
+                        `imageUrl` TEXT,
+                        `cachedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `cached_new_songs` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `trackTitle` TEXT NOT NULL,
+                        `artistName` TEXT NOT NULL,
+                        `mbid` TEXT NOT NULL,
+                        `releaseDateStr` TEXT NOT NULL,
+                        `imageUrl` TEXT,
+                        `cachedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `cached_trending` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `trackTitle` TEXT NOT NULL,
+                        `artistName` TEXT NOT NULL,
+                        `imageUrl` TEXT,
+                        `matchedGenre` TEXT,
+                        `cachedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -124,7 +204,12 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                .addMigrations(
+                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+                    MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+                    MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
+                    MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
+                )
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

@@ -147,6 +147,20 @@ sealed class GrowthCard {
         val totalCount: Int,
         val imageUrl: String?
     ) : GrowthCard()
+
+    data class NewSong(
+        val trackTitle: String,
+        val artistName: String,
+        val releaseDateStr: String,
+        val imageUrl: String?
+    ) : GrowthCard()
+
+    data class Trending(
+        val trackTitle: String,
+        val artistName: String,
+        val matchedGenre: String?,
+        val imageUrl: String?
+    ) : GrowthCard()
 }
 
 data class CollectionGrowthData(
@@ -154,6 +168,8 @@ data class CollectionGrowthData(
     val newReleaseCards: List<GrowthCard.NewRelease>,
     val discoveryCards: List<GrowthCard.Discovery>,
     val missingTracksCards: List<GrowthCard.MissingTracks>,
+    val newSongCards: List<GrowthCard.NewSong>,
+    val trendingCards: List<GrowthCard.Trending>,
     /** True when at least one artist qualifies — either favorited or in the top-listened set. */
     val hasQualifyingArtists: Boolean
 )
@@ -173,7 +189,11 @@ class MusicViewModel @Inject constructor(
     private val musicPlayerConnection: com.aeswox.arcmusic.playback.MusicPlayerConnection,
     private val lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository,
     private val settingsRepository: com.aeswox.arcmusic.data.SettingsRepository,
-    private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
+    private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository,
+    private val deezerRepository: com.aeswox.arcmusic.data.network.DeezerRepository,
+    private val itunesService: com.aeswox.arcmusic.data.network.ItunesService,
+    private val odesliService: com.aeswox.arcmusic.data.network.OdesliService,
+    private val musicBrainzService: com.aeswox.arcmusic.data.network.MusicBrainzService
 ) : ViewModel() {
 
     val randomPicks: StateFlow<List<Track>>
@@ -243,6 +263,13 @@ class MusicViewModel @Inject constructor(
             for (artist in qualifyingArtists) {
                 // refreshArtistGrowthData handles staleness checks internally, so we don't forceRefresh here
                 repository.refreshArtistGrowthData(artist, apiKey, forceRefresh = false)
+            }
+            // Trending: genre-biased chart tracks — gated on Last.fm key, same staleness policy
+            if (!apiKey.isNullOrBlank()) {
+                // Derive user top genres from the track library directly — listeningStats is
+                // not yet initialized at this point in the first init block.
+                val userGenres = repository.getTopGenresFromLibrary(limit = 5)
+                repository.refreshTrendingData(apiKey, userGenres)
             }
         }
     }
@@ -395,6 +422,63 @@ class MusicViewModel @Inject constructor(
             repository.updateArtistPhoto(artistId, newUri)
         }
     }
+
+    fun refetchArtistDetails(artistId: String, artistName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Instantly clear the image and show loading state
+            repository.updateArtistPhoto(artistId, "")
+            repository.updateArtistBio(artistId, "Loading...")
+            
+            // Get any track by this artist to help with disambiguation
+            val track = repository.getTracksByArtist(artistName).first().firstOrNull()
+            
+            // Re-fetch image using the updated Deezer-first logic
+            val photoUrl = artworkRepository.fetchBestArtistImage(artistName, track?.title)
+            if (photoUrl != null) {
+                repository.updateArtistPhoto(artistId, photoUrl)
+            } else {
+                repository.updateArtistPhoto(artistId, "")
+            }
+            
+            // Re-fetch bio using the updated Last.fm prioritized logic
+            val bio = artworkRepository.fetchArtistBio(artistName)
+            if (bio != null) {
+                repository.updateArtistBio(artistId, bio)
+            } else {
+                repository.updateArtistBio(artistId, "No artist info available yet.")
+            }
+        }
+    }
+
+    fun refetchAllArtistsDetails() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val artists = libraryArtists.value
+            for (artist in artists) {
+                // Instantly clear the image and show loading state
+                repository.updateArtistPhoto(artist.id, "")
+                repository.updateArtistBio(artist.id, "Loading...")
+                
+                // Get any track by this artist to help with disambiguation
+                val track = repository.getTracksByArtist(artist.name).first().firstOrNull()
+                
+                // Re-fetch image using the updated Deezer-first logic
+                val photoUrl = artworkRepository.fetchBestArtistImage(artist.name, track?.title)
+                if (photoUrl != null) {
+                    repository.updateArtistPhoto(artist.id, photoUrl)
+                } else {
+                    repository.updateArtistPhoto(artist.id, "")
+                }
+                
+                // Re-fetch bio using the updated Last.fm prioritized logic
+                val bio = artworkRepository.fetchArtistBio(artist.name)
+                if (bio != null) {
+                    repository.updateArtistBio(artist.id, bio)
+                } else {
+                    repository.updateArtistBio(artist.id, "No artist info available yet.")
+                }
+            }
+        }
+    }
     
     // Temporary EAC3 test
     private var testPlayer: androidx.media3.exoplayer.ExoPlayer? = null
@@ -545,10 +629,96 @@ class MusicViewModel @Inject constructor(
             repository.deleteArtists(artistNames)
         }
     }
-
     fun deletePlaylists(playlistTitles: List<String>) {
         viewModelScope.launch {
             repository.deletePlaylists(playlistTitles)
+        }
+    }
+
+    suspend fun getTrackDownloadUrl(query: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val itunesResponse = itunesService.searchTrack(term = query, limit = 1)
+            val itunesUrl = itunesResponse.results?.firstOrNull()?.trackViewUrl
+            if (itunesUrl.isNullOrBlank()) {
+                // Fallback to raw text search if iTunes has no results
+                return@withContext query
+            }
+
+            // Convert iTunes URL to Tidal/Spotify URL using Odesli
+            val odesliResponse = odesliService.getLinks(url = itunesUrl)
+            val tidalUrl = odesliResponse.linksByPlatform?.get("tidal")?.url
+            val spotifyUrl = odesliResponse.linksByPlatform?.get("spotify")?.url
+            
+            if (tidalUrl != null) return@withContext tidalUrl
+            if (spotifyUrl != null) return@withContext spotifyUrl
+            
+            // Fallback to raw text search if Odesli has no links
+            return@withContext query
+        } catch (e: Exception) {
+            // Fallback to raw text search on error
+            return@withContext query
+        }
+    }
+
+    suspend fun getAlbumDownloadUrl(query: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val itunesResponse = itunesService.searchAlbum(term = query, limit = 1)
+            val itunesUrl = itunesResponse.results?.firstOrNull()?.collectionViewUrl
+            if (itunesUrl.isNullOrBlank()) {
+                // Fallback to raw text search if iTunes has no results
+                return@withContext query
+            }
+
+            val odesliResponse = odesliService.getLinks(url = itunesUrl)
+            val tidalUrl = odesliResponse.linksByPlatform?.get("tidal")?.url
+            val spotifyUrl = odesliResponse.linksByPlatform?.get("spotify")?.url
+            
+            if (tidalUrl != null) return@withContext tidalUrl
+            if (spotifyUrl != null) return@withContext spotifyUrl
+            
+            // Fallback to raw text search if Odesli has no links
+            return@withContext query
+        } catch (e: Exception) {
+            // Fallback to raw text search on error
+            return@withContext query
+        }
+    }
+
+    suspend fun getArtistDownloadUrl(query: String): String? = withContext(Dispatchers.IO) {
+        try {
+            // First search MusicBrainz for the artist
+            val searchResponse = musicBrainzService.searchArtist(query)
+            val artistMbid = searchResponse.artists?.firstOrNull()?.id
+            
+            if (!artistMbid.isNullOrBlank()) {
+                // Fetch artist relations to get Tidal or Spotify URL
+                val artistDetails = musicBrainzService.getArtistById(artistMbid, include = "url-rels")
+                
+                // Try to find a Tidal URL first (since user prefers it)
+                var tidalUrl: String? = null
+                var spotifyUrl: String? = null
+                
+                artistDetails.relations?.forEach { relation ->
+                    val url = relation.url?.resource
+                    if (url != null) {
+                        if (url.contains("tidal.com/artist/")) {
+                            tidalUrl = url
+                        } else if (url.contains("open.spotify.com/artist/")) {
+                            spotifyUrl = url
+                        }
+                    }
+                }
+                
+                // Return Tidal if available, otherwise Spotify, otherwise fallback to query
+                if (tidalUrl != null) return@withContext tidalUrl
+                if (spotifyUrl != null) return@withContext spotifyUrl
+            }
+            
+            // Fallback: Send the plain text query for artists so SpotiFLAC can perform a global search using its default provider.
+            return@withContext query
+        } catch (e: Exception) {
+            android.util.Log.e("MusicViewModel", "Failed to fetch artist URL", e)
+            return@withContext query
         }
     }
 
@@ -656,9 +826,11 @@ class MusicViewModel @Inject constructor(
                 val allCards = mutableListOf<GrowthCard>()
                 val lists: List<List<GrowthCard>> = listOf(
                     data.newReleaseCards,
+                    data.newSongCards,
                     data.completeCollectionCards,
                     data.missingTracksCards,
-                    data.discoveryCards
+                    data.discoveryCards,
+                    data.trendingCards
                 )
                 val maxLen = lists.maxOfOrNull { it.size } ?: 0
                 for (i in 0 until maxLen) {
@@ -685,6 +857,8 @@ class MusicViewModel @Inject constructor(
                 is GrowthCard.NewRelease -> Triple("new_release", card.albumTitle, card.artistName)
                 is GrowthCard.Discovery -> Triple("discovery", card.suggestedArtistName, card.becauseOfArtist)
                 is GrowthCard.MissingTracks -> Triple("missing_tracks", card.albumTitle, card.artistName)
+                is GrowthCard.NewSong -> Triple("new_song", card.trackTitle, card.artistName)
+                is GrowthCard.Trending -> Triple("trending", card.trackTitle, card.artistName)
             }
             repository.dismissGrowthCard(cardType, title, artistName)
             // Remove card from current state immediately

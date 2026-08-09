@@ -8,6 +8,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 @Singleton
 class ArtworkRepository @Inject constructor(
     private val deezerRepository: DeezerRepository,
@@ -16,20 +19,33 @@ class ArtworkRepository @Inject constructor(
     private val musicBrainzService: MusicBrainzService,
     private val itunesService: ItunesService,
     private val fanartTvService: FanartTvService,
+    private val wikipediaService: WikipediaService,
     private val settingsRepository: com.aeswox.arcmusic.data.SettingsRepository
 ) {
+    private val mbMutex = Mutex()
+    private var lastMbRequestTime = 0L
+
+    private suspend fun <T> withMusicBrainzRateLimit(block: suspend () -> T): T {
+        return mbMutex.withLock {
+            val now = System.currentTimeMillis()
+            val timeSinceLast = now - lastMbRequestTime
+            if (timeSinceLast < 1200) {
+                kotlinx.coroutines.delay(1200 - timeSinceLast)
+            }
+            val result = block()
+            lastMbRequestTime = System.currentTimeMillis()
+            result
+        }
+    }
+
     suspend fun fetchBestArtistImage(artistName: String, trackTitle: String? = null): String? = withContext(Dispatchers.IO) {
-        // 1. Try Deezer (by track + artist for precision)
+        // 1. Try Deezer (by track + artist for precision, mimicking PixelPlayer + Disambiguation)
         if (trackTitle != null) {
             val deezerTrackImg = deezerRepository.fetchArtistImageByTrack(artistName, trackTitle)
             if (deezerTrackImg != null) return@withContext deezerTrackImg
         }
-        
-        // 1.5. Try MusicBrainz MBID -> TheAudioDB (high precision, avoids name collisions)
-        val mbImg = fetchArtistImageViaMusicBrainz(artistName)
-        if (mbImg != null) return@withContext mbImg
 
-        // 2. Try Deezer (by artist name)
+        // 2. Try Deezer (by artist name directly, highly reliable fallback)
         val deezerImg = deezerRepository.fetchArtistImage(artistName)
         if (deezerImg != null) return@withContext deezerImg
 
@@ -42,13 +58,13 @@ class ArtworkRepository @Inject constructor(
             Log.e("ArtworkRepository", "TheAudioDB error for $artistName", e)
         }
 
-        // 4. Try Last.fm
+        // 4. Try Last.fm (often returns default star image, but we filter it out)
         try {
             val apiKey = settingsRepository.lastFmApiKey.firstOrNull()
             if (!apiKey.isNullOrBlank()) {
                 val lfmResponse = lastFmService.getArtistInfo(artist = artistName, apiKey = apiKey)
                 // Get the largest image ("extralarge" or "mega")
-                val lfmImg = lfmResponse.artist?.image?.lastOrNull { it.text.isNotBlank() }?.text
+                val lfmImg = lfmResponse.artist?.image?.lastOrNull { it.text?.isNotBlank() == true }?.text
                 if (!lfmImg.isNullOrBlank() && !lfmImg.contains("2a96cbd8b46e442fc41c2b86b821562f")) { 
                     // Ignore default Last.fm star image
                     return@withContext lfmImg
@@ -57,9 +73,6 @@ class ArtworkRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "Last.fm error for $artistName", e)
         }
-        
-        // MusicBrainz is omitted for automated best image because it requires multi-step scraping
-        // from Wikidata/Wikipedia relations which is too slow and complex for background tasks.
         
         null
     }
@@ -85,7 +98,7 @@ class ArtworkRepository @Inject constructor(
             val apiKey = settingsRepository.lastFmApiKey.firstOrNull()
             if (!apiKey.isNullOrBlank()) {
                 val lfmResponse = lastFmService.getArtistInfo(artist = artistName, apiKey = apiKey)
-                lfmResponse.artist?.image?.lastOrNull { it.text.isNotBlank() }?.text?.let { lfmImg ->
+                lfmResponse.artist?.image?.lastOrNull { it.text?.isNotBlank() == true }?.text?.let { lfmImg ->
                     if (!lfmImg.contains("2a96cbd8b46e442fc41c2b86b821562f")) {
                         allImages.add(lfmImg)
                     }
@@ -95,7 +108,7 @@ class ArtworkRepository @Inject constructor(
 
         // MusicBrainz
         try {
-            val mbResponse = musicBrainzService.searchArtist(query = artistName)
+            val mbResponse = withMusicBrainzRateLimit { musicBrainzService.searchArtist(query = artistName) }
             // Just extract relation URLs as a fallback if they are image links (unlikely, but we try)
             mbResponse.artists?.forEach { artist ->
                 artist.relations?.forEach { relation ->
@@ -157,7 +170,7 @@ class ArtworkRepository @Inject constructor(
             // We search for just the album name because iTunes sometimes suppresses exact matches when artist is included in term
             val response = itunesService.searchAlbum(term = cleanAlbum)
             val exactMatch = response.results?.firstOrNull {
-                it.collectionName.contains(cleanAlbum, ignoreCase = true) && 
+                (it.collectionName?.contains(cleanAlbum, ignoreCase = true) == true) && 
                 (it.artistName.contains(artistName, ignoreCase = true) || artistName.contains(it.artistName, ignoreCase = true))
             }
             // Replace 100x100 with higher resolution 600x600 if it exists
@@ -182,7 +195,7 @@ class ArtworkRepository @Inject constructor(
     }
 
     suspend fun fetchArtistBio(artistName: String): String? = withContext(Dispatchers.IO) {
-        // Try Last.fm first (usually has better bios)
+        // 1. Try Last.fm (primary choice based on user preference)
         try {
             val apiKey = settingsRepository.lastFmApiKey.firstOrNull()
             if (!apiKey.isNullOrBlank()) {
@@ -196,13 +209,27 @@ class ArtworkRepository @Inject constructor(
             Log.e("ArtworkRepository", "Last.fm bio error for $artistName", e)
         }
 
-        // Try TheAudioDB
+        // 2. Try TheAudioDB (fast public fallback)
         try {
             val tadbResponse = theAudioDbService.searchArtist(artist = artistName)
             val bio = tadbResponse.artists?.firstOrNull()?.strBiographyEN
             if (!bio.isNullOrBlank()) return@withContext bio.trim()
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "TheAudioDB bio error for $artistName", e)
+        }
+
+        // 3. Try Wikipedia (fast title guessing only, no MusicBrainz relation lookup)
+        try {
+            val title = java.net.URLEncoder.encode(artistName.replace(" ", "_"), "UTF-8")
+            val response = wikipediaService.getSummary("https://en.wikipedia.org/api/rest_v1/page/summary/$title")
+            val lowerExtract = response.extract?.lowercase() ?: ""
+            if (lowerExtract.contains("musician") || lowerExtract.contains("singer") || lowerExtract.contains("band") || lowerExtract.contains("rapper") || lowerExtract.contains("group") || lowerExtract.contains("artist")) {
+                if (!response.extract.isNullOrBlank()) {
+                    return@withContext response.extract.trim()
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("ArtworkRepository", "Wikipedia bio error for $artistName", e)
         }
 
         null
@@ -227,7 +254,7 @@ class ArtworkRepository @Inject constructor(
                 val trackQueries = localTrackTitles.take(3).joinToString(" OR ") { "recording:\"$it\"" }
                 val query = "artist:\"$artistName\" AND ($trackQueries)"
                 try {
-                    val recResponse = musicBrainzService.searchRecording(query = query, limit = 10)
+                    val recResponse = withMusicBrainzRateLimit { musicBrainzService.searchRecording(query = query, limit = 10) }
                     val artistIds = recResponse.recordings?.flatMap { r -> 
                         r.artistCredit?.mapNotNull { it.artist?.id } ?: emptyList() 
                     } ?: emptyList()
@@ -246,7 +273,7 @@ class ArtworkRepository @Inject constructor(
                 kotlinx.coroutines.delay(1200) // rate limit before next search
             }
 
-            val mbResponse = musicBrainzService.searchArtist(query = artistName)
+            val mbResponse = withMusicBrainzRateLimit { musicBrainzService.searchArtist(query = artistName) }
             val candidates = mbResponse.artists ?: return null
             if (candidates.isEmpty()) return null
 
@@ -259,7 +286,7 @@ class ArtworkRepository @Inject constructor(
                     kotlinx.coroutines.delay(1200)
                     try {
                         val q = "arid:${candidate.id} AND status:official AND (primarytype:album OR primarytype:ep)"
-                        val releases = musicBrainzService.searchReleases(query = q, limit = 25).releases ?: continue
+                        val releases = withMusicBrainzRateLimit { musicBrainzService.searchReleases(query = q, limit = 25) }.releases ?: continue
 
                         // Album-title score: how many local album names match this candidate's release groups
                         val rgTitles = releases.mapNotNull { it.releaseGroup?.title ?: it.title }.map { it.lowercase() }.toSet()
@@ -275,7 +302,7 @@ class ArtworkRepository @Inject constructor(
                             if (bestRelease != null) {
                                 kotlinx.coroutines.delay(1200)
                                 try {
-                                    val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
+                                    val fullRelease = withMusicBrainzRateLimit { musicBrainzService.getReleaseById(bestRelease.id) }
                                     val releaseTracks = fullRelease.media
                                         ?.flatMap { it.tracks ?: emptyList() }
                                         ?.map { it.title.lowercase() } ?: emptyList()
@@ -316,7 +343,14 @@ class ArtworkRepository @Inject constructor(
         }
     }
 
+    /** Public wrapper so MusicRepository can resolve MBIDs for new-release fetching. */
+    suspend fun resolveArtistMbidPublic(
+        artistName: String,
+        localAlbumTitles: Set<String> = emptySet()
+    ): String? = resolveArtistMbid(artistName, localAlbumTitles)
+
     private suspend fun fetchArtistImageViaMusicBrainz(artistName: String, localAlbumTitles: Set<String> = emptySet(), localTrackTitles: Set<String> = emptySet()): String? {
+
         try {
             val mbid = resolveArtistMbid(artistName, localAlbumTitles, localTrackTitles) ?: return null
             
@@ -344,14 +378,14 @@ class ArtworkRepository @Inject constructor(
 
     suspend fun fetchDiscographyGaps(artistName: String, localAlbums: Map<String, Int>): Pair<Int, Int>? {
         try {
-            val mbResponse = musicBrainzService.searchArtist(query = artistName)
+            val mbResponse = withMusicBrainzRateLimit { musicBrainzService.searchArtist(query = artistName) }
             val mbid = mbResponse.artists?.firstOrNull()?.id ?: return null
 
             // Respect MusicBrainz rate limiting (1 req/s) between the two endpoints
             kotlinx.coroutines.delay(1200)
 
             val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep)"
-            val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
+            val releaseResponse = withMusicBrainzRateLimit { musicBrainzService.searchReleases(query = query, limit = 100) }
             val releases = releaseResponse.releases ?: return null
             
             // 1. Filter out unwanted secondary types (live, compilations, soundtracks, etc.)
@@ -423,7 +457,7 @@ class ArtworkRepository @Inject constructor(
             kotlinx.coroutines.delay(1200)
 
             val query = "arid:$mbid AND status:official AND (primarytype:album OR primarytype:ep OR primarytype:single)"
-            val releaseResponse = musicBrainzService.searchReleases(query = query, limit = 100)
+            val releaseResponse = withMusicBrainzRateLimit { musicBrainzService.searchReleases(query = query, limit = 100) }
             val releases = releaseResponse.releases ?: return null
             
             val validReleases = releases.filter { release ->
@@ -483,7 +517,7 @@ class ArtworkRepository @Inject constructor(
                     val rawOfficialTracks: List<String> = if (bestRelease != null) {
                         kotlinx.coroutines.delay(1200) // rate limit
                         try {
-                            val fullRelease = musicBrainzService.getReleaseById(bestRelease.id)
+                            val fullRelease = withMusicBrainzRateLimit { musicBrainzService.getReleaseById(bestRelease.id) }
                             fullRelease.media?.flatMap { it.tracks ?: emptyList() }?.map { it.title } ?: emptyList()
                         } catch (e: Exception) {
                             Log.w("ArtworkRepository", "Failed to fetch tracks for release ${bestRelease.id}", e)
@@ -538,4 +572,372 @@ class ArtworkRepository @Inject constructor(
             return null
         }
     }
+
+    // ---------------------------------------------------------------------------
+    // New Release detection: MusicBrainz release-groups within the last 90 days
+    // that are not yet in the local library.
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns release groups published within [windowDays] days for the given [mbid]
+     * that don't appear in [localTitles]. Respects MusicBrainz rate limits.
+     */
+    suspend fun fetchNewReleases(
+        artistName: String,
+        mbid: String,
+        localTitles: Set<String>,
+        windowDays: Int = 90
+    ): List<NewReleaseItem> = withContext(Dispatchers.IO) {
+        try {
+            val cutoffMs = System.currentTimeMillis() - windowDays.toLong() * 24 * 3600 * 1000
+            // Use ISO date string YYYY-MM-DD for cutoff comparison
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = cutoffMs }
+            val cutoffYear = cal.get(java.util.Calendar.YEAR)
+            val cutoffMonth = cal.get(java.util.Calendar.MONTH) + 1
+            val cutoffDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            val cutoffDateStr = "%04d-%02d-%02d".format(cutoffYear, cutoffMonth, cutoffDay)
+
+            val query = "arid:$mbid AND status:official"
+            val response = withMusicBrainzRateLimit { musicBrainzService.searchReleaseGroups(query = query, limit = 50) }
+            val groups = response.releaseGroups ?: return@withContext emptyList()
+
+            val results = mutableListOf<NewReleaseItem>()
+
+            for (rg in groups) {
+                val dateStr = rg.firstReleaseDate ?: continue
+                // Only consider entries with at least a year (length >= 4)
+                if (dateStr.length < 4) continue
+
+                // Skip unwanted secondary types
+                val secondary = rg.secondaryTypes ?: emptyList()
+                if (secondary.any { it.equals("Live", ignoreCase = true) ||
+                        it.equals("Compilation", ignoreCase = true) ||
+                        it.equals("Interview", ignoreCase = true) ||
+                        it.equals("Spokenword", ignoreCase = true) ||
+                        it.equals("Audiobook", ignoreCase = true) }) continue
+
+                // Date comparison: pad short dates for string comparison
+                val paddedDate = when (dateStr.length) {
+                    4 -> "$dateStr-01-01"     // year only
+                    7 -> "$dateStr-01"         // year-month
+                    else -> dateStr
+                }
+                if (paddedDate < cutoffDateStr) continue
+
+                // Skip if already in local library (case-insensitive title match)
+                val rgTitleLower = rg.title.lowercase()
+                if (localTitles.any { local -> local == rgTitleLower || local.contains(rgTitleLower) || rgTitleLower.contains(local) }) continue
+
+                // Use Cover Art Archive URL directly — if it doesn't load, Coil will show placeholder
+                val imageUrl = "https://coverartarchive.org/release-group/${rg.id}/front"
+
+                val releaseType = when {
+                    rg.primaryType?.equals("Single", ignoreCase = true) == true -> "Single"
+                    rg.primaryType?.equals("EP", ignoreCase = true) == true -> "EP"
+                    else -> "Album"
+                }
+
+                results.add(NewReleaseItem(
+                    title = rg.title,
+                    artistName = artistName,
+                    releaseType = releaseType,
+                    releaseDateStr = dateStr,
+                    imageUrl = imageUrl
+                ))
+            }
+            results
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "New release fetch error for $artistName (mbid=$mbid)", e)
+            emptyList()
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Discovery: Last.fm artist.getSimilar — gated on API key presence
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns up to [maxResults] similar artists for [artistName] that are not already
+     * in [localArtistNames], with a shared genre tag if available.
+     * Returns empty list immediately if [apiKey] is null or blank.
+     */
+    suspend fun fetchSimilarArtists(
+        artistName: String,
+        apiKey: String,
+        localArtistNames: Set<String>,
+        maxResults: Int = 3
+    ): List<DiscoveryItem> = withContext(Dispatchers.IO) {
+        try {
+            val similarResponse = lastFmService.getArtistSimilar(
+                artist = artistName,
+                apiKey = apiKey,
+                limit = 20
+            )
+            val similar = similarResponse.similarartists?.artist ?: return@withContext emptyList()
+
+            val results = mutableListOf<DiscoveryItem>()
+            for (candidate in similar) {
+                if (results.size >= maxResults) break
+                // Skip if the similar artist is already in local library
+                val nameLower = candidate.name?.lowercase() ?: ""
+                if (localArtistNames.any { local -> local.equals(nameLower, ignoreCase = true) }) continue
+
+                // Fetch top tags for the similar artist to get a shared genre
+                var sharedTag: String? = null
+                try {
+                    kotlinx.coroutines.delay(300) // mild throttle for Last.fm (no strict rate limit, but be polite)
+                    val tagsResponse = lastFmService.getArtistTopTags(
+                        artist = candidate.name ?: "",
+                        apiKey = apiKey
+                    )
+                    sharedTag = tagsResponse.toptags?.tag?.firstOrNull()?.name
+                } catch (e: Exception) {
+                    Log.w("ArtworkRepository", "Top tags fetch failed for ${candidate.name}", e)
+                }
+
+                // Use Last.fm image if available (extralarge or largest non-blank)
+                var imageUrl = candidate.image?.lastOrNull { it.text?.isNotBlank() == true &&
+                    it.text.contains("2a96cbd8b46e442fc41c2b86b821562f") == false }?.text
+
+                // Task 0 fix: Last.fm getSimilar images are almost always placeholders.
+                // Fall back to the same multi-source artwork chain used for library artists.
+                if (imageUrl.isNullOrBlank()) {
+                    try {
+                        kotlinx.coroutines.delay(300)
+                        imageUrl = fetchBestArtistImage(candidate.name ?: "")
+                    } catch (e: Exception) {
+                        Log.w("ArtworkRepository", "Fallback image fetch failed for ${candidate.name}", e)
+                    }
+                }
+
+                results.add(DiscoveryItem(
+                    suggestedArtistName = candidate.name ?: "",
+                    becauseOfArtist = artistName,
+                    sharedGenre = sharedTag,
+                    imageUrl = imageUrl
+                ))
+            }
+            results
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "Similar artists fetch error for $artistName", e)
+            emptyList()
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // New Songs detection: MusicBrainz recording search for individual tracks
+    // released within the last 90 days that are not in the local library.
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns recordings by [mbid] with [firstReleaseDate] within [windowDays] that don't appear
+     * in [localTrackTitles]. Respects MusicBrainz rate limits (caller must insert 1.2s delay before).
+     */
+    suspend fun fetchNewSongs(
+        artistName: String,
+        mbid: String,
+        localTrackTitles: Set<String>,
+        windowDays: Int = 90
+    ): List<NewSongItem> = withContext(Dispatchers.IO) {
+        try {
+            val cutoffMs = System.currentTimeMillis() - windowDays.toLong() * 24 * 3600 * 1000
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = cutoffMs }
+            val cutoffDateStr = "%04d-%02d-%02d".format(
+                cal.get(java.util.Calendar.YEAR),
+                cal.get(java.util.Calendar.MONTH) + 1,
+                cal.get(java.util.Calendar.DAY_OF_MONTH)
+            )
+
+            // MusicBrainz recording search: recordings by this artist with a recent first release date.
+            // Use limit=50 so we don't miss tracks from prolific artists.
+            val query = "arid:$mbid AND firstreleasedate:[${cutoffDateStr} TO *]"
+            val response = withMusicBrainzRateLimit { musicBrainzService.searchRecording(query = query, limit = 50) }
+            val recordings = response.recordings ?: return@withContext emptyList()
+
+            val results = mutableListOf<NewSongItem>()
+            for (rec in recordings) {
+                val dateStr = rec.firstReleaseDate ?: continue
+                if (dateStr.length < 4) continue
+
+                val paddedDate = when (dateStr.length) {
+                    4 -> "$dateStr-01-01"
+                    7 -> "$dateStr-01"
+                    else -> dateStr
+                }
+                if (paddedDate < cutoffDateStr) continue
+
+                // Skip if already in local library
+                val titleLower = rec.title.lowercase()
+                if (localTrackTitles.any { lt -> lt == titleLower || lt.contains(titleLower) || titleLower.contains(lt) }) continue
+
+                // Filter instrumentals / karaoke
+                if (titleLower.contains("instrumental") || titleLower.contains("inst.") ||
+                    titleLower.contains("karaoke") || titleLower.contains("acapella")) continue
+
+                // Artwork: Cover Art Archive doesn't index individual recordings — use null;
+                // the card will show a placeholder. A future enhancement could look up the
+                // release the recording appears on.
+                results.add(NewSongItem(
+                    trackTitle = rec.title,
+                    artistName = artistName,
+                    mbid = rec.id,
+                    releaseDateStr = dateStr,
+                    imageUrl = null
+                ))
+
+                if (results.size >= 5) break // cap per artist to avoid flooding the section
+            }
+            results
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "New songs fetch error for $artistName (mbid=$mbid)", e)
+            emptyList()
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Trending: Last.fm chart.getTopTracks, biased toward user's top genres.
+    // Gated on Last.fm API key — returns empty list immediately if no key.
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Fetches up to [targetCount] globally-trending tracks, ranked by how well each
+     * track's artist genre overlaps with [userGenres]. Excludes tracks already in
+     * [localTrackTitles] or from artists already in [localArtistNames].
+     */
+    suspend fun fetchTrendingTracks(
+        apiKey: String,
+        localTrackTitles: Set<String>,
+        localArtistNames: Set<String>,
+        userGenres: List<String>,
+        targetCount: Int = 10
+    ): List<TrendingItem> = withContext(Dispatchers.IO) {
+        try {
+            val response = lastFmService.getChartTopTracks(apiKey = apiKey, limit = 50)
+            val tracks = response.tracks?.track ?: return@withContext emptyList()
+
+            val userGenresLower = userGenres.map { it.lowercase() }
+            data class ScoredTrack(val track: LastFmChartTrack, val score: Int, val matchedGenre: String?, val imageUrl: String?)
+            val scored = mutableListOf<ScoredTrack>()
+
+            for (track in tracks) {
+                val artistName = track.artist?.name ?: continue
+                val titleLower = track.name?.lowercase() ?: ""
+                val artistLower = artistName.lowercase()
+
+                // Exclude tracks already in local library
+                if (localTrackTitles.any { lt -> lt == titleLower || lt.contains(titleLower) || titleLower.contains(lt) }) continue
+                // Exclude artists already in library (we know them; this is discovery)
+                if (localArtistNames.any { la -> la.equals(artistLower, ignoreCase = true) }) continue
+
+                // Fetch genre tags for this artist to compute genre-affinity score
+                var score = 0
+                var matchedGenre: String? = null
+                if (userGenresLower.isNotEmpty()) {
+                    try {
+                        kotlinx.coroutines.delay(300)
+                        val tagsResponse = lastFmService.getArtistTopTags(artist = artistName, apiKey = apiKey)
+                        val artistTags = tagsResponse.toptags?.tag?.mapNotNull { it.name?.lowercase() } ?: emptyList()
+                        for (tag in artistTags.take(5)) {
+                            val exactMatch = userGenresLower.firstOrNull { it == tag }
+                            val subMatch = if (exactMatch == null) userGenresLower.firstOrNull { it.contains(tag) || tag.contains(it) } else null
+                            when {
+                                exactMatch != null -> { score += 2; matchedGenre = userGenres[userGenresLower.indexOf(exactMatch)]; break }
+                                subMatch != null  -> { score += 1; matchedGenre = userGenres[userGenresLower.indexOf(subMatch)] }
+                            }
+                            if (score >= 2) break
+                        }
+                    } catch (e: Exception) {
+                        Log.w("ArtworkRepository", "Tag fetch failed for trending artist $artistName", e)
+                    }
+                }
+
+                val imageUrl = track.image?.lastOrNull { it.text?.isNotBlank() == true &&
+                    it.text.contains("2a96cbd8b46e442fc41c2b86b821562f") == false }?.text
+
+                scored.add(ScoredTrack(track, score, matchedGenre, imageUrl))
+                // Early exit: once we have enough high-scoring tracks, stop fetching tags
+                if (scored.count { it.score > 0 } >= targetCount) break
+            }
+
+            // Sort: genre-matching tracks first, then by original chart position
+            scored.sortByDescending { it.score }
+
+            scored.take(targetCount).map { st ->
+                TrendingItem(
+                    trackTitle = st.track.name ?: "",
+                    artistName = st.track.artist?.name ?: "",
+                    imageUrl = st.imageUrl,
+                    matchedGenre = st.matchedGenre
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("ArtworkRepository", "Trending tracks fetch error", e)
+            emptyList()
+        }
+    }
+    private suspend fun fetchWikipediaSummary(artistName: String): WikipediaSummaryResponse? {
+        try {
+            // 1. Try guessing first (fast, no MusicBrainz rate limits)
+            val title = java.net.URLEncoder.encode(artistName.replace(" ", "_"), "UTF-8")
+            val response = wikipediaService.getSummary("https://en.wikipedia.org/api/rest_v1/page/summary/$title")
+            val lowerExtract = response.extract?.lowercase() ?: ""
+            // Ensure it's actually an artist and not a place/movie with the same name
+            if (lowerExtract.contains("musician") || lowerExtract.contains("singer") || lowerExtract.contains("band") || lowerExtract.contains("rapper") || lowerExtract.contains("group") || lowerExtract.contains("artist")) {
+                return response
+            }
+        } catch (e: Exception) {
+             Log.w("ArtworkRepository", "Failed Wikipedia guess for $artistName")
+        }
+
+        try {
+            // 2. Fallback: try direct MBID to wikipedia relation for perfect disambiguation
+            val mbid = resolveArtistMbid(artistName)
+            if (mbid != null) {
+                val mbResponse = withMusicBrainzRateLimit { musicBrainzService.getArtistById(mbid) }
+                val wikiUrl = mbResponse.relations?.firstOrNull { it.type == "wikipedia" || it.type == "wikidata" }?.url?.resource
+                if (wikiUrl != null && wikiUrl.contains("wikipedia.org/wiki/")) {
+                    val title = java.net.URLDecoder.decode(wikiUrl.substringAfterLast("/"), "UTF-8")
+                    val response = wikipediaService.getSummary("https://en.wikipedia.org/api/rest_v1/page/summary/$title")
+                    if (response.extract != null || response.originalimage?.source != null) return response
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("ArtworkRepository", "Failed Wikipedia via MBID for $artistName")
+        }
+        return null
+    }
 }
+
+// ---------------------------------------------------------------------------
+// Data transfer objects used by Collection Growth (not persisted directly)
+// ---------------------------------------------------------------------------
+
+data class NewReleaseItem(
+    val title: String,
+    val artistName: String,
+    val releaseType: String,
+    val releaseDateStr: String,
+    val imageUrl: String?
+)
+
+data class DiscoveryItem(
+    val suggestedArtistName: String,
+    val becauseOfArtist: String,
+    val sharedGenre: String?,
+    val imageUrl: String?
+)
+
+data class NewSongItem(
+    val trackTitle: String,
+    val artistName: String,
+    val mbid: String,
+    val releaseDateStr: String,
+    val imageUrl: String?
+)
+
+data class TrendingItem(
+    val trackTitle: String,
+    val artistName: String,
+    val imageUrl: String?,
+    val matchedGenre: String?
+)

@@ -10,13 +10,22 @@ import kotlinx.coroutines.withContext
 class DeezerRepository @Inject constructor(
     private val deezerService: DeezerService
 ) {
+    private val deezerSizeRegex = Regex("/\\d{2,4}x\\d{2,4}([\\-.])")
+
+    private fun upgradeToHighResDeezerUrl(url: String?): String? {
+        if (url == null) return null
+        if (!url.contains("dzcdn.net/images/artist")) return url
+        return deezerSizeRegex.replace(url, "/1000x1000$1")
+    }
+
     suspend fun fetchArtistImage(artistName: String): String? = withContext(Dispatchers.IO) {
         try {
             val response = deezerService.searchArtist(artistName)
             val exactMatch = response.data.firstOrNull { it.name.equals(artistName, ignoreCase = true) }
             val containsMatch = response.data.firstOrNull { it.name.contains(artistName, ignoreCase = true) || artistName.contains(it.name, ignoreCase = true) }
             // Fallback to first result if exact/contains match not found
-            (exactMatch ?: containsMatch ?: response.data.firstOrNull())?.pictureXl
+            val imageUrl = (exactMatch ?: containsMatch ?: response.data.firstOrNull())?.pictureXl
+            upgradeToHighResDeezerUrl(imageUrl)
         } catch (e: Exception) {
             Log.e("DeezerRepository", "Failed to fetch artist image for $artistName", e)
             null
@@ -39,10 +48,41 @@ class DeezerRepository @Inject constructor(
             val response = deezerService.searchTrack(query)
             val exactMatch = response.data.firstOrNull { it.title.equals(trackTitle, ignoreCase = true) }
             val containsMatch = response.data.firstOrNull { it.title.contains(trackTitle, ignoreCase = true) || trackTitle.contains(it.title, ignoreCase = true) }
-            (exactMatch ?: containsMatch)?.artist?.pictureXl
+            val imageUrl = (exactMatch ?: containsMatch ?: response.data.firstOrNull())?.artist?.pictureXl
+            upgradeToHighResDeezerUrl(imageUrl)
         } catch (e: Exception) {
             Log.e("DeezerRepository", "Failed to fetch artist image by track for $artistName - $trackTitle", e)
             null
+        }
+    }
+
+    suspend fun getDeezerTrackUrl(query: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val response = deezerService.searchTrack(query)
+            response.data.firstOrNull()?.link ?: "error:deezer_no_results"
+        } catch (e: Exception) {
+            Log.e("DeezerRepository", "Failed to fetch track URL for query: $query", e)
+            "error:" + e.message
+        }
+    }
+
+    suspend fun getDeezerAlbumUrl(query: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val response = deezerService.searchAlbum(query)
+            response.data.firstOrNull()?.link ?: "error:deezer_no_results"
+        } catch (e: Exception) {
+            Log.e("DeezerRepository", "Failed to fetch album URL for query: $query", e)
+            "error:" + e.message
+        }
+    }
+
+    suspend fun getDeezerArtistUrl(query: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val response = deezerService.searchArtist(query)
+            response.data.firstOrNull()?.link ?: "error:deezer_no_results"
+        } catch (e: Exception) {
+            Log.e("DeezerRepository", "Failed to fetch artist URL for query: $query", e)
+            "error:" + e.message
         }
     }
 

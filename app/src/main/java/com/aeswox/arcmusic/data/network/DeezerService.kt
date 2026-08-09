@@ -25,20 +25,23 @@ data class DeezerSearchResponse<T>(
 data class DeezerArtist(
     @Json(name = "id") val id: Long,
     @Json(name = "name") val name: String,
-    @Json(name = "picture_xl") val pictureXl: String?
+    @Json(name = "link") val link: String? = null,
+    @Json(name = "picture_xl") val pictureXl: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class DeezerAlbum(
     @Json(name = "id") val id: Long,
     @Json(name = "title") val title: String,
-    @Json(name = "cover_xl") val coverXl: String?
+    @Json(name = "link") val link: String? = null,
+    @Json(name = "cover_xl") val coverXl: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class DeezerTrack(
     @Json(name = "id") val id: Long,
     @Json(name = "title") val title: String,
-    @Json(name = "album") val album: DeezerAlbum?,
-    @Json(name = "artist") val artist: DeezerArtist?
+    @Json(name = "link") val link: String? = null,
+    @Json(name = "album") val album: DeezerAlbum? = null,
+    @Json(name = "artist") val artist: DeezerArtist? = null
 )

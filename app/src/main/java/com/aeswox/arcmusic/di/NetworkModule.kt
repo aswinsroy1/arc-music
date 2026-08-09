@@ -117,4 +117,26 @@ object NetworkModule {
             .build()
             .create(com.aeswox.arcmusic.data.network.FanartTvService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideOdesliService(moshi: Moshi, okHttpClient: OkHttpClient): com.aeswox.arcmusic.data.network.OdesliService {
+        return Retrofit.Builder()
+            .baseUrl("https://api.song.link/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(com.aeswox.arcmusic.data.network.OdesliService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWikipediaService(moshi: Moshi, okHttpClient: OkHttpClient): com.aeswox.arcmusic.data.network.WikipediaService {
+        return Retrofit.Builder()
+            .baseUrl("https://en.wikipedia.org/") // Base url required by retrofit, actual url is passed directly
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(com.aeswox.arcmusic.data.network.WikipediaService::class.java)
+    }
 }

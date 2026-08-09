@@ -27,6 +27,8 @@ class MusicRepository(
     private val newReleaseDao: NewReleaseDao,
     private val dismissedCardDao: DismissedCardDao,
     private val discoveryDao: DiscoveryDao,
+    private val newSongDao: NewSongDao,
+    private val trendingDao: TrendingDao,
     private val mediaStoreScanner: MediaStoreScanner,
     private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
 ) {
@@ -264,18 +266,83 @@ class MusicRepository(
         // 1. Discography Gaps
         getDetailedDiscographyGaps(artist, forceRefresh)
 
-        // 2. New Releases
+        // 2. Resolve MBID once — shared by New Releases and New Songs to avoid a double lookup.
         val localAlbumTitles = albumDao.getAllAlbums().first()
             .filter { ArtistUtils.splitArtists(it.artist).contains(artist.name) }
             .map { it.title.lowercase() }.toSet()
-            
+
         val newReleaseCachedAt = newReleaseDao.getOldestCachedAt(artist.name) ?: 0L
         val newReleaseIsStale = (System.currentTimeMillis() - newReleaseCachedAt) > CACHE_STALE_MS
+        val newSongCachedAt = newSongDao.getOldestCachedAt(artist.name) ?: 0L
+        val newSongIsStale = (System.currentTimeMillis() - newSongCachedAt) > CACHE_STALE_MS
+
+        val needsMbid = (forceRefresh || newReleaseIsStale) || (forceRefresh || newSongIsStale)
+        val resolvedMbid: String? = if (needsMbid) {
+            try {
+                artworkRepository.resolveArtistMbidPublic(artist.name, localAlbumTitles)
+            } catch (e: Exception) {
+                android.util.Log.w("MusicRepository", "MBID resolution failed for ${artist.name}", e)
+                null
+            }
+        } else null
+
+        // 3. New Releases
         if (forceRefresh || newReleaseIsStale) {
-            fetchAndCacheNewReleases(artist.name, localAlbumTitles, forceRefresh = true)
+            if (resolvedMbid != null) {
+                try {
+                    kotlinx.coroutines.delay(1200)
+                    val newItems = artworkRepository.fetchNewReleases(
+                        artistName = artist.name,
+                        mbid = resolvedMbid,
+                        localTitles = localAlbumTitles
+                    )
+                    newReleaseDao.deleteAllByArtist(artist.name)
+                    newReleaseDao.insertAll(newItems.map { item ->
+                        com.aeswox.arcmusic.db.entities.CachedNewRelease(
+                            title = item.title,
+                            artistName = item.artistName,
+                            releaseType = item.releaseType,
+                            releaseDateStr = item.releaseDateStr,
+                            imageUrl = item.imageUrl
+                        )
+                    })
+                } catch (e: Exception) {
+                    android.util.Log.w("MusicRepository", "New release fetch failed for ${artist.name}", e)
+                }
+            }
         }
 
-        // 3. Discovery
+        // 4. New Songs — individual recordings released in the last 90 days
+        if (forceRefresh || newSongIsStale) {
+            if (resolvedMbid != null) {
+                try {
+                    kotlinx.coroutines.delay(1200)
+                    val localTrackTitles = trackDao.getAllTracks().first()
+                        .filter { ArtistUtils.splitArtists(it.artist).contains(artist.name) }
+                        .map { it.title.lowercase() }.toSet()
+                    val songItems = artworkRepository.fetchNewSongs(
+                        artistName = artist.name,
+                        mbid = resolvedMbid,
+                        localTrackTitles = localTrackTitles
+                    )
+                    newSongDao.deleteAllByArtist(artist.name)
+                    newSongDao.insertAll(songItems.map { item ->
+                        com.aeswox.arcmusic.db.entities.CachedNewSong(
+                            trackTitle = item.trackTitle,
+                            artistName = item.artistName,
+                            mbid = item.mbid,
+                            releaseDateStr = item.releaseDateStr,
+                            imageUrl = item.imageUrl
+                        )
+                    })
+                    android.util.Log.d("MusicRepository", "New songs fetch for ${artist.name}: ${songItems.size} songs")
+                } catch (e: Exception) {
+                    android.util.Log.w("MusicRepository", "New songs fetch failed for ${artist.name}", e)
+                }
+            }
+        }
+
+        // 5. Discovery
         if (!lastFmApiKey.isNullOrBlank()) {
             val discoveryCachedAt = discoveryDao.getOldestCachedAt(artist.name) ?: 0L
             val discoveryIsStale = (System.currentTimeMillis() - discoveryCachedAt) > CACHE_STALE_MS
@@ -287,7 +354,7 @@ class MusicRepository(
                     val localArtistNamesLower = allTracks.map { it.artist.lowercase() }.toSet() +
                         allAlbums.map { it.artist.lowercase() }.toSet() +
                         favoritedArtists.map { it.name.lowercase() }.toSet()
-                    
+
                     val similar = artworkRepository.fetchSimilarArtists(
                         artistName = artist.name,
                         apiKey = lastFmApiKey,
@@ -295,7 +362,7 @@ class MusicRepository(
                         maxResults = 2
                     )
                     discoveryDao.deleteAllByBecauseOfArtist(artist.name)
-                    discoveryDao.insertAll(similar.map { item -> 
+                    discoveryDao.insertAll(similar.map { item ->
                         com.aeswox.arcmusic.db.entities.CachedDiscovery(
                             suggestedArtistName = item.suggestedArtistName,
                             becauseOfArtist = item.becauseOfArtist,
@@ -307,6 +374,45 @@ class MusicRepository(
                     android.util.Log.w("MusicRepository", "Discovery fetch failed for ${artist.name}", e)
                 }
             }
+        }
+    }
+
+    /**
+     * Fetches and caches globally-trending tracks biased toward [userGenres].
+     * Gated on [lastFmApiKey] — silently skips if key is null/blank.
+     * Enforces the same 7-day staleness policy as other growth data.
+     */
+    suspend fun refreshTrendingData(lastFmApiKey: String?, userGenres: List<String>) {
+        if (lastFmApiKey.isNullOrBlank()) return
+        val cachedAt = trendingDao.getOldestCachedAt() ?: 0L
+        val isStale = (System.currentTimeMillis() - cachedAt) > CACHE_STALE_MS
+        if (!isStale) return
+
+        try {
+            val allTracks = trackDao.getAllTracks().first()
+            val allAlbums = albumDao.getAllAlbums().first()
+            val localTrackTitles = allTracks.map { it.title.lowercase() }.toSet()
+            val localArtistNames = (allTracks.map { it.artist.lowercase() } +
+                allAlbums.map { it.artist.lowercase() }).toSet()
+
+            val items = artworkRepository.fetchTrendingTracks(
+                apiKey = lastFmApiKey,
+                localTrackTitles = localTrackTitles,
+                localArtistNames = localArtistNames,
+                userGenres = userGenres
+            )
+            trendingDao.clearAll()
+            trendingDao.insertAll(items.map { item ->
+                com.aeswox.arcmusic.db.entities.CachedTrending(
+                    trackTitle = item.trackTitle,
+                    artistName = item.artistName,
+                    imageUrl = item.imageUrl,
+                    matchedGenre = item.matchedGenre
+                )
+            })
+            android.util.Log.d("MusicRepository", "Trending refresh: ${items.size} tracks (genres=${userGenres.take(3)})")
+        } catch (e: Exception) {
+            android.util.Log.w("MusicRepository", "Trending fetch failed", e)
         }
     }
 
@@ -446,6 +552,10 @@ class MusicRepository(
         artistDao.updateArtistPhoto(artistId, photoUri)
     }
 
+    suspend fun updateArtistBio(artistId: String, bio: String) {
+        artistDao.updateArtistBio(artistId, bio)
+    }
+
     suspend fun fetchMissingArtwork() = withContext(Dispatchers.IO) {
         // Fetch missing artist photos
         val artists = artistDao.getAllArtists().first()
@@ -501,6 +611,21 @@ class MusicRepository(
     
     fun getAllGenres(): Flow<List<String>> = trackDao.getAllGenres()
 
+    /**
+     * Returns the top [limit] genre strings by track count in the local library.
+     * Safe to call from any context — does not depend on StateFlow initialization order.
+     */
+    suspend fun getTopGenresFromLibrary(limit: Int = 5): List<String> = withContext(Dispatchers.IO) {
+        trackDao.getAllTracks().first()
+            .mapNotNull { it.genre?.trim()?.takeIf { g -> g.isNotEmpty() } }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { it.key }
+    }
+
     // Collection Health
     fun getTracksMissingArtwork(): Flow<List<Track>> = trackDao.getTracksMissingArtwork()
     fun getTracksMissingMetadata(): Flow<List<Track>> = trackDao.getTracksMissingMetadata()
@@ -548,6 +673,9 @@ class MusicRepository(
         val newReleaseCards = mutableListOf<com.aeswox.arcmusic.GrowthCard.NewRelease>()
         val discoveryCards = mutableListOf<com.aeswox.arcmusic.GrowthCard.Discovery>()
         val missingTracksCards = mutableListOf<com.aeswox.arcmusic.GrowthCard.MissingTracks>()
+
+        val newSongCards = mutableListOf<com.aeswox.arcmusic.GrowthCard.NewSong>()
+        val trendingCards = mutableListOf<com.aeswox.arcmusic.GrowthCard.Trending>()
 
         for (artist in qualifyingArtists) {
             // --- Complete Collection + Missing Tracks: from CachedMissingContent ---
@@ -619,6 +747,21 @@ class MusicRepository(
                     )
                 }
             }
+
+            // --- New Songs: MusicBrainz recent recordings (from cache) ---
+            val cachedSongs = newSongDao.getByArtistName(artist.name)
+            for (song in cachedSongs.take(3)) {
+                if (!isDismissed("new_song", song.trackTitle, artist.name)) {
+                    newSongCards.add(
+                        com.aeswox.arcmusic.GrowthCard.NewSong(
+                            trackTitle = song.trackTitle,
+                            artistName = song.artistName,
+                            releaseDateStr = song.releaseDateStr,
+                            imageUrl = song.imageUrl
+                        )
+                    )
+                }
+            }
         }
 
         // --- Discovery: Last.fm artist.getSimilar (from cache) ---
@@ -639,11 +782,28 @@ class MusicRepository(
             }
         }
 
+        // --- Trending: Last.fm chart.getTopTracks, genre-biased (from cache) ---
+        val cachedTrendingItems = trendingDao.getAll()
+        for (item in cachedTrendingItems) {
+            if (!isDismissed("trending", item.trackTitle, item.artistName)) {
+                trendingCards.add(
+                    com.aeswox.arcmusic.GrowthCard.Trending(
+                        trackTitle = item.trackTitle,
+                        artistName = item.artistName,
+                        matchedGenre = item.matchedGenre,
+                        imageUrl = item.imageUrl
+                    )
+                )
+            }
+        }
+
         com.aeswox.arcmusic.CollectionGrowthData(
             completeCollectionCards = completeCollectionCards,
             newReleaseCards = newReleaseCards,
             discoveryCards = discoveryCards,
             missingTracksCards = missingTracksCards,
+            newSongCards = newSongCards,
+            trendingCards = trendingCards,
             hasQualifyingArtists = qualifyingArtists.isNotEmpty()
         )
     }
@@ -660,39 +820,6 @@ class MusicRepository(
                 artistName = artistName
             )
         )
-    }
-
-    private suspend fun fetchAndCacheNewReleases(
-        artistName: String,
-        localAlbumTitles: Set<String>,
-        forceRefresh: Boolean
-    ): List<com.aeswox.arcmusic.db.entities.CachedNewRelease> {
-        if (!forceRefresh) return newReleaseDao.getByArtistName(artistName)
-        return try {
-            val mbid = artworkRepository.resolveArtistMbidPublic(artistName, localAlbumTitles)
-            if (mbid != null) {
-                kotlinx.coroutines.delay(1200)
-                val newItems = artworkRepository.fetchNewReleases(
-                    artistName = artistName,
-                    mbid = mbid,
-                    localTitles = localAlbumTitles
-                )
-                newReleaseDao.deleteAllByArtist(artistName)
-                newReleaseDao.insertAll(newItems.map { item ->
-                    com.aeswox.arcmusic.db.entities.CachedNewRelease(
-                        title = item.title,
-                        artistName = item.artistName,
-                        releaseType = item.releaseType,
-                        releaseDateStr = item.releaseDateStr,
-                        imageUrl = item.imageUrl
-                    )
-                })
-            }
-            newReleaseDao.getByArtistName(artistName)
-        } catch (e: Exception) {
-            android.util.Log.w("MusicRepository", "New release fetch failed for $artistName", e)
-            newReleaseDao.getByArtistName(artistName)
-        }
     }
 }
 

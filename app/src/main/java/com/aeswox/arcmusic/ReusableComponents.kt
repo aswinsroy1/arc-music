@@ -96,6 +96,8 @@ fun rememberDominantColor(imageUrl: String?, defaultColor: Color): State<Color> 
 
 val LocalAppBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
+
+
 val AppCornerRadius = 32.dp
 
 fun Modifier.applyHazeAndBackdrop(hazeState: HazeState?): Modifier = composed {
@@ -115,9 +117,10 @@ fun Modifier.glassEffect(
     hazeState: HazeState?,
     tintTransparency: Float,
     noiseFactor: Float,
-    shape: Shape = RoundedCornerShape(AppCornerRadius)
+    shape: Shape = RoundedCornerShape(AppCornerRadius),
+    forceFallback: Boolean = false
 ): Modifier = composed {
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+    if (!forceFallback && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         if (hazeState != null) {
             this.hazeChild(
                 state = hazeState,
@@ -449,4 +452,44 @@ fun AppIconButton(
             modifier = Modifier.size(size)
         )
     }
+}
+
+@Composable
+fun ArcDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        shape = RoundedCornerShape(AppCornerRadius),
+        containerColor = Color.White,
+        modifier = modifier
+            .width(220.dp)
+            .clip(RoundedCornerShape(AppCornerRadius))
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun ArcDropdownMenuItem(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    isDestructive: Boolean = false
+) {
+    val color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val iconTint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    
+    DropdownMenuItem(
+        text = { 
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = color) 
+        },
+        onClick = onClick,
+        leadingIcon = { Icon(icon, contentDescription = null, tint = iconTint) }
+    )
 }

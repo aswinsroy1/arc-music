@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
  * https://github.com/Kyant0/backdrop â€” Copyright 2025 Kyant0, Apache License 2.0
  *
@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.unit.Density
 import com.aeswox.arcmusic.backdrop.Backdrop
 import com.aeswox.arcmusic.backdrop.internal.InverseLayerScope
@@ -67,8 +67,7 @@ class LayerBackdrop internal constructor(
                 try {
                     layerCoordinates.localPositionOf(coordinates)
                 } catch (_: Exception) {
-                    // TODO: outer transformations lead to wrong position calculation
-                    coordinates.positionInWindow() - layerCoordinates.positionInWindow()
+                    coordinates.positionOnScreen() - layerCoordinates.positionOnScreen()
                 }
             translate(-offset.x, -offset.y)
         }) {

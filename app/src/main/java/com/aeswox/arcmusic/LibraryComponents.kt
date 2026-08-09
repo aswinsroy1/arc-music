@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,6 +57,7 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
     val scope = rememberCoroutineScope()
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 1, pageCount = { tabs.size })
     var showRearrangeSheet by remember { mutableStateOf(false) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
     
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     val selectedItems = remember { mutableStateListOf<String>() }
@@ -72,6 +73,22 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
         LibraryHeader(
             title = tabs.getOrNull(pagerState.currentPage) ?: "",
             onTitleLongPress = { showRearrangeSheet = true },
+            onOptionsClick = { showOptionsMenu = true },
+            optionsMenuExpanded = showOptionsMenu,
+            onOptionsDismiss = { showOptionsMenu = false },
+            optionsMenuContent = {
+                val currentTab = tabs.getOrNull(pagerState.currentPage)
+                if (currentTab == "Artists") {
+                    ArcDropdownMenuItem(
+                        text = "Refresh All Artists",
+                        icon = Icons.Outlined.Refresh,
+                        onClick = {
+                            showOptionsMenu = false
+                            viewModel.refetchAllArtistsDetails()
+                        }
+                    )
+                }
+            },
             modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 12.dp)
         )
         
@@ -355,7 +372,15 @@ fun LibraryPagerContent(
 }
 
 @Composable
-fun LibraryHeader(title: String, onTitleLongPress: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun LibraryHeader(
+    title: String, 
+    onTitleLongPress: () -> Unit = {}, 
+    onOptionsClick: () -> Unit = {}, 
+    optionsMenuExpanded: Boolean = false,
+    onOptionsDismiss: () -> Unit = {},
+    optionsMenuContent: @Composable ColumnScope.() -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -377,13 +402,22 @@ fun LibraryHeader(title: String, onTitleLongPress: () -> Unit = {}, modifier: Mo
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert, 
-                    contentDescription = "More", 
-                    tint = MaterialTheme.colorScheme.onSurface, 
-                    modifier = Modifier.size(28.dp)
-                )
+            Box {
+                IconButton(onClick = onOptionsClick) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert, 
+                        contentDescription = "More", 
+                        tint = MaterialTheme.colorScheme.onSurface, 
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                
+                ArcDropdownMenu(
+                    expanded = optionsMenuExpanded,
+                    onDismissRequest = onOptionsDismiss
+                ) {
+                    optionsMenuContent()
+                }
             }
         }
     }

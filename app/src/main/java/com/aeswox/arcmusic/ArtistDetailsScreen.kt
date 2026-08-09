@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import com.aeswox.arcmusic.db.entities.Artist
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArtistDetailsScreen(
     artistId: String,
@@ -80,7 +82,7 @@ fun ArtistDetailsScreen(
         }
     }
 
-    var showMenu by remember { mutableStateOf(false) }
+    var showOptionsSheet by remember { mutableStateOf(false) }
     var showInternetSearch by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -123,7 +125,7 @@ fun ArtistDetailsScreen(
             }
             Box {
                 IconButton(
-                    onClick = { showMenu = true },
+                    onClick = { showOptionsSheet = true },
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f))
@@ -135,27 +137,52 @@ fun ArtistDetailsScreen(
                     )
                 }
                 
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
+                ArcDropdownMenu(
+                    expanded = showOptionsSheet,
+                    onDismissRequest = { showOptionsSheet = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Change Image (Gallery)") },
+                    ArcDropdownMenuItem(
+                        text = "Refresh",
+                        icon = Icons.Outlined.Refresh,
                         onClick = {
-                            showMenu = false
+                            showOptionsSheet = false
+                            if (artist != null) {
+                                viewModel.refetchArtistDetails(artistId, artist!!.name)
+                            }
+                        }
+                    )
+                    ArcDropdownMenuItem(
+                        text = "Share",
+                        icon = Icons.Outlined.Share,
+                        onClick = { showOptionsSheet = false }
+                    )
+                    ArcDropdownMenuItem(
+                        text = "Delete",
+                        icon = Icons.Outlined.Delete,
+                        isDestructive = true,
+                        onClick = { showOptionsSheet = false }
+                    )
+                    ArcDropdownMenuItem(
+                        text = "Change image (gallery)",
+                        icon = Icons.Outlined.Image,
+                        onClick = {
+                            showOptionsSheet = false
                             galleryLauncher.launch(arrayOf("image/*"))
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Change Image (Internet)") },
+                    ArcDropdownMenuItem(
+                        text = "Change image (online)",
+                        icon = Icons.Outlined.Public,
                         onClick = {
-                            showMenu = false
+                            showOptionsSheet = false
                             showInternetSearch = true
                         }
                     )
                 }
             }
         }
+        
+
         
         if (showInternetSearch) {
             ArtistImageSearchBottomSheet(
