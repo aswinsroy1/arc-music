@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic.ui.theme
+package com.aeswox.arcmusic.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -50,3 +50,40 @@ val Background = Color(0xFFFCF8F9)
 val OnBackground = Color(0xFF1C1B1C)
 val SurfaceVariant = Color(0xFFE5E1E2)
 
+// ─── AMOLED Dark palette ──────────────────────────────────────────────────────
+// Background is true #000000 so OLED pixels switch off completely.
+val DarkBackground              = Color(0xFF000000)
+val DarkOnBackground            = Color(0xFFEEEEEE)
+val DarkSurface                 = Color(0xFF0D0D0D) // subtly lifted; forms card layers
+val DarkSurfaceDim              = Color(0xFF080808)
+val DarkSurfaceBright           = Color(0xFF1A1A1A)
+val DarkSurfaceContainerLowest  = Color(0xFF000000)
+val DarkSurfaceContainerLow     = Color(0xFF0D0D0D)
+val DarkSurfaceContainer        = Color(0xFF141414)
+val DarkSurfaceContainerHigh    = Color(0xFF1E1E1E)
+val DarkSurfaceContainerHighest = Color(0xFF282828)
+val DarkOnSurface               = Color(0xFFE8E8E8)
+val DarkOnSurfaceVariant        = Color(0xFFAAAAAA)
+val DarkSurfaceVariant          = Color(0xFF1A1A1A)
+val DarkSurfaceTint             = Color(0xFFCCCCCC)
+val DarkInverseSurface          = Color(0xFFE8E8E8)
+val DarkInverseOnSurface        = Color(0xFF1A1A1A)
+val DarkOutline                 = Color(0xFF444444)
+val DarkOutlineVariant          = Color(0xFF2A2A2A)
+val DarkPrimary                 = Color(0xFFFFFFFF)
+val DarkOnPrimary               = Color(0xFF000000)
+val DarkPrimaryContainer        = Color(0xFF1E1E1E)
+val DarkOnPrimaryContainer      = Color(0xFFCCCCCC)
+val DarkInversePrimary          = Color(0xFF333333)
+val DarkSecondary               = Color(0xFFAAAAAA)
+val DarkOnSecondary             = Color(0xFF1A1A1A)
+val DarkSecondaryContainer      = Color(0xFF1E1E1E)
+val DarkOnSecondaryContainer    = Color(0xFFCCCCCC)
+val DarkTertiary                = Color(0xFFCCCCCC)
+val DarkOnTertiary              = Color(0xFF0D0D0D)
+val DarkTertiaryContainer       = Color(0xFF1A1F28)
+val DarkOnTertiaryContainer     = Color(0xFFB0B8C8)
+val DarkError                   = Color(0xFFFF6B6B)
+val DarkOnError                 = Color(0xFF000000)
+val DarkErrorContainer          = Color(0xFF3A0000)
+val DarkOnErrorContainer        = Color(0xFFFF8A80)

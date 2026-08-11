@@ -292,7 +292,7 @@ fun DownloadButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.primary)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -304,9 +304,9 @@ fun DownloadButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimary)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Download", color = Color.White, style = MaterialTheme.typography.labelLarge)
+            Text("Download", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

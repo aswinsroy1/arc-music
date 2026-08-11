@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -761,35 +762,50 @@ fun HeroSection(
 }
 
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun WordSyncedLyrics(textColor: Color = Color.White) {
-    val lyrics = listOf(
-        "You're just a wishbone",
-        "Waiting for the snap",
-        "Because you're always",
-        "Living in the past",
-        "I'm not your wishbone"
-    )
-    
-    val allWords = lyrics.flatMap { it.split(" ") }
+    val viewModel: MusicViewModel = hiltViewModel()
+    val lyricsData by viewModel.lyricsUiState.collectAsState()
+
+    val syncedLines = lyricsData?.synced
+    val plainLines  = lyricsData?.plain
+    val lines = remember(syncedLines, plainLines) {
+        syncedLines?.map { it.line } ?: plainLines ?: listOf("♪")
+    }
+
+    var activeLineIndex by remember { mutableIntStateOf(0) }
     var activeWordIndex by remember { mutableIntStateOf(0) }
-    
-    LaunchedEffect(Unit) {
-        while(true) {
-            delay(500)
-            activeWordIndex = (activeWordIndex + 1) % allWords.size
+
+    LaunchedEffect(syncedLines) {
+        viewModel.currentPlaybackPosition.collect { pos ->
+            if (!syncedLines.isNullOrEmpty()) {
+                val newLine = syncedLines.indexOfLast { it.time <= pos }.coerceAtLeast(0)
+                if (activeLineIndex != newLine) activeLineIndex = newLine
+
+                val line = syncedLines[newLine]
+                if (!line.words.isNullOrEmpty()) {
+                    val newWord = line.words.indexOfLast { it.time <= pos }.coerceAtLeast(0)
+                    if (activeWordIndex != newWord) activeWordIndex = newWord
+                } else {
+                    activeWordIndex = -1
+                }
+            } else {
+                activeLineIndex = 0
+                activeWordIndex = -1
+            }
         }
     }
-    
-    var wordOffsetAcc = 0
-    val lineWordOffsets = lyrics.map { line ->
-        val start = wordOffsetAcc
-        wordOffsetAcc += line.split(" ").size
-        start
+
+    val activeLine = lines.getOrElse(activeLineIndex) { "♪" }
+    val activeWords = remember(activeLineIndex, syncedLines, activeLine) {
+        if (!syncedLines.isNullOrEmpty() && !syncedLines[activeLineIndex].words.isNullOrEmpty()) {
+            syncedLines[activeLineIndex].words!!.map { it.word }
+        } else {
+            activeLine.split(" ")
+        }
     }
-    
-    val activeLineIndex = lineWordOffsets.indexOfLast { it <= activeWordIndex }.coerceAtLeast(0)
-    
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -797,78 +813,30 @@ fun WordSyncedLyrics(textColor: Color = Color.White) {
         androidx.compose.animation.AnimatedContent(
             targetState = activeLineIndex,
             transitionSpec = {
-                (androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) + 
-                 androidx.compose.animation.slideInVertically(animationSpec = androidx.compose.animation.core.tween(400)) { height -> height / 2 })
+                (androidx.compose.animation.fadeIn(tween(400)) +
+                 androidx.compose.animation.slideInVertically(tween(400)) { it / 3 })
                     .togetherWith(
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400)) + 
-                        androidx.compose.animation.slideOutVertically(animationSpec = androidx.compose.animation.core.tween(400)) { height -> -height / 2 }
+                        androidx.compose.animation.fadeOut(tween(250)) +
+                        androidx.compose.animation.slideOutVertically(tween(250)) { -it / 3 }
                     )
             },
-            label = "lyrics_transition"
-        ) { lineIndex ->
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.Start
+            label = "lyricLine"
+        ) {
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                val previousLine = lyrics.getOrNull(lineIndex - 1)
-                if (previousLine != null) {
-                    Text(
-                        text = previousLine,
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                        color = textColor.copy(alpha = 0.3f),
-                        modifier = Modifier.padding(bottom = 32.dp)
-                    )
-                }
-
-                val currentLine = lyrics.getOrNull(lineIndex) ?: ""
-                val currentLineOffset = lineWordOffsets.getOrNull(lineIndex) ?: 0
-                
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    currentLine.split(" ").forEachIndexed { wordIndex, word ->
-                        val globalIndex = currentLineOffset + wordIndex
-                        val isActive = globalIndex == activeWordIndex
-                        val isPast = globalIndex < activeWordIndex
-                        
-                        val scale by animateFloatAsState(
-                            targetValue = if (isActive) 1.05f else 1f, 
-                            animationSpec = androidx.compose.animation.core.tween(400),
-                            label = "scale"
-                        )
-                        val alpha by animateFloatAsState(
-                            targetValue = if (isActive) 1f else 0.4f, 
-                            animationSpec = androidx.compose.animation.core.tween(400),
-                            label = "alpha"
-                        )
-                        
-                        Text(
-                            text = word,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = if (isActive) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium
-                            ),
-                            color = textColor.copy(alpha = alpha),
-                            modifier = Modifier
-                                .padding(end = 8.dp, bottom = 4.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                }
-                        )
-                    }
-                }
-                
-                val upcomingLine = lyrics.getOrNull(lineIndex + 1)
-                if (upcomingLine != null) {
-                    Text(
-                        text = upcomingLine,
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                        color = textColor.copy(alpha = 0.3f),
-                        modifier = Modifier.padding(top = 32.dp)
+                activeWords.forEachIndexed { wordIndex, word ->
+                    val isHighlighted = wordIndex == activeWordIndex
+                    LyricWord(
+                        word = word,
+                        isHighlighted = isHighlighted,
+                        isLineActive = true,
+                        textColor = textColor,
+                        baseFontSize = 22f
                     )
                 }
             }
@@ -1947,7 +1915,7 @@ fun AlbumResultItem(title: String, year: String, imageUrl: String, modifier: Mod
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f))
-                        .border(1.5.dp, if (isSelected) androidx.compose.ui.graphics.Color.Transparent else androidx.compose.ui.graphics.Color.White, CircleShape),
+                        .border(1.5.dp, if (isSelected) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelected) {
@@ -2017,7 +1985,7 @@ fun ArtistResultItem(name: String, imageUrl: String, isVerified: Boolean = false
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f))
-                        .border(1.5.dp, if (isSelected) androidx.compose.ui.graphics.Color.Transparent else androidx.compose.ui.graphics.Color.White, CircleShape),
+                        .border(1.5.dp, if (isSelected) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelected) {
@@ -2075,7 +2043,7 @@ fun PlaylistResultItem(title: String, subtitle: String, imageUrl: String, modifi
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick

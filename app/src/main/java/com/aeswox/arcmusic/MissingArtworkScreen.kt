@@ -77,8 +77,8 @@ fun MissingArtworkScreen(
                 onClick = { viewModel.autoFindArtwork() },
                 enabled = !isAutoFinding && missingTracks.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
@@ -87,7 +87,7 @@ fun MissingArtworkScreen(
                 if (isAutoFinding) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -111,7 +111,7 @@ fun MissingArtworkScreen(
                 }
             }
         },
-        containerColor = Color(0xFFF7F7F7) // Light grayish/white background like the image
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -126,13 +126,13 @@ fun MissingArtworkScreen(
                 Text(
                     text = "Missing Artwork",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.DarkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "${missingTracks.size} tracks require attention",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Normal
                 )
             }
@@ -167,7 +167,7 @@ fun MissingArtworkTrackItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(16.dp), // A bit more padding to match the pill shape
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -175,13 +175,13 @@ fun MissingArtworkTrackItem(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFE5E5E5)), // Light grey background
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest), // icon placeholder circle
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Image,
                 contentDescription = null,
-                tint = Color(0xFF757575), // Dark grey icon
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -194,7 +194,7 @@ fun MissingArtworkTrackItem(
             Text(
                 text = track.title,
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -202,7 +202,7 @@ fun MissingArtworkTrackItem(
             Text(
                 text = track.artist,
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                color = Color.DarkGray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -215,12 +215,12 @@ fun MissingArtworkTrackItem(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFE5E5E5)) // Match circle grey
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest) // upload button circle
         ) {
             Icon(
                 imageVector = Icons.Default.Upload,
                 contentDescription = "Upload Artwork",
-                tint = Color.Black,
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(20.dp)
             )
         }

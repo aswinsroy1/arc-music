@@ -44,6 +44,7 @@
   - **Background Backfill** — Triggers updates for favorited artists automatically via `refreshArtistGrowthData`, enforcing staleness thresholds (7 days).
   - DB bumped to version 18.
 - **Extended Collection Growth pipeline to include top-listened artists**: An artist now qualifies for New Release / Discovery / Missing Tracks fetches if they are either favorited **or** in the top 10 most-listened artists (by accumulated listening time from `PlayHistory`). The two sets are merged and deduplicated by artist id so no artist is fetched twice. The top-listened set is recomputed on each backfill cycle (same 7-day staleness cadence). No DB schema changes, no UI changes, no throttling changes. `CollectionGrowthData.hasFavoritedArtists` renamed to `hasQualifyingArtists` to reflect the broader scope.
+- **AMOLED Dark Theme**: Built a true-black AMOLED dark theme and wired it to the Settings toggle via DataStore. Replaced all hardcoded colors across the app with theme-aware Material roles. Reusable components (glass effect, ambient glow) adapt intelligently based on the app's current theme.
 
 
 **What's Next**:

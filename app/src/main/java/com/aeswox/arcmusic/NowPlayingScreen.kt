@@ -1806,32 +1806,29 @@ fun LyricWord(
     word: String,
     isHighlighted: Boolean,
     isLineActive: Boolean,
-    textColor: Color
+    textColor: Color,
+    baseFontSize: Float = 24f
 ) {
-
     val wordAlpha by animateFloatAsState(
         targetValue = if (isHighlighted || !isLineActive) 1f else 0.55f,
         animationSpec = tween(durationMillis = 200),
         label = "wordAlpha"
     )
-    val wordScale by animateFloatAsState(
-        targetValue = if (isHighlighted) 1.10f else 1f,
+    // Use fontSize animation instead of graphicsLayer scale so Compose measures
+    // the text at its real size and words never overflow their layout bounds.
+    val wordFontSize by animateFloatAsState(
+        targetValue = if (isHighlighted) baseFontSize + 2f else baseFontSize,
         animationSpec = tween(durationMillis = 200),
-        label = "wordScale"
+        label = "wordFontSize"
     )
 
     Text(
         text = word,
-        color = textColor,
+        color = textColor.copy(alpha = wordAlpha),
         style = MaterialTheme.typography.displayMedium.copy(
-            fontSize = 24.sp,
+            fontSize = wordFontSize.sp,
             fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium
-        ),
-        modifier = Modifier.graphicsLayer {
-            scaleX = wordScale
-            scaleY = wordScale
-            alpha = wordAlpha
-        }
+        )
     )
 }
 
@@ -1860,11 +1857,6 @@ fun LyricLine(
         isFar    -> 0.12f
         else     -> 0.28f
     }
-    val targetScale = when {
-        isActive -> 1.1f
-        isNear   -> 0.95f
-        else     -> 0.85f
-    }
     val targetPadding = when {
         isActive -> 28.dp
         isNear   -> 12.dp
@@ -1873,23 +1865,19 @@ fun LyricLine(
 
     val lineAnimSpec = tween<Float>(durationMillis = 300)
     val paddingAnimSpec = tween<androidx.compose.ui.unit.Dp>(durationMillis = 300)
-    
+
     val lineAlpha by animateFloatAsState(
         targetValue = targetAlpha,
         animationSpec = lineAnimSpec,
         label = "alpha"
-    )
-    val lineScale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = lineAnimSpec,
-        label = "scale"
     )
     val linePadding by animateDpAsState(
         targetValue = targetPadding,
         animationSpec = paddingAnimSpec,
         label = "padding"
     )
-    
+
+    // Blur non-active lines; active line is never blurred.
     val targetBlur = if (distance > 0) {
         (distance * 2.5f).coerceAtMost(10f).dp
     } else 0.dp
@@ -1899,16 +1887,25 @@ fun LyricLine(
         label = "lineBlur"
     )
 
+    // Animate font size at the line level instead of graphicsLayer scale.
+    // This way Compose measures the FlowRow at the actual rendered size so
+    // words never escape their layout bounds.
+    val targetFontSize = when {
+        isActive -> 24f
+        isNear   -> 21f
+        else     -> 18f
+    }
+    val lineFontSize by animateFloatAsState(
+        targetValue = targetFontSize,
+        animationSpec = lineAnimSpec,
+        label = "fontSize"
+    )
+
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = linePadding)
-            .graphicsLayer {
-                scaleX = lineScale
-                scaleY = lineScale
-                alpha = lineAlpha
-                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-            }
+            .graphicsLayer { alpha = lineAlpha }
             .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -1919,7 +1916,8 @@ fun LyricLine(
                 word = word,
                 isHighlighted = isHighlighted,
                 isLineActive = isActive,
-                textColor = textColor
+                textColor = textColor,
+                baseFontSize = lineFontSize
             )
         }
     }

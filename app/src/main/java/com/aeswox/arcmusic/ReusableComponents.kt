@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.luminance
 import dev.chrisbanes.haze.HazeState
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -120,6 +121,13 @@ fun Modifier.glassEffect(
     shape: Shape = RoundedCornerShape(AppCornerRadius),
     forceFallback: Boolean = false
 ): Modifier = composed {
+    // Detect dark mode from the actual applied color scheme (luminance < 0.05 = dark background).
+    val bgLuminance = MaterialTheme.colorScheme.background.luminance()
+    val isDark = bgLuminance < 0.05f
+    val tintBase = if (isDark) Color.Black else Color.White
+    // Dark mode uses slightly higher alpha to keep the glass visible against black.
+    val adjustedAlpha = if (isDark) (tintTransparency + 0.3f).coerceAtMost(0.85f) else tintTransparency
+
     if (!forceFallback && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         if (hazeState != null) {
             this.hazeChild(
@@ -127,12 +135,12 @@ fun Modifier.glassEffect(
                 shape = shape,
                 style = HazeStyle(
                     blurRadius = 24.dp,
-                    tint = Color.White.copy(alpha = tintTransparency),
+                    tint = tintBase.copy(alpha = adjustedAlpha),
                     noiseFactor = noiseFactor
                 )
             )
         } else {
-            this.background(Color.White.copy(alpha = tintTransparency), shape)
+            this.background(tintBase.copy(alpha = adjustedAlpha), shape)
         }
     } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
         val backdrop = LocalAppBackdrop.current
@@ -144,15 +152,15 @@ fun Modifier.glassEffect(
                 backdrop = backdrop,
                 shape = { shape },
                 effects = { blur(blurPx) },
-                onDrawSurface = { drawRect(Color.White.copy(alpha = tintTransparency)) },
+                onDrawSurface = { drawRect(tintBase.copy(alpha = adjustedAlpha)) },
                 backdropScale = 0.5f
             )
         } else {
-            this.background(Color.White.copy(alpha = tintTransparency + 0.3f), shape)
+            this.background(tintBase.copy(alpha = adjustedAlpha + 0.3f), shape)
         }
     } else {
-        // Option A: Fallback to semi-transparent background for Android 11 and below
-        this.background(Color.White.copy(alpha = tintTransparency + 0.3f), shape)
+        // Fallback to semi-transparent background for Android 11 and below
+        this.background(tintBase.copy(alpha = adjustedAlpha + 0.3f), shape)
     }
 }
 
@@ -190,7 +198,7 @@ fun AnimatedGlowBackground(modifier: Modifier = Modifier, glowIntensity: Float, 
         ),
         label = "glowOffsetY"
     )
-    Box(modifier = modifier.fillMaxSize().background(Color.White)) {
+    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -466,7 +474,7 @@ fun ArcDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         shape = RoundedCornerShape(AppCornerRadius),
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
             .width(220.dp)
             .clip(RoundedCornerShape(AppCornerRadius))

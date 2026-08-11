@@ -1072,8 +1072,12 @@ class MusicViewModel @Inject constructor(
         }
     }
 
-    private val _themeMode = MutableStateFlow(ThemeMode.Light)
-    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+    /** Persisted theme preference — reads from DataStore on first subscription. */
+    val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        ThemeMode.Light
+    )
 
     private val _tintTransparency = MutableStateFlow(0.4f)
     val tintTransparency: StateFlow<Float> = _tintTransparency.asStateFlow()
@@ -1088,7 +1092,9 @@ class MusicViewModel @Inject constructor(
     val lightThemeForNowPlaying: StateFlow<Boolean> = _lightThemeForNowPlaying.asStateFlow()
     
     fun setThemeMode(mode: ThemeMode) {
-        _themeMode.value = mode
+        viewModelScope.launch {
+            settingsRepository.setThemeMode(mode)
+        }
     }
 
     fun setTintTransparency(value: Float) {

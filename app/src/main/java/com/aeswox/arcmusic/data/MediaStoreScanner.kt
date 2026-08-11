@@ -80,7 +80,7 @@ class MediaStoreScanner @Inject constructor(
                 val trackNumber = fullTrackNumber % 1000
                 val discNumber = if (fullTrackNumber >= 1000) fullTrackNumber / 1000 else 1
                 
-                val durationMs = cursor.getLong(durationColumn)
+                var durationMs = cursor.getLong(durationColumn)
                 val filePath = cursor.getString(dataColumn) ?: ""
                 val sizeBytes = cursor.getLong(sizeColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn) * 1000L // MediaStore stores in seconds usually, wait, DATE_ADDED is in seconds!
@@ -93,6 +93,7 @@ class MediaStoreScanner @Inject constructor(
                 var bitDepth = 0
 
                 val lowerPath = filePath.lowercase()
+                // Determine if we need a deep scan for certain formats where MediaStore may miss metadata
                 val needsDeepScan = lowerPath.endsWith(".flac") || lowerPath.endsWith(".wav") || 
                                     lowerPath.endsWith(".alac") || lowerPath.endsWith(".m4a") || 
                                     lowerPath.endsWith(".eac3") || lowerPath.endsWith(".ac3")
@@ -106,16 +107,18 @@ class MediaStoreScanner @Inject constructor(
                             val trackMime = format.getString(MediaFormat.KEY_MIME) ?: continue
                             if (trackMime.startsWith("audio/")) {
                                 actualMimeType = trackMime
-                                
+
+                                // Sample rate extraction
                                 if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
                                     sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                                 }
-                                
+
+                                // Bit depth extraction
                                 if (format.containsKey("bits-per-sample")) {
                                     bitDepth = format.getInteger("bits-per-sample")
                                 } else if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
                                     val encoding = format.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                                    bitDepth = when(encoding) {
+                                    bitDepth = when (encoding) {
                                         AudioFormat.ENCODING_PCM_8BIT -> 8
                                         AudioFormat.ENCODING_PCM_16BIT -> 16
                                         AudioFormat.ENCODING_PCM_24BIT_PACKED,
@@ -124,11 +127,17 @@ class MediaStoreScanner @Inject constructor(
                                         else -> 0
                                     }
                                 }
+
+                                // If MediaStore gave a zero duration, fall back to extractor's duration (microseconds)
+                                if (durationMs == 0L && format.containsKey(MediaFormat.KEY_DURATION)) {
+                                    durationMs = format.getLong(MediaFormat.KEY_DURATION) / 1000L
+                                }
+
                                 break
                             }
                         }
                     } catch (e: Exception) {
-                        // Ignore extraction errors
+                        // Silently ignore any extraction issues – we still retain any previously read data
                     } finally {
                         extractor.release()
                     }

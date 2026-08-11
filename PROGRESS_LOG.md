@@ -1,5 +1,13 @@
 # Progress Log
 
+## 2026-08-11 — AMOLED Dark Theme
+- **Goal**: Implement a true-black AMOLED dark theme and wire it to a persistent user toggle in Settings, auditing and removing all hardcoded UI colors.
+- **Changed**:
+  - `Color.kt` / `Theme.kt`: Added a full suite of `Dark*` color tokens featuring `#000000` background and `0D0D0D` surfaces, and wired them into `DarkColorScheme`.
+  - `SettingsRepository.kt` / `MusicViewModel.kt`: Added a persistent `ThemeMode` flow backed by DataStore.
+  - `SettingsScreen.kt`, `MainActivity.kt`, `MissingArtworkScreen.kt`, `CollectionGrowthScreen.kt`: Audited and replaced hardcoded `Color.White`, `Color.Black`, and grey hex values with their semantic `MaterialTheme.colorScheme` equivalents.
+  - `ReusableComponents.kt`: Modified the `glassEffect` modifier to dynamically calculate its tint based on the luminance of the current background color (app-theme-aware, not just system-theme-aware) so glass blurs look correct on AMOLED black.
+- **Verified**: The app builds cleanly. `CollectionGrowthScreen` gradient overlays intentionally keep `Color.White` text since they sit on dark gradient scrims.
 ## 2026-08-07 — Collection Growth: Include Top-Listened Artists in Fetch Pipeline
 
 ### Goal

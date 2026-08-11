@@ -251,7 +251,7 @@ fun SettingsGroup(modifier: Modifier = Modifier, title: String, content: @Compos
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(AppCornerRadius))
-                .background(Color.White.copy(alpha = 0.7f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f))
                 .padding(vertical = 8.dp),
             content = content
         )
@@ -282,7 +282,7 @@ fun SettingsItem(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.5f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
         ) {
             Icon(
                 imageVector = icon, 
