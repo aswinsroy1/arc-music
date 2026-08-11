@@ -720,7 +720,7 @@ fun HeroSection(
                 .fillMaxWidth()
                 .aspectRatio(1.57f)
                 .clip(RoundedCornerShape(36.dp))
-                .background(Color(0xFFF2F4F7)),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -746,14 +746,14 @@ fun HeroSection(
                 Text(
                     text = suggestedSong?.artist ?: "Unknown",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Black.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 AppPrimaryButton(
                     text = "Play",
                     onClick = { suggestedSong?.let { song -> onPlayClick(song, randomPicks) } },
-                    containerColor = Color.White,
-                    contentColor = Color.Black,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp)
                 )
             }

@@ -51,8 +51,8 @@ fun EqualizerScreen(
     var selectedPreset by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
-        modifier = modifier.background(Color(0xFFF8F8F8)),
-        containerColor = Color(0xFFF8F8F8),
+        modifier = modifier.background(MaterialTheme.colorScheme.background),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Equalizer", fontWeight = FontWeight.SemiBold) },
@@ -66,18 +66,18 @@ fun EqualizerScreen(
                         checked = isEnabled,
                         onCheckedChange = { viewModel.setEnabled(it) },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Color.Black,
-                            checkedIconColor = Color.Black,
-                            uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color.LightGray,
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            checkedIconColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             uncheckedBorderColor = Color.Transparent
                         ),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFFF8F8F8)
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -97,7 +97,7 @@ fun EqualizerScreen(
                     .fillMaxWidth()
                     .shadow(elevation = 16.dp, shape = RoundedCornerShape(32.dp), spotColor = Color(0x1A000000)),
                 shape = RoundedCornerShape(32.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 val pagerState = rememberPagerState(pageCount = { 2 })
                 Column(
@@ -116,9 +116,9 @@ fun EqualizerScreen(
                             verticalArrangement = Arrangement.SpaceBetween,
                             horizontalAlignment = Alignment.End
                         ) {
-                            Text("+12dB", fontSize = 10.sp, color = Color.Gray)
-                            Text("0dB", fontSize = 10.sp, color = Color.Gray)
-                            Text("-12dB", fontSize = 10.sp, color = Color.Gray)
+                            Text("+12dB", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("0dB", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("-12dB", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         // Sliders Pager
@@ -148,7 +148,7 @@ fun EqualizerScreen(
                                         Text(
                                             text = freqLabels.getOrElse(i) { "" },
                                             fontSize = 12.sp,
-                                            color = Color.Black
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -167,14 +167,14 @@ fun EqualizerScreen(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(if (pagerState.currentPage == 0) Color.Black else Color.LightGray)
+                                .background(if (pagerState.currentPage == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(if (pagerState.currentPage == 1) Color.Black else Color.LightGray)
+                                .background(if (pagerState.currentPage == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
                         )
                     }
                 }
@@ -188,7 +188,7 @@ fun EqualizerScreen(
                     text = "Presets",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -202,10 +202,10 @@ fun EqualizerScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(if (isSelected) Color.Black else Color.White)
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
                                 .border(
                                     width = 1.dp,
-                                    color = if (isSelected) Color.Black else Color.LightGray,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                     shape = RoundedCornerShape(24.dp)
                                 )
                                 .clickable {
@@ -219,7 +219,7 @@ fun EqualizerScreen(
                         ) {
                             Text(
                                 text = presetName,
-                                color = if (isSelected) Color.White else Color.Black,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp
                             )
                         }
@@ -249,9 +249,9 @@ fun EqualizerScreen(
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color.Transparent,
-                        contentColor = Color.Black
+                        contentColor = MaterialTheme.colorScheme.onBackground
                     ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Text("Reset", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
@@ -263,8 +263,8 @@ fun EqualizerScreen(
                         .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text("Save Preset", fontSize = 18.sp, fontWeight = FontWeight.Medium)
