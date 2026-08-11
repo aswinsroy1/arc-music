@@ -52,6 +52,11 @@ class PlaybackService : MediaSessionService() {
                 equalizerManager.attachToAudioSession(audioSessionId)
             }
         })
+        
+        // Attach immediately in case the session ID is already assigned before the listener is added
+        if (player.audioSessionId != C.AUDIO_SESSION_ID_UNSET && player.audioSessionId != 0) {
+            equalizerManager.attachToAudioSession(player.audioSessionId)
+        }
             
         mediaSession = MediaSession.Builder(this, player).build()
     }

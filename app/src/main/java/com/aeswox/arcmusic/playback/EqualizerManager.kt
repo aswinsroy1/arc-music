@@ -41,7 +41,7 @@ class EqualizerManager @Inject constructor(
         
         release()
         try {
-            equalizer = Equalizer(0, audioSessionId).apply {
+            equalizer = Equalizer(Int.MAX_VALUE, audioSessionId).apply {
                 minEqLevel = bandLevelRange[0]
                 maxEqLevel = bandLevelRange[1]
                 enabled = _isEnabled.value
@@ -59,6 +59,9 @@ class EqualizerManager @Inject constructor(
         prefs.edit().putBoolean("eq_enabled", enabled).apply()
         try {
             equalizer?.enabled = enabled
+            if (enabled) {
+                applyBandLevels(_bandLevels.value)
+            }
         } catch (e: Exception) {
             Log.e("EqualizerManager", "Failed to set equalizer enabled state", e)
         }
