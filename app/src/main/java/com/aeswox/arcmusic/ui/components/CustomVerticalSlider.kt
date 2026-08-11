@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -31,8 +32,11 @@ fun CustomVerticalSlider(
     val trackWidth = 14.dp
     val thumbRadius = 14.dp
     val thumbStrokeWidth = 2.dp
-    val trackColor = Color(0xFFF0F0F0)
-    val fillTrackColor = if (enabled) Color.Black else Color.Gray
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val fillTrackColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    
+    val thumbColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val thumbStrokeColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
 
     Canvas(
         modifier = modifier
@@ -85,12 +89,12 @@ fun CustomVerticalSlider(
 
         // 3. Draw Thumb
         drawCircle(
-            color = Color.White,
+            color = thumbColor,
             radius = thumbRadiusPx,
             center = Offset(centerX, thumbY)
         )
         drawCircle(
-            color = if (enabled) Color.Black else Color.Gray,
+            color = thumbStrokeColor,
             radius = thumbRadiusPx - thumbStrokeWidth.toPx() / 2f,
             center = Offset(centerX, thumbY),
             style = Stroke(width = thumbStrokeWidth.toPx())
