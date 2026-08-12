@@ -11,6 +11,7 @@
 - **Fixes**: Re-audited and removed remaining hardcoded colors from the `HeroSection` in `MainActivity.kt` and `EqualizerScreen.kt` that were missed in the initial sweep.
 - **Audio Equalizer Fix**: Added the required `android.permission.MODIFY_AUDIO_SETTINGS` to `AndroidManifest.xml` so the ExoPlayer Equalizer actually processes audio (previously it was silently failing without this permission). Also fixed the hardcoded colors in `CustomVerticalSlider.kt`. Forced the audio session bind priority to `Int.MAX_VALUE`.
 - **Appearance Settings Persistence**: Wired the 3 Appearance settings sliders (Glass Tint Transparency, Monochromatic Noise Factor, Glow Intensity) to `SettingsRepository.kt` via DataStore. Used synchronous `runBlocking` in the `MusicViewModel` initializer to ensure the saved preferences are rendered perfectly on frame 1 without flashing the default values first.
+- **Appearance Screen Custom Sliders**: Built a `CustomHorizontalSlider.kt` to replace the default Material 3 `Slider` in `AppearanceScreen.kt`, perfectly matching the custom canvas-drawn aesthetic and interaction model of the Equalizer's `CustomVerticalSlider.kt`.
 ## 2026-08-07 — Collection Growth: Include Top-Listened Artists in Fetch Pipeline
 
 ### Goal

@@ -1385,7 +1385,7 @@ fun SearchBar(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 24.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1544,20 +1544,20 @@ fun BrowseCategoriesSection(genreCounts: List<MusicViewModel.GenreCount>, modifi
         )
         Spacer(modifier = Modifier.height(16.dp))
         val fallbackColors = listOf(
-            Color(0xFFFF6B6B) to Color(0xFFFFEAEA),
-            Color(0xFFFF8E3C) to Color(0xFFFFF0E5),
-            Color(0xFF9D4EDD) to Color(0xFFF0E6FF),
-            Color(0xFFFFB703) to Color(0xFFFFF8E1),
-            Color(0xFF34A853) to Color(0xFFE6F4EA),
-            Color(0xFFE91E63) to Color(0xFFFCE8F3)
+            Color(0xFFFF6B6B),
+            Color(0xFFFF8E3C),
+            Color(0xFF9D4EDD),
+            Color(0xFFFFB703),
+            Color(0xFF34A853),
+            Color(0xFFE91E63)
         )
         val fallbackIcons = listOf(Icons.Default.Star, Icons.Default.PlayArrow, Icons.Default.Language, Icons.Outlined.MusicNote, Icons.Default.Home, Icons.Default.Favorite)
         
         val categories = genreCounts.take(12).mapIndexed { index, genreCount ->
-            val colorPair = fallbackColors[index % fallbackColors.size]
+            val color = fallbackColors[index % fallbackColors.size]
             val icon = fallbackIcons[index % fallbackIcons.size]
             val nameWithCount = "${genreCount.genre.replaceFirstChar { it.uppercase() }} (${genreCount.count})"
-            Category(nameWithCount, genreCount.genre, colorPair.first, colorPair.second, icon)
+            Category(nameWithCount, genreCount.genre, color, color, icon)
         }
         
         if (categories.isEmpty()) {
@@ -1601,7 +1601,8 @@ fun CategoryCard(category: Category, modifier: Modifier = Modifier, onClick: () 
         modifier = modifier
             .height(112.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(category.bgColor)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(category.color.copy(alpha = 0.12f))
             .clickable { onClick() }
             .padding(24.dp)
     ) {
