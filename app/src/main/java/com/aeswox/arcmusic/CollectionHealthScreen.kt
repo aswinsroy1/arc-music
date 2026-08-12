@@ -29,6 +29,7 @@ fun CollectionHealthScreen(
     onNavigateBack: () -> Unit,
     onNavigateToMissingContent: () -> Unit = {},
     onNavigateToMissingArtwork: () -> Unit = {},
+    onNavigateToMissingLyrics: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MusicViewModel = hiltViewModel(),
     glowIntensity: Float = 0.6f
@@ -80,7 +81,8 @@ fun CollectionHealthScreen(
                 item {
                     CollectionHealthBreakdownSection(
                         state = healthState,
-                        onNavigateToMissingArtwork = onNavigateToMissingArtwork
+                        onNavigateToMissingArtwork = onNavigateToMissingArtwork,
+                        onNavigateToMissingLyrics = onNavigateToMissingLyrics
                     )
                 }
                 
@@ -169,7 +171,8 @@ fun CollectionHealthScoreSection(score: Int) {
 @Composable
 fun CollectionHealthBreakdownSection(
     state: CollectionHealthState,
-    onNavigateToMissingArtwork: () -> Unit = {}
+    onNavigateToMissingArtwork: () -> Unit = {},
+    onNavigateToMissingLyrics: () -> Unit = {}
 ) {
     GlassCard {
         Column(
@@ -188,7 +191,8 @@ fun CollectionHealthBreakdownSection(
                 iconTint = Color(0xFFFDD835),
                 iconBg = Color(0xFFFFF9C4),
                 title = "Missing lyrics",
-                subtitle = "Not yet available"
+                subtitle = "Not yet available",
+                onClick = onNavigateToMissingLyrics
             )
             HealthBreakdownItem(
                 icon = if (state.missingMetadataCount > 0) Icons.Default.Warning else Icons.Default.CheckCircle,

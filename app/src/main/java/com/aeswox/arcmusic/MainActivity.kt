@@ -199,6 +199,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToMissingContent = { navController.navigate("missing_content") },
                                     onNavigateToMissingArtwork = { navController.navigate("missing_artwork") },
+                                    onNavigateToMissingLyrics = { navController.navigate("missing_lyrics") },
                                     glowIntensity = glowIntensity
                                 )
                             }
@@ -215,6 +216,13 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 MissingArtworkScreen(
                                     viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable("missing_lyrics") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                MissingLyricsScreen(
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
