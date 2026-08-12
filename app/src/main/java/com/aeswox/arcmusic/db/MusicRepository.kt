@@ -631,6 +631,8 @@ class MusicRepository(
     fun getTracksMissingMetadata(): Flow<List<Track>> = trackDao.getTracksMissingMetadata()
     fun getLowQualityTracks(): Flow<List<Track>> = trackDao.getLowQualityTracks()
     fun getCorruptedTracks(): Flow<List<Track>> = trackDao.getCorruptedTracks()
+    suspend fun updateTrackArtwork(trackId: String, artworkUri: String?) = trackDao.updateTrackArtwork(trackId, artworkUri)
+
 
     // Search History
     fun getRecentSearches(limit: Int = 4): Flow<List<SearchHistory>> = searchHistoryDao.getRecentSearches(limit)

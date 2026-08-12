@@ -1308,8 +1308,9 @@ class MusicViewModel @Inject constructor(
                     val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
                     val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes, mimeType)
                     if (success) {
-                        // After scan, the missing artwork state will update automatically next time we pull,
-                        // but we might want to manually trigger a local UI refresh by hiding it.
+                        // Update the DB so the Room query stops returning this track as missing
+                        repository.updateTrackArtwork(track.id, uri.toString())
+                        // Also update the in-memory list immediately for instant UI feedback
                         val currentList = _healthState.value.missingArtworkTracks.toMutableList()
                         currentList.removeIf { it.id == track.id }
                         _healthState.value = _healthState.value.copy(
@@ -1341,13 +1342,15 @@ class MusicViewModel @Inject constructor(
             
             for (track in missingTracks) {
                 try {
-                    // We only have fetchBestArtistImage in ArtworkRepository, which can fetch by track + artist
                     val url = artworkRepository.fetchBestArtistImage(track.artist, track.title)
                     if (url != null) {
                         val bytes = com.aeswox.arcmusic.utils.TaggingHelper.downloadImageBytes(url)
                         if (bytes != null) {
                             val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes)
                             if (success) {
+                                // Update the DB so the Room query stops returning this track as missing
+                                repository.updateTrackArtwork(track.id, url)
+                                // Also update in-memory list for instant UI feedback
                                 val currentList = _healthState.value.missingArtworkTracks.toMutableList()
                                 currentList.removeIf { it.id == track.id }
                                 _healthState.value = _healthState.value.copy(
