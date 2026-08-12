@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.aeswox.arcmusic.ui.components.CustomHorizontalSlider
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 
@@ -56,7 +57,7 @@ fun AppearanceScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Slider(
+                            CustomHorizontalSlider(
                                 value = tintTransparency,
                                 onValueChange = onTintTransparencyChange,
                                 valueRange = 0.0f..0.8f
@@ -69,7 +70,7 @@ fun AppearanceScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Slider(
+                            CustomHorizontalSlider(
                                 value = noiseFactor,
                                 onValueChange = onNoiseFactorChange,
                                 valueRange = 0.0f..0.12f
@@ -86,7 +87,7 @@ fun AppearanceScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Slider(
+                            CustomHorizontalSlider(
                                 value = glowIntensity,
                                 onValueChange = onGlowIntensityChange,
                                 valueRange = 0.0f..1.0f

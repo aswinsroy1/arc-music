@@ -9,7 +9,8 @@
   - `ReusableComponents.kt`: Modified the `glassEffect` modifier to dynamically calculate its tint based on the luminance of the current background color (app-theme-aware, not just system-theme-aware) so glass blurs look correct on AMOLED black.
 - **Verified**: The app builds cleanly. `CollectionGrowthScreen` gradient overlays intentionally keep `Color.White` text since they sit on dark gradient scrims.
 - **Fixes**: Re-audited and removed remaining hardcoded colors from the `HeroSection` in `MainActivity.kt` and `EqualizerScreen.kt` that were missed in the initial sweep.
-- **Audio Equalizer Fix**: Added the required `android.permission.MODIFY_AUDIO_SETTINGS` to `AndroidManifest.xml` so the ExoPlayer Equalizer actually processes audio (previously it was silently failing without this permission). Also fixed the hardcoded colors in `CustomVerticalSlider.kt`.
+- **Audio Equalizer Fix**: Added the required `android.permission.MODIFY_AUDIO_SETTINGS` to `AndroidManifest.xml` so the ExoPlayer Equalizer actually processes audio (previously it was silently failing without this permission). Also fixed the hardcoded colors in `CustomVerticalSlider.kt`. Forced the audio session bind priority to `Int.MAX_VALUE`.
+- **Appearance Settings Persistence**: Wired the 3 Appearance settings sliders (Glass Tint Transparency, Monochromatic Noise Factor, Glow Intensity) to `SettingsRepository.kt` via DataStore. Used synchronous `runBlocking` in the `MusicViewModel` initializer to ensure the saved preferences are rendered perfectly on frame 1 without flashing the default values first.
 ## 2026-08-07 — Collection Growth: Include Top-Listened Artists in Fetch Pipeline
 
 ### Goal
