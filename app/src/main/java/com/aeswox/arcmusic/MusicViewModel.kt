@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import com.aeswox.arcmusic.db.MusicRepository
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
@@ -1079,14 +1080,23 @@ class MusicViewModel @Inject constructor(
         ThemeMode.Light
     )
 
-    private val _tintTransparency = MutableStateFlow(0.4f)
-    val tintTransparency: StateFlow<Float> = _tintTransparency.asStateFlow()
+    val tintTransparency: StateFlow<Float> = settingsRepository.tintTransparency.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        runBlocking { settingsRepository.tintTransparency.first() }
+    )
     
-    private val _noiseFactor = MutableStateFlow(0.06f)
-    val noiseFactor: StateFlow<Float> = _noiseFactor.asStateFlow()
+    val noiseFactor: StateFlow<Float> = settingsRepository.noiseFactor.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        runBlocking { settingsRepository.noiseFactor.first() }
+    )
     
-    private val _glowIntensity = MutableStateFlow(0.6f)
-    val glowIntensity: StateFlow<Float> = _glowIntensity.asStateFlow()
+    val glowIntensity: StateFlow<Float> = settingsRepository.glowIntensity.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        runBlocking { settingsRepository.glowIntensity.first() }
+    )
     
     private val _lightThemeForNowPlaying = MutableStateFlow(false)
     val lightThemeForNowPlaying: StateFlow<Boolean> = _lightThemeForNowPlaying.asStateFlow()
@@ -1098,15 +1108,21 @@ class MusicViewModel @Inject constructor(
     }
 
     fun setTintTransparency(value: Float) {
-        _tintTransparency.value = value
+        viewModelScope.launch {
+            settingsRepository.setTintTransparency(value)
+        }
     }
     
     fun setNoiseFactor(value: Float) {
-        _noiseFactor.value = value
+        viewModelScope.launch {
+            settingsRepository.setNoiseFactor(value)
+        }
     }
 
     fun setGlowIntensity(value: Float) {
-        _glowIntensity.value = value
+        viewModelScope.launch {
+            settingsRepository.setGlowIntensity(value)
+        }
     }
     
     fun setLightThemeForNowPlaying(value: Boolean) {
