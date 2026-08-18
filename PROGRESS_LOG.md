@@ -1,5 +1,39 @@
 # Progress Log
 
+## 2026-08-18 — LyricsPlus as Primary Online Lyrics Source
+
+### Goal
+Add LyricsPlus (`https://lyricsplus.prjktla.my.id/v2/lyrics/get`) as the first online lyrics source tried, before the existing LRCLIB fallback. Local sources (embedded tags, `.lrc` sidecar files) remain checked first. Word-level (`type=Word`) responses provide richer syllable-by-syllable data than LRCLIB's LRC format for tracks where Apple Music sync data is available upstream.
+
+### New Files
+- `data/network/LyricsPlusService.kt` — Retrofit interface: `GET /v2/lyrics/get?title&artist`. No API key. Follows the same pattern as `LrcLibApiService`.
+- `data/network/LyricsPlusResponse.kt` — Moshi models: `LyricsPlusResponse` (type, lyrics[]), `LyricsPlusLine` (time ms, text, syllabus[]), `LyricsPlusSyllable` (time ms, text). `@JsonClass(generateAdapter = true)` on all three.
+
+### Modified Files
+- `di/NetworkModule.kt` — Added `provideLyricsPlusService()`: dedicated Retrofit instance at `https://lyricsplus.prjktla.my.id/`, using the shared `OkHttpClient`.
+- `data/repository/LyricsRepositoryImpl.kt`:
+  - Injected `LyricsPlusService` via constructor.
+  - Inserted `fetchFromLyricsPlus(track)` as step 3 in the `fetchers` chain (between local `.lrc` at step 2 and `fetchFromLrcLib` at step 4).
+  - Implemented `fetchFromLyricsPlus()`:
+    - `type=Word` → maps `syllabus[]` entries to `List<SyncedWord>` (time already in ms, word boundary derived from trailing space in raw text), producing fully populated `SyncedLine(words=…)` for the existing word-by-word UI.
+    - `type=Line` → `words=null`, `SyncedLine` carries only `time` + `line` text; existing line-display path handles this identically to LRCLIB line-only results.
+    - Any exception or empty response → returns `null`, chain falls through to LRCLIB silently.
+  - Caching: on success, result written to existing `lyricsCache` map at the same callsite as all other sources.
+
+### Key Decisions
+- **No new cache layer**: The existing in-memory `lyricsCache` is sufficient. Adding a Room or disk cache for this source would duplicate the LRC file-write mechanism already used by `downloadAndSaveLyrics()`.
+- **Word boundary logic**: LyricsPlus `syllabus[].text` uses a trailing space to indicate the end of a word (e.g. `"I "`, `"been "`, `"call"`). The first syllable in each line always starts a new word. `startsNewWord` is set true if the *previous* syllable's raw text ends with a space.
+- **Scope unchanged**: `downloadAndSaveLyrics()` and `hasLocalOrEmbeddedLyrics()` are not modified — they only touch local and LRCLIB paths, which is correct.
+
+### Build
+- `BUILD SUCCESSFUL in 2m 20s`. Zero new errors. Two pre-existing warnings unchanged (deprecated `fallbackToDestructiveMigration`, Moshi KAPT deprecation notice).
+
+### Acceptance Checks (require device)
+1. **Word-level source**: Play "Blinding Lights" by The Weeknd (or another track with Apple Music sync upstream in LyricsPlus). Confirm word-by-word highlighting advances per syllable rather than per line.
+2. **LrcLib fallback**: Play a track LyricsPlus doesn't have. Confirm logcat shows `"Found lyrics from source 4"` (LRCLIB), not an error, and lyrics display normally.
+3. **Local priority**: Add a `.lrc` file next to an audio file. Confirm logcat shows `"Found lyrics from source 2"` and neither LyricsPlus nor LRCLIB is called.
+4. **Unreachable graceful fallback**: Temporarily point `lyricsplus.prjktla.my.id` to a non-routable address (e.g. via `/etc/hosts` on a rooted device) and confirm lyrics still appear via LRCLIB with no error dialog.
+
 ## 2026-08-11 — AMOLED Dark Theme
 - **Goal**: Implement a true-black AMOLED dark theme and wire it to a persistent user toggle in Settings, auditing and removing all hardcoded UI colors.
 - **Changed**:
@@ -269,10 +303,27 @@ Extend the existing Collection Growth fetch pipeline (New Release, Discovery, Mi
 ## Collection Growth Performance (2026-08-06)
 - **Goal**: Move Collection Growth network requests to background tasks.
 - **Changed**:
-  - Migrated 'New Release' and 'Discovery' fetch logic out of synchronous UI loading into efreshArtistGrowthData background worker.
+  - Migrated 'New Release' and 'Discovery' fetch logic out of synchronous UI loading into 
+efreshArtistGrowthData background worker.
   - Implemented Room entities CachedNewRelease and CachedDiscovery to persist the data locally.
   - Updated MusicViewModel.init with a one-time backfill coroutine.
   - The CollectionGrowthScreen now loads instantly and is completely offline-first.
   - Schema bumped to Version 18 with appropriate migration strategies.
 - **Verified**: Builds successfully.
 
+# #   F i x   E A C 3   D u r a t i o n   a n d   B i t r a t e   ( 2 0 2 6 - 0 8 - 1 3 ) 
+ 
+ -   * * G o a l * * :   F i x   E A C 3   D o l b y   A t m o s   f i l e   d u r a t i o n   e x t r a c t i o n   i n   M e d i a S t o r e S c a n n e r   a n d   f i x   b r o k e n   s e e k b a r . 
+ 
+ -   * * C h a n g e d * * : 
+ 
+## Fix EAC3 Duration and Bitrate (2026-08-13)
+- **Goal**: Fix EAC3 Dolby Atmos file duration extraction in MediaStoreScanner and fix broken seekbar.
+- **Changed**:
+  - MediaStoreScanner.kt: The Android MediaMetadataRetriever fails on fragmented MP4/DASH EAC3 files (returns duration 0). Added a custom robust MP4 fallback parser (extractMp4DurationMs) that correctly parses MP4 atoms (moov, moof, 	raf, 	fdt) to compute the total duration from the base decode time of the last fragment. Also dynamically estimates bitrate using file size and the correct duration.
+  - MusicPlayerConnection.kt: ExoPlayer polling updated to reflect accurate duration.
+- **Verified**: The seek bar UI now receives correct live duration updates directly from ExoPlayer and DB. The rescan correctly saves duration and bitrate to the DB to avoid Low Quality Files false positives in Collection Health, and fixes lyrics sync.
+
+- **Follow-up**: Added `setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_AUTO)` and configured `AudioOffloadPreferences` in `PlaybackService.kt` to explicitly engage Android 12+ Spatializer (internal speakers) and hardware offload bitstreaming (HDMI/eARC receivers).
+
+- **Bug 4 - Hashtag in filename**: Fixed a crash where files containing '#' in their name (e.g. '#selfie') failed to play. ExoPlayer treated the string as a raw URI, parsing the '#' as a fragment identifier instead of part of the file path. Wrapped the path in Uri.fromFile(File(path)) inside MusicViewModel to properly URL-encode special characters.

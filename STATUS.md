@@ -43,9 +43,15 @@
   - **Optimized Loading** — Moved "New Release" and "Discovery" data fetches into the background, caching them locally via Room (`cached_new_releases` and `cached_discoveries` tables). The screen now loads instantly from DB. 
   - **Background Backfill** — Triggers updates for favorited artists automatically via `refreshArtistGrowthData`, enforcing staleness thresholds (7 days).
   - DB bumped to version 18.
-- **Extended Collection Growth pipeline to include top-listened artists**: An artist now qualifies for New Release / Discovery / Missing Tracks fetches if they are either favorited **or** in the top 10 most-listened artists (by accumulated listening time from `PlayHistory`). The two sets are merged and deduplicated by artist id so no artist is fetched twice. The top-listened set is recomputed on each backfill cycle (same 7-day staleness cadence). No DB schema changes, no UI changes, no throttling changes. `CollectionGrowthData.hasFavoritedArtists` renamed to `hasQualifyingArtists` to reflect the broader scope.
 - **AMOLED Dark Theme**: Built a true-black AMOLED dark theme and wired it to the Settings toggle via DataStore. Replaced all hardcoded colors across the app with theme-aware Material roles. Reusable components (glass effect, ambient glow) adapt intelligently based on the app's current theme.
+- **Fixed EAC3/Atmos Duration & Bitrate Bug**: 
+    1.  **Seek bar behavior / File duration:** For fragmented MP4/DASH EAC3-JOC files, Android's `MediaMetadataRetriever` fails to extract duration and reports 0 because the `mvhd` and `mdhd` boxes have a duration of 0. This causes ExoPlayer to not know the duration and disables the seek bar.
+        *   **Current Status:** FIXED. Implemented a robust MP4 fallback parser (`extractMp4DurationMs` in `MediaStoreScanner.kt`) that correctly parses MP4 atoms (`moov`, `moof`, `traf`, `tfdt`) to compute the total duration from the base decode time of the last fragment. This allows correct track duration and bitrate estimation, fixing the seek bar and lyrics synchronization.
 
+    2.  **Audio Output:** The files play, but as a flattened, downmixed EAC3 output, rather than true spatial Atmos.
+        *   **Current Status:** INTENDED. True spatial hardware offload decoding is not achievable on this platform using public Android/Media3 APIs without OEM-licensed encrypted vendor libraries. The current playback behavior is the expected correct behavior.
+
+- **LyricsPlus Integration**: Added LyricsPlus (`https://lyricsplus.prjktla.my.id`) as the first online lyrics source, tried before LRCLIB. Local sources (embedded tags, `.lrc` sidecar files) remain checked first, unchanged. Word-level responses (`type=Word`) map `syllabus[]` entries directly into `List<SyncedWord>`, feeding the existing word-by-word sync UI. Line-level responses (`type=Line`) leave `words=null`, falling through to the existing line-display path. Failures fall through silently to LRCLIB. Results cached in the existing in-memory `lyricsCache`.
 
 **What's Next**:
 - Wire Home screen "Recently Played" section to `getRecentlyPlayedTracks()` — real data now exists.
@@ -59,3 +65,4 @@
 - Last.fm API Key must be set in Settings → Last.fm for Discovery cards to appear. Without a key, the Discovery section is silently skipped (no error).
 - Missing content scan takes longer now (correct behaviour) because it does a per-album release lookup to MusicBrainz to get actual track names. This is only done once per artist (cached for 7 days).
 - New Release cards are similarly slow on first load (per-artist MBID resolution + MusicBrainz query). Subsequent loads use the 7-day cache and are instant.
+- LyricsPlus is a single-maintainer side project with no uptime SLA. If it is unreachable, the app falls through to LRCLIB silently — no error is surfaced to the user. Lyrics caching means the fallback only triggers on first fetch for a given track.
