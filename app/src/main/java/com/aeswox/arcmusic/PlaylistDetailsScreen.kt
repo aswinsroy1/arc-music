@@ -1,7 +1,7 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -24,6 +24,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Playlist
 import com.aeswox.arcmusic.db.entities.Track
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @Composable
 fun PlaylistDetailsScreen(
@@ -35,6 +41,11 @@ fun PlaylistDetailsScreen(
     val tracks by viewModel.getTracksForPlaylist(playlistId).collectAsState(initial = emptyList())
     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
+
+    if (playlist == null) {
+        PlaylistDetailsSkeleton(onNavigateBack = onNavigateBack)
+        return
+    }
 
     val totalDurationMs = tracks.sumOf { it.durationMs }
     val totalHours = totalDurationMs / (1000 * 60 * 60)
@@ -64,7 +75,7 @@ fun PlaylistDetailsScreen(
         )
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
             contentPadding = PaddingValues(bottom = 120.dp) // space for mini player
         ) {
             item {
@@ -304,7 +315,7 @@ fun PlaylistTrackItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .jellyClick(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -360,5 +371,126 @@ fun PlaylistTrackItem(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
         )
+    }
+}
+
+@Composable
+fun PlaylistDetailsSkeleton(onNavigateBack: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 120.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AppIconButton(
+                        icon = Icons.Default.ArrowBackIosNew,
+                        contentDescription = "Back",
+                        onClick = onNavigateBack,
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AppIconButton(
+                            icon = Icons.Default.MoreVert,
+                            contentDescription = "More",
+                            onClick = { },
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(280.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .shimmerLoading()
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .shimmerLoading()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.4f)
+                            .height(24.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .shimmerLoading()
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .shimmerLoading()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .shimmerLoading()
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+            }
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
+                        .padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        text = "TRACKS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(start = 24.dp, top = 20.dp, bottom = 12.dp)
+                    )
+                }
+            }
+            items(5) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
+                ) {
+                    TrackListItemSkeleton(showCover = false, showTrackNumber = true)
+                }
+            }
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
+                )
+            }
+        }
     }
 }

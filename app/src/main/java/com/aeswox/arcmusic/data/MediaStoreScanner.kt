@@ -75,6 +75,9 @@ class MediaStoreScanner @Inject constructor(
                     cursor.getString(genreColumn) ?: ""
                 } else ""
                 
+                val yearColumn = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.YEAR)
+                val year = if (yearColumn >= 0) cursor.getInt(yearColumn) else null
+                
                 // Track number might include disc number in some formats, e.g., 1004 for disc 1 track 4
                 val fullTrackNumber = cursor.getInt(trackColumn)
                 val trackNumber = fullTrackNumber % 1000
@@ -143,6 +146,31 @@ class MediaStoreScanner @Inject constructor(
                     }
                 }
 
+                if (durationMs == 0L) {
+                    try {
+                        val retriever = android.media.MediaMetadataRetriever()
+                        retriever.setDataSource(filePath)
+                        val durStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        if (durStr != null) {
+                            durationMs = durStr.toLong()
+                        }
+                        retriever.release()
+                    } catch (e: Exception) {
+                        android.util.Log.e("MediaStoreScanner", "Retriever failed for $filePath", e)
+                    }
+                    if (durationMs == 0L && (filePath.endsWith(".mp4", true) || filePath.endsWith(".m4a", true))) {
+                        durationMs = extractMp4DurationMs(filePath)
+                    }
+                }
+                
+                var estimatedBitrate = bitrate
+                if (estimatedBitrate <= 0 && durationMs > 0) {
+                    val durationSecs = durationMs / 1000.0
+                    if (durationSecs > 0) {
+                        estimatedBitrate = ((sizeBytes * 8) / durationSecs).toInt()
+                    }
+                }
+
                 val artworkUri = if (albumId != null) {
                     val uriStr = "content://media/external/audio/albumart/$albumId"
                     val uri = android.net.Uri.parse(uriStr)
@@ -162,13 +190,14 @@ class MediaStoreScanner @Inject constructor(
                         albumId = albumId,
                         album = album,
                         genre = genre,
+                        year = year,
                         trackNumber = trackNumber,
                         discNumber = discNumber,
                         durationMs = durationMs,
                         filePath = filePath,
                         fileSizeBytes = sizeBytes,
                         mimeType = actualMimeType,
-                        bitrate = bitrate,
+                        bitrate = estimatedBitrate,
                         sampleRate = sampleRate,
                         bitDepth = bitDepth,
                         dateAdded = dateAdded,
@@ -178,9 +207,132 @@ class MediaStoreScanner @Inject constructor(
                 )
             }
         }
+
         return tracks
     }
+
+    private fun extractMp4DurationMs(filePath: String): Long {
+        try {
+            val file = java.io.RandomAccessFile(filePath, "r")
+            var pos = 0L
+            val length = file.length()
+            var timescale = 0L
+            var maxTfdt = 0L
+            var mvhdDuration = 0L
+
+            while (pos < length) {
+                file.seek(pos)
+                if (length - pos < 8) break
+                var size = file.readInt().toLong() and 0xFFFFFFFFL
+                val type = ByteArray(4)
+                file.readFully(type)
+                val typeStr = String(type)
+                
+                var headerLen = 8L
+                if (size == 1L) {
+                    if (length - pos < 16) break
+                    size = file.readLong()
+                    headerLen = 16L
+                } else if (size == 0L) {
+                    size = length - pos
+                }
+                if (size < headerLen) break
+
+                when (typeStr) {
+                    "moov", "trak", "mdia", "moof", "traf" -> {
+                        pos += headerLen
+                    }
+                    "mvhd" -> {
+                        val version = file.read()
+                        file.read(ByteArray(3))
+                        if (version == 1) {
+                            file.readLong(); file.readLong()
+                            val ts = file.readInt().toLong() and 0xFFFFFFFFL
+                            val dur = file.readLong()
+                            if (timescale == 0L) timescale = ts
+                            if (dur > 0L) mvhdDuration = dur
+                        } else {
+                            file.readInt(); file.readInt()
+                            val ts = file.readInt().toLong() and 0xFFFFFFFFL
+                            val dur = file.readInt().toLong() and 0xFFFFFFFFL
+                            if (timescale == 0L) timescale = ts
+                            if (dur > 0L) mvhdDuration = dur
+                        }
+                        pos += size
+                    }
+                    "mdhd" -> {
+                        val version = file.read()
+                        file.read(ByteArray(3))
+                        if (version == 1) {
+                            file.readLong(); file.readLong()
+                            val ts = file.readInt().toLong() and 0xFFFFFFFFL
+                            val dur = file.readLong()
+                            timescale = ts
+                            if (mvhdDuration == 0L && dur > 0L) mvhdDuration = dur
+                        } else {
+                            file.readInt(); file.readInt()
+                            val ts = file.readInt().toLong() and 0xFFFFFFFFL
+                            val dur = file.readInt().toLong() and 0xFFFFFFFFL
+                            timescale = ts
+                            if (mvhdDuration == 0L && dur > 0L) mvhdDuration = dur
+                        }
+                        pos += size
+                    }
+                    "tfdt" -> {
+                        val version = file.read()
+                        file.read(ByteArray(3))
+                        val baseDecodeTime = if (version == 1) file.readLong() else file.readInt().toLong() and 0xFFFFFFFFL
+                        if (baseDecodeTime > maxTfdt) {
+                            maxTfdt = baseDecodeTime
+                        }
+                        pos += size
+                    }
+                    else -> {
+                        pos += size
+                    }
+                }
+            }
+            file.close()
+
+            if (timescale > 0) {
+                if (mvhdDuration > 0) {
+                    return (mvhdDuration * 1000) / timescale
+                } else if (maxTfdt > 0) {
+                    return (maxTfdt * 1000) / timescale
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MediaStoreScanner", "Custom parser failed for $filePath", e)
+        }
+        return 0L
+    }
+
+    fun getFoldersContainingAudio(): List<String> {
+        val folders = mutableSetOf<String>()
+        val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(MediaStore.Audio.Media.DATA)
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+
+        context.contentResolver.query(
+            uri,
+            projection,
+            selection,
+            null,
+            null
+        )?.use { cursor ->
+            val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            while (cursor.moveToNext()) {
+                val filePath = cursor.getString(dataColumn) ?: ""
+                val folder = filePath.substringBeforeLast('/')
+                if (folder.isNotBlank() && folder.startsWith("/")) {
+                    folders.add(folder)
+                }
+            }
+        }
+        return folders.toList().sorted()
+    }
 }
+
 
 data class ScannedTrack(
     val id: String,
@@ -190,6 +342,7 @@ data class ScannedTrack(
     val albumId: Long?,
     val album: String,
     val genre: String,
+    val year: Int?,
     val trackNumber: Int,
     val discNumber: Int,
     val durationMs: Long,

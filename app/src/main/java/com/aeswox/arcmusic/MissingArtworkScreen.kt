@@ -1,8 +1,10 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +27,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aeswox.arcmusic.db.entities.Track
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,16 +42,14 @@ fun MissingArtworkScreen(
     val isAutoFinding by viewModel.isAutoFindingArtwork.collectAsState()
     val autoFindProgress by viewModel.autoFindProgress.collectAsState()
 
-    var trackToEdit by remember { mutableStateOf<Track?>(null) }
+    var trackIdToEdit by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
-            if (uri != null) {
-                trackToEdit?.let { track ->
-                    viewModel.embedArtworkFromUri(track, uri)
-                }
+            if (uri != null && trackIdToEdit != null) {
+                viewModel.embedArtworkFromUriById(trackIdToEdit!!, uri)
             }
-            trackToEdit = null
+            trackIdToEdit = null
         }
     )
 
@@ -62,18 +65,20 @@ fun MissingArtworkScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    JellyIconButton(onClick = onNavigateBack) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
                 )
             )
         },
+        modifier = Modifier.fillMaxSize(),
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            Button(
+            JellyButton(
                 onClick = { viewModel.autoFindArtwork() },
                 enabled = !isAutoFinding && missingTracks.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
@@ -111,7 +116,7 @@ fun MissingArtworkScreen(
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent // Let the glow shine through
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -138,20 +143,22 @@ fun MissingArtworkScreen(
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(missingTracks) { track ->
-                    MissingArtworkTrackItem(
-                        track = track,
-                        onUploadClick = { 
-                            trackToEdit = track
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        }
-                    )
+                itemsIndexed(missingTracks) { index, track ->
+                    StaggeredListItem(index = index) {
+                        MissingArtworkTrackItem(
+                            track = track,
+                            onUploadClick = { 
+                                trackIdToEdit = track.id
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -210,7 +217,7 @@ fun MissingArtworkTrackItem(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        IconButton(
+        JellyIconButton(
             onClick = onUploadClick,
             modifier = Modifier
                 .size(48.dp)

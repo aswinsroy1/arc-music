@@ -14,6 +14,9 @@ interface DeezerService {
 
     @GET("search/track")
     suspend fun searchTrack(@Query("q") query: String): DeezerSearchResponse<DeezerTrack>
+
+    @GET("album/{id}")
+    suspend fun getAlbumDetails(@retrofit2.http.Path("id") id: Long): DeezerAlbumDetail
 }
 
 @JsonClass(generateAdapter = true)
@@ -43,5 +46,25 @@ data class DeezerTrack(
     @Json(name = "title") val title: String,
     @Json(name = "link") val link: String? = null,
     @Json(name = "album") val album: DeezerAlbum? = null,
-    @Json(name = "artist") val artist: DeezerArtist? = null
+    @Json(name = "artist") val artist: DeezerArtist? = null,
+    @Json(name = "track_position") val trackPosition: Int? = null,
+    @Json(name = "disk_number") val diskNumber: Int? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DeezerAlbumDetail(
+    @Json(name = "id") val id: Long,
+    @Json(name = "title") val title: String,
+    @Json(name = "release_date") val releaseDate: String? = null,
+    @Json(name = "genres") val genres: DeezerGenresList? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DeezerGenresList(
+    @Json(name = "data") val data: List<DeezerGenre>
+)
+
+@JsonClass(generateAdapter = true)
+data class DeezerGenre(
+    @Json(name = "name") val name: String
 )

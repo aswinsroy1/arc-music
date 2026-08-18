@@ -30,5 +30,7 @@ data class Track(
     val playCount: Int,
     val lastPlayedAt: Long?,
     val source: TrackSource,
-    val remoteId: String?
+    val remoteId: String?,
+    val hasLyrics: Boolean = false,
+    val lyricsSyncedAt: Long = 0L
 )

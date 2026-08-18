@@ -15,8 +15,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import com.aeswox.arcmusic.utils.ArtistUtils
+import coil.imageLoader
+import coil.request.ImageRequest
 
 class MusicRepository(
+    private val context: android.content.Context,
     private val trackDao: TrackDao,
     private val albumDao: AlbumDao,
     private val artistDao: ArtistDao,
@@ -30,13 +33,22 @@ class MusicRepository(
     private val newSongDao: NewSongDao,
     private val trendingDao: TrendingDao,
     private val mediaStoreScanner: MediaStoreScanner,
-    private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
+    private val artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository,
+    private val lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository,
+    private val deezerService: com.aeswox.arcmusic.data.network.DeezerService
 ) {
     // Dedicated scope for background tasks — survives ViewModel but is still structured
     private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     private val inFlightGapsFetches = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>?>>()
     private var lastFmApiKeyCache: String? = null
+    
+    // Extracted to avoid severe reflection penalty in loops
+    private val moshiListStringAdapter by lazy {
+        com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(
+            com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java)
+        )
+    }
 
     init {
         // Run a one-time background backfill for Collection Growth caches if needed
@@ -55,6 +67,7 @@ class MusicRepository(
     // 7 days in milliseconds — staleness policy for cached missing content
     private val CACHE_STALE_MS = 7L * 24 * 60 * 60 * 1000
     fun getAllTracks(): Flow<List<Track>> = trackDao.getAllTracks()
+    suspend fun getTrackById(id: String): Track? = trackDao.getTrackById(id)
     fun getAllAlbums(): Flow<List<Album>> = albumDao.getAllAlbums()
     fun getAllArtists(): Flow<List<Artist>> = artistDao.getAllArtists()
     fun getRecentlyPlayedTracks(limit: Int): Flow<List<Track>> = trackDao.getRecentlyPlayedTracks(limit)
@@ -114,14 +127,50 @@ class MusicRepository(
     fun getTracksForPlaylist(playlistName: String): Flow<List<Track>> = playlistDao.getTracksForPlaylist(playlistName)
 
 
-    suspend fun scanMediaStore(): ScanResult = withContext(Dispatchers.IO) {
-        val scannedTracks = mediaStoreScanner.scanAudioFiles()
-        
+    fun getFoldersContainingAudio(): List<String> {
+        return mediaStoreScanner.getFoldersContainingAudio()
+    }
+
+    suspend fun scanMediaStore(
+        minDurationMs: Long = 0L,
+        minTracksPerAlbum: Int = 1,
+        excludedFolders: List<String> = emptyList(),
+        onProgress: (ScanPhase, Int, Int) -> Unit = { _, _, _ -> }
+    ): ScanResult = withContext(Dispatchers.IO) {
+        // PHASE 1: Fetch from MediaStore
+        onProgress(ScanPhase.FETCHING_MEDIASTORE, 0, 0)
+        val allScanned = mediaStoreScanner.scanAudioFiles()
+
+        // Apply exclusion and duration filters before anything else
+        val scannedTracks = allScanned.filter { scanned ->
+            // Duration filter (0 means no minimum)
+            val durationOk = minDurationMs <= 0L || scanned.durationMs >= minDurationMs
+            // Excluded folders filter
+            val notExcluded = excludedFolders.none { excluded ->
+                scanned.filePath.contains(excluded, ignoreCase = true)
+            }
+            durationOk && notExcluded
+        }
+        val total = scannedTracks.size
+
+        // Build album->trackCount map from the filtered set for the minTracksPerAlbum check
+        val albumTrackCounts = scannedTracks.groupingBy { it.album }.eachCount()
+        val allowedAlbums = albumTrackCounts.filter { it.value >= minTracksPerAlbum.coerceAtLeast(1) }.keys
+
+        // Further filter tracks to only include those whose album has enough tracks
+        val filteredTracks = if (minTracksPerAlbum > 1) {
+            scannedTracks.filter { it.album in allowedAlbums }
+        } else scannedTracks
+
         val existingTracks = trackDao.getAllTracks().first().associateBy { it.id }
         val existingAlbums = albumDao.getAllAlbums().first().associateBy { it.title }
         val existingArtists = artistDao.getAllArtists().first().associateBy { it.id }
-        
-        val tracks = scannedTracks.map {
+
+        // PHASE 2: Process and write to DB
+        val filteredTotal = filteredTracks.size
+        onProgress(ScanPhase.PROCESSING_FILES, 0, filteredTotal)
+        val tracks = filteredTracks.mapIndexed { i, it ->
+            if (i % 20 == 0) onProgress(ScanPhase.PROCESSING_FILES, i, filteredTotal)
             val existing = existingTracks[it.id]
             Track(
                 id = it.id,
@@ -131,16 +180,16 @@ class MusicRepository(
                 albumId = it.albumId,
                 album = it.album,
                 genre = it.genre,
-                composer = "", // Not pulled from MediaStore currently
-                year = 0, // Not pulled from MediaStore
+                composer = "",
+                year = it.year,
                 trackNumber = it.trackNumber,
                 discNumber = it.discNumber,
                 durationMs = it.durationMs,
                 filePath = it.filePath,
                 fileSizeBytes = it.fileSizeBytes,
                 bitrate = it.bitrate,
-                codec = it.mimeType, // Use mimeType from MediaStore
-                sampleRate = it.sampleRate, 
+                codec = it.mimeType,
+                sampleRate = it.sampleRate,
                 bitDepth = it.bitDepth,
                 dateAdded = it.dateAdded,
                 dateModified = it.dateModified,
@@ -149,24 +198,26 @@ class MusicRepository(
                 lastPlayedAt = existing?.lastPlayedAt,
                 source = TrackSource.LOCAL,
                 remoteId = existing?.remoteId,
-                artworkUri = existing?.artworkUri ?: it.artworkUri
+                artworkUri = existing?.artworkUri ?: it.artworkUri,
+                hasLyrics = existing?.hasLyrics ?: false,
+                lyricsSyncedAt = existing?.lyricsSyncedAt ?: 0L
             )
         }
-        
-        val albums = scannedTracks.distinctBy { it.album }.map {
+
+        val albums = filteredTracks.distinctBy { it.album }.map {
             val existing = existingAlbums[it.album]
             Album(
-                id = it.album, // Fallback ID; could generate a better one or hash
+                id = it.album,
                 title = it.album,
                 artist = it.albumArtist,
                 year = 0,
                 artworkUri = existing?.artworkUri ?: it.artworkUri,
-                trackCount = scannedTracks.count { track -> track.album == it.album },
+                trackCount = filteredTracks.count { track -> track.album == it.album },
                 isFavorite = existing?.isFavorite ?: false
             )
         }
-        
-        val artists = scannedTracks.flatMap { 
+
+        val artists = filteredTracks.flatMap {
             ArtistUtils.splitArtists(it.artist) + ArtistUtils.splitArtists(it.albumArtist)
         }
             .filter { it.isNotEmpty() }
@@ -184,12 +235,48 @@ class MusicRepository(
                     hasScannedMissingContent = existing?.hasScannedMissingContent ?: false
                 )
             }
-            
+
+        onProgress(ScanPhase.SAVING_TO_DATABASE, filteredTotal, filteredTotal)
         trackDao.insertTracks(tracks)
         albumDao.insertAlbums(albums)
         artistDao.insertArtists(artists)
-        
+
+        // PHASE 3: Scan for local/embedded lyrics
+        onProgress(ScanPhase.SCANNING_LYRICS, 0, tracks.size)
+        val missingLyricsTracks = trackDao.getTracksMissingLyrics().first()
+        missingLyricsTracks.forEachIndexed { i, track ->
+            if (i % 10 == 0) onProgress(ScanPhase.SCANNING_LYRICS, i, missingLyricsTracks.size)
+            val hasLocal = lyricsRepository.hasLocalOrEmbeddedLyrics(track)
+            if (hasLocal) {
+                trackDao.updateLyricsStatus(track.id, true, System.currentTimeMillis())
+            }
+        }
+
+        // PHASE 4: Fetch missing artwork
+        onProgress(ScanPhase.FETCHING_ARTWORK, 0, 0)
+        try {
+            fetchMissingArtwork()
+        } catch (e: Exception) { /* non-fatal */ }
+
+        onProgress(ScanPhase.COMPLETING, filteredTotal, filteredTotal)
         ScanResult(tracks.size, albums.size, artists.size)
+    }
+
+    /**
+     * Wipes all local tracks, albums, and artists then runs a fresh scan from scratch.
+     * User's favorites, play counts, lyrics sync status are permanently lost.
+     */
+    suspend fun rebuildDatabase(
+        minDurationMs: Long = 0L,
+        minTracksPerAlbum: Int = 1,
+        excludedFolders: List<String> = emptyList(),
+        onProgress: (ScanPhase, Int, Int) -> Unit = { _, _, _ -> }
+    ): ScanResult = withContext(Dispatchers.IO) {
+        onProgress(ScanPhase.CLEARING_DATABASE, 0, 0)
+        trackDao.deleteAllTracks()
+        albumDao.deleteAllAlbums()
+        artistDao.deleteAllArtists()
+        scanMediaStore(minDurationMs, minTracksPerAlbum, excludedFolders, onProgress)
     }
     
     suspend fun logPlayStart(trackId: String) = withContext(Dispatchers.IO) {
@@ -459,16 +546,15 @@ class MusicRepository(
 
     private suspend fun serveCachedMissingContent(artistName: String): Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>> {
         val cached = missingContentDao.getByArtistName(artistName)
-        val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
         val missingTracks = cached.filter { !it.isAlbum && !it.isSingle }.map { 
-            val trackNames = it.missingTrackNamesJson?.let { json -> adapter.fromJson(json) } ?: emptyList()
+            val trackNames = it.missingTrackNamesJson?.let { json -> moshiListStringAdapter.fromJson(json) } ?: emptyList()
             com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.isSingle, it.imageUrl, it.missingCount, trackNames)
         }
         val missingAlbums = cached.filter { it.isAlbum && !it.isSingle }.map { 
             com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.isSingle, it.imageUrl, it.missingCount)
         }
         val missingSingles = cached.filter { it.isSingle }.map { 
-            val trackNames = it.missingTrackNamesJson?.let { json -> adapter.fromJson(json) } ?: emptyList()
+            val trackNames = it.missingTrackNamesJson?.let { json -> moshiListStringAdapter.fromJson(json) } ?: emptyList()
             com.aeswox.arcmusic.MissingContentItem(it.title, it.artistName, it.isAlbum, it.isSingle, it.imageUrl, it.missingCount, trackNames)
         }
         return Triple(missingTracks, missingAlbums, missingSingles)
@@ -480,7 +566,6 @@ class MusicRepository(
         result: Triple<List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>, List<com.aeswox.arcmusic.MissingContentItem>>
     ) {
         val (missingTracks, missingAlbums, missingSingles) = result
-        val adapter = com.squareup.moshi.Moshi.Builder().build().adapter<List<String>>(com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java))
         val cachedItems = (missingTracks + missingAlbums + missingSingles).map { 
             com.aeswox.arcmusic.db.entities.CachedMissingContent(
                 title = it.title,
@@ -489,7 +574,7 @@ class MusicRepository(
                 isSingle = it.isSingle,
                 imageUrl = it.imageUrl,
                 missingCount = it.missingCount,
-                missingTrackNamesJson = if (it.missingTrackNames.isNotEmpty()) adapter.toJson(it.missingTrackNames) else null
+                missingTrackNamesJson = if (it.missingTrackNames.isNotEmpty()) moshiListStringAdapter.toJson(it.missingTrackNames) else null
             )
         }
         // Delete old entries first to prevent duplication on re-fetch
@@ -631,7 +716,16 @@ class MusicRepository(
     fun getTracksMissingMetadata(): Flow<List<Track>> = trackDao.getTracksMissingMetadata()
     fun getLowQualityTracks(): Flow<List<Track>> = trackDao.getLowQualityTracks()
     fun getCorruptedTracks(): Flow<List<Track>> = trackDao.getCorruptedTracks()
+    fun getTracksMissingLyrics(): Flow<List<Track>> = trackDao.getTracksMissingLyrics()
+    fun getRecentlySyncedLyrics(limit: Int = 20): Flow<List<Track>> = trackDao.getRecentlySyncedLyrics(limit)
+
+    suspend fun updateLyricsStatus(trackId: String, hasLyrics: Boolean, syncedAt: Long) = withContext(Dispatchers.IO) {
+        trackDao.updateLyricsStatus(trackId, hasLyrics, syncedAt)
+    }
     suspend fun updateTrackArtwork(trackId: String, artworkUri: String?) = trackDao.updateTrackArtwork(trackId, artworkUri)
+    suspend fun updateTrackMetadata(trackId: String, title: String?, artist: String?, album: String?, genre: String?, year: Int?, trackNumber: Int?) = withContext(Dispatchers.IO) {
+        trackDao.updateTrackMetadata(trackId, title, artist, album, genre, year, trackNumber)
+    }
 
 
     // Search History
@@ -643,6 +737,16 @@ class MusicRepository(
     // ---------------------------------------------------------------------------
     // Collection Growth data loading
     // ---------------------------------------------------------------------------
+
+    suspend fun forceRefreshCollectionGrowthData(lastFmApiKey: String?) = withContext(Dispatchers.IO) {
+        val favoritedArtists = artistDao.getAllArtists().first().filter { it.isFavorite }
+        val topListenedArtists = getTopListenedArtists(10)
+        val qualifyingArtists = (favoritedArtists + topListenedArtists).distinctBy { it.id }
+        
+        for (artist in qualifyingArtists) {
+            refreshArtistGrowthData(artist, lastFmApiKey, forceRefresh = true)
+        }
+    }
 
     /** Loads all four growth card types, using cached data where possible. */
     suspend fun loadCollectionGrowthData(
@@ -823,8 +927,179 @@ class MusicRepository(
             )
         )
     }
+
+
+    suspend fun syncLocalLyricsStatus() = withContext(Dispatchers.IO) {
+        val tracksToCheck = trackDao.getTracksMissingLyrics().first()
+        for (track in tracksToCheck) {
+            val hasLocal = lyricsRepository.hasLocalOrEmbeddedLyrics(track)
+            if (hasLocal) {
+                trackDao.updateLyricsStatus(track.id, true, System.currentTimeMillis())
+            }
+        }
+    }
+    suspend fun fetchAndSaveMissingMetadata(context: android.content.Context, track: Track, lastFmApiKey: String? = null): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val queryTitle = track.title.takeIf { it.isNotBlank() && it != "Unknown Title" && it != "<unknown>" } ?: track.filePath.substringAfterLast("/").substringBeforeLast(".")
+            val queryArtist = track.artist.takeIf { it.isNotBlank() && it != "Unknown Artist" && it != "<unknown>" } ?: ""
+            val query = "$queryTitle $queryArtist".trim()
+
+            val response = try { deezerService.searchTrack(query) } catch (e: Exception) { null }
+            val deezerMatch = response?.data?.firstOrNull()
+            
+            var newTitle: String? = null
+            var newArtist: String? = null
+            var newAlbum: String? = null
+            var newTrackNo: Int? = null
+            var newGenre: String? = null
+            var newYear: Int? = null
+
+            if (deezerMatch != null) {
+                newTitle = deezerMatch.title
+                newArtist = deezerMatch.artist?.name
+                newAlbum = deezerMatch.album?.title
+                newTrackNo = deezerMatch.trackPosition
+                if (deezerMatch.album?.id != null) {
+                    try {
+                        val albumDetail = deezerService.getAlbumDetails(deezerMatch.album.id)
+                        newGenre = albumDetail.genres?.data?.firstOrNull()?.name
+                        newYear = albumDetail.releaseDate?.substringBefore("-")?.toIntOrNull()
+                    } catch (e: Exception) { }
+                }
+            } else {
+                var itunesMatched = false
+                try {
+                    val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+                    val itunesUrl = "https://itunes.apple.com/search?term=\$encodedQuery&entity=song&limit=1"
+                    val urlConnection = java.net.URL(itunesUrl).openConnection() as java.net.HttpURLConnection
+                    urlConnection.requestMethod = "GET"
+                    urlConnection.connectTimeout = 5000
+                    urlConnection.readTimeout = 5000
+                    val itunesResponse = urlConnection.inputStream.bufferedReader().use { it.readText() }
+                    val jsonResponse = org.json.JSONObject(itunesResponse)
+                    val results = jsonResponse.optJSONArray("results")
+                    if (results != null && results.length() > 0) {
+                        val match = results.getJSONObject(0)
+                        newTitle = match.optString("trackName")
+                        newArtist = match.optString("artistName")
+                        newAlbum = match.optString("collectionName")
+                        newTrackNo = match.optInt("trackNumber", 0).takeIf { it > 0 }
+                        newGenre = match.optString("primaryGenreName")
+                        newYear = match.optString("releaseDate", "").substringBefore("-").toIntOrNull()
+                        itunesMatched = true
+                    }
+                } catch (e: Exception) { }
+
+                var lastFmMatched = false
+                if (!itunesMatched && !lastFmApiKey.isNullOrBlank()) {
+                    try {
+                        val encodedTrack = java.net.URLEncoder.encode(queryTitle, "UTF-8")
+                        val encodedArtist = java.net.URLEncoder.encode(queryArtist, "UTF-8")
+                        val lfmUrl = if (queryArtist.isNotBlank()) {
+                            "https://ws.audioscrobbler.com/2.0/?method=track.getInfo&track=\$encodedTrack&artist=\$encodedArtist&api_key=\$lastFmApiKey&format=json"
+                        } else {
+                            "https://ws.audioscrobbler.com/2.0/?method=track.search&track=\$encodedTrack&api_key=\$lastFmApiKey&format=json&limit=1"
+                        }
+                        
+                        val urlConnection = java.net.URL(lfmUrl).openConnection() as java.net.HttpURLConnection
+                        urlConnection.requestMethod = "GET"
+                        urlConnection.connectTimeout = 5000
+                        urlConnection.readTimeout = 5000
+                        val lfmResponse = urlConnection.inputStream.bufferedReader().use { it.readText() }
+                        val jsonResponse = org.json.JSONObject(lfmResponse)
+                        
+                        if (queryArtist.isNotBlank()) {
+                            val trackObj = jsonResponse.optJSONObject("track")
+                            if (trackObj != null && trackObj.has("name")) {
+                                newTitle = trackObj.optString("name")
+                                newArtist = trackObj.optJSONObject("artist")?.optString("name")
+                                newAlbum = trackObj.optJSONObject("album")?.optString("title")
+                                val tags = trackObj.optJSONObject("toptags")?.optJSONArray("tag")
+                                if (tags != null && tags.length() > 0) {
+                                    newGenre = tags.getJSONObject(0).optString("name")
+                                }
+                                lastFmMatched = true
+                            }
+                        } else {
+                            val trackMatches = jsonResponse.optJSONObject("results")?.optJSONObject("trackmatches")?.optJSONArray("track")
+                            if (trackMatches != null && trackMatches.length() > 0) {
+                                val matchObj = trackMatches.getJSONObject(0)
+                                newTitle = matchObj.optString("name")
+                                newArtist = matchObj.optString("artist")
+                                lastFmMatched = true
+                            }
+                        }
+                    } catch (e: Exception) { }
+                }
+
+                if (!itunesMatched && !lastFmMatched) {
+                    return@withContext Result.failure(Exception("No match found for '\$query'"))
+                }
+            }
+
+            val metadataMap = mutableMapOf<org.jaudiotagger.tag.FieldKey, String>()
+            if (track.title.isNullOrBlank() || track.title == "Unknown Title" || track.title == "<unknown>") {
+                newTitle?.let { metadataMap[org.jaudiotagger.tag.FieldKey.TITLE] = it }
+            }
+            if (track.artist.isNullOrBlank() || track.artist == "Unknown Artist" || track.artist == "<unknown>") {
+                newArtist?.takeIf { it.isNotBlank() }?.let { metadataMap[org.jaudiotagger.tag.FieldKey.ARTIST] = it }
+            }
+            if (track.album.isNullOrBlank() || track.album == "Unknown Album" || track.album == "<unknown>") {
+                newAlbum?.takeIf { it.isNotBlank() }?.let { metadataMap[org.jaudiotagger.tag.FieldKey.ALBUM] = it }
+            }
+            if (track.genre.isNullOrBlank()) {
+                newGenre?.takeIf { it.isNotBlank() }?.let { metadataMap[org.jaudiotagger.tag.FieldKey.GENRE] = it }
+            }
+            if (track.year == null || track.year == 0) {
+                newYear?.let { metadataMap[org.jaudiotagger.tag.FieldKey.YEAR] = it.toString() }
+            }
+            if (track.trackNumber == null || track.trackNumber == 0) {
+                newTrackNo?.let { metadataMap[org.jaudiotagger.tag.FieldKey.TRACK] = it.toString() }
+            }
+
+            if (metadataMap.isNotEmpty()) {
+                val success = com.aeswox.arcmusic.utils.TaggingHelper.updateMetadata(context, track.filePath, metadataMap)
+                if (success) {
+                    val finalTitle = track.title.takeIf { it.isNotBlank() && it != "Unknown Title" && it != "<unknown>" } ?: newTitle ?: track.title
+                    val finalArtist = track.artist.takeIf { it.isNotBlank() && it != "Unknown Artist" && it != "<unknown>" } ?: newArtist ?: track.artist
+                    val finalAlbum = track.album.takeIf { it.isNotBlank() && it != "Unknown Album" && it != "<unknown>" } ?: newAlbum ?: track.album
+                    val finalGenre = track.genre.takeIf { !it.isNullOrBlank() } ?: newGenre ?: track.genre
+                    val finalYear = if (track.year != null && track.year != 0) track.year else newYear
+                    val finalTrackNo = if (track.trackNumber != null && track.trackNumber != 0) track.trackNumber else newTrackNo
+
+                    trackDao.updateTrackMetadata(track.id, finalTitle ?: "", finalArtist ?: "", finalAlbum ?: "", finalGenre ?: "", finalYear, finalTrackNo)
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception("Failed to write tags to file"))
+                }
+            } else {
+                Result.failure(Exception("No missing metadata to update"))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception(e.localizedMessage ?: "Unknown error occurred"))
+        }
+    }
 }
 
-
-
 data class ScanResult(val trackCount: Int, val albumCount: Int, val artistCount: Int)
+
+enum class ScanPhase {
+    CLEARING_DATABASE,
+    FETCHING_MEDIASTORE,
+    PROCESSING_FILES,
+    SAVING_TO_DATABASE,
+    SCANNING_LYRICS,
+    FETCHING_ARTWORK,
+    COMPLETING;
+
+    val label: String get() = when (this) {
+        CLEARING_DATABASE -> "Clearing database…"
+        FETCHING_MEDIASTORE -> "Scanning device for audio files…"
+        PROCESSING_FILES -> "Processing tracks…"
+        SAVING_TO_DATABASE -> "Saving to library…"
+        SCANNING_LYRICS -> "Checking for local lyrics…"
+        FETCHING_ARTWORK -> "Fetching missing artwork…"
+        COMPLETING -> "Done!"
+    }
+}

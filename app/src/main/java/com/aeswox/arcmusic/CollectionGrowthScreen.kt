@@ -1,9 +1,9 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -30,6 +30,13 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.compose.foundation.combinedClickable
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.*
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +66,7 @@ fun CollectionGrowthScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        JellyIconButton(onClick = onNavigateBack) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     },
@@ -73,20 +80,7 @@ fun CollectionGrowthScreen(
         ) { innerPadding ->
             when (val state = growthState) {
                 is CollectionGrowthUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "Scanning your library…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    SkeletonCollectionGrowth(innerPadding = innerPadding)
                 }
 
                 is CollectionGrowthUiState.Empty -> {
@@ -131,6 +125,9 @@ fun CollectionGrowthScreen(
 
                     LazyColumn(
                         modifier = Modifier
+                            .physicsBounceOverscroll(
+                                onRefresh = { viewModel.forceRefreshCollectionGrowth() }
+                            )
                             .fillMaxSize()
                             .padding(innerPadding),
                         contentPadding = PaddingValues(bottom = 120.dp),
@@ -140,6 +137,8 @@ fun CollectionGrowthScreen(
                             item { SectionHeader("Almost Complete", modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
                             item {
                                 LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
@@ -160,6 +159,8 @@ fun CollectionGrowthScreen(
                             item { SectionHeader("New Releases", modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
                             item {
                                 LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
@@ -180,6 +181,8 @@ fun CollectionGrowthScreen(
                             item { SectionHeader("Missing Tracks", modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
                             item {
                                 LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
@@ -200,6 +203,8 @@ fun CollectionGrowthScreen(
                             item { SectionHeader("Discover", modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
                             item {
                                 LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
@@ -214,6 +219,8 @@ fun CollectionGrowthScreen(
                             item { SectionHeader("Recommended Downloads", modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
                             item {
                                 LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
@@ -234,6 +241,8 @@ fun CollectionGrowthScreen(
                             item { SectionHeader("Trending", modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
                             item {
                                 LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
                                     contentPadding = PaddingValues(horizontal = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
@@ -313,7 +322,7 @@ fun DownloadButton(
 
 enum class SpotiFlacDownloadType { TRACK, ALBUM, ARTIST }
 
-private fun performSpotiFlacDownload(
+fun performSpotiFlacDownload(
     context: android.content.Context,
     scope: kotlinx.coroutines.CoroutineScope,
     viewModel: MusicViewModel,
@@ -356,7 +365,7 @@ private fun performSpotiFlacDownload(
     }
 }
 
-private fun performSpotiFlacManualSearch(
+fun performSpotiFlacManualSearch(
     context: android.content.Context,
     query: String
 ) {
@@ -386,7 +395,7 @@ private fun launchYouTubeMusicSearch(context: android.content.Context, query: St
 
 @Composable
 fun DismissCircularButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(
+    JellyIconButton(
         onClick = onClick,
         modifier = modifier
             .padding(12.dp)
@@ -547,7 +556,7 @@ fun NewReleaseCard(
                         onLongClick = onDownloadLongClick,
                         modifier = Modifier.weight(1f)
                     )
-                    Button(
+                    JellyButton(
                         onClick = { launchYouTubeMusicSearch(context, "${card.albumTitle} ${card.artistName}") },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
                         modifier = Modifier.weight(1f)
@@ -653,7 +662,7 @@ fun MissingTracksCard(
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
+                JellyButton(
                     onClick = { launchYouTubeMusicSearch(context, "${card.albumTitle} ${card.artistName}") },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
                     modifier = Modifier.fillMaxWidth()
@@ -674,7 +683,7 @@ fun MissingTracksCard(
 fun DiscoveryChip(card: GrowthCard.Discovery, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(140.dp).clickable { onClick() }
+        modifier = Modifier.width(140.dp).jellyClick { onClick() }
     ) {
         AsyncImage(
             model = card.imageUrl,
@@ -771,7 +780,7 @@ fun DiscoveryBottomSheetContent(
                     onClose()
                 }
             )
-            Button(
+            JellyButton(
                 onClick = { 
                     launchYouTubeMusicSearch(context, card.suggestedArtistName) 
                     onClose()
@@ -784,7 +793,7 @@ fun DiscoveryBottomSheetContent(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = { 
+        JellyTextButton(onClick = { 
             onDismiss() 
         }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -855,7 +864,7 @@ fun NewSongCard(
                         onLongClick = onDownloadLongClick,
                         modifier = Modifier.weight(1f)
                     )
-                    Button(
+                    JellyButton(
                         onClick = { launchYouTubeMusicSearch(context, "${card.trackTitle} ${card.artistName}") },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
                         modifier = Modifier.weight(1f),
@@ -956,7 +965,7 @@ fun TrendingCard(
                         onLongClick = onDownloadLongClick,
                         modifier = Modifier.weight(1f)
                     )
-                    Button(
+                    JellyButton(
                         onClick = { launchYouTubeMusicSearch(context, "${card.trackTitle} ${card.artistName}") },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
                         modifier = Modifier.weight(1f),
@@ -967,5 +976,140 @@ fun TrendingCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SkeletonCollectionGrowth(innerPadding: PaddingValues) {
+    LazyColumn(
+        modifier = Modifier.physicsBounceOverscroll()
+            .fillMaxSize()
+            .padding(innerPadding),
+        contentPadding = PaddingValues(bottom = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        userScrollEnabled = false
+    ) {
+        val dummySections = listOf("Almost Complete", "New Releases", "Missing Tracks")
+        dummySections.forEach { sectionTitle ->
+            item { SectionHeader(sectionTitle, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp)) }
+            item {
+                LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
+                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(3) {
+                        Card(
+                            modifier = Modifier.width(300.dp).height(300.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                // Image Placeholder
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .shimmerEffect()
+                                )
+
+                                // Gradient overlay
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Transparent,
+                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                    MaterialTheme.colorScheme.surface
+                                                )
+                                            )
+                                        )
+                                )
+
+                                // Top right dismiss button placeholder
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(12.dp)
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .shimmerEffect()
+                                )
+
+                                // Bottom Text and Button Placeholders
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(20.dp),
+                                    verticalArrangement = Arrangement.Bottom
+                                ) {
+                                    // Title placeholder
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.7f)
+                                            .height(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .shimmerEffect()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Subtitle placeholder
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.4f)
+                                            .height(16.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .shimmerEffect()
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    
+                                    // Main button placeholder
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp)
+                                            .clip(RoundedCornerShape(24.dp))
+                                            .shimmerEffect()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun Modifier.shimmerEffect(): Modifier = composed {
+    var size by remember {
+        mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)
+    }
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val startOffsetX by transition.animateFloat(
+        initialValue = -2 * size.width.toFloat(),
+        targetValue = 2 * size.width.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_offset"
+    )
+
+    background(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f),
+                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f),
+                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f),
+            ),
+            start = Offset(startOffsetX, 0f),
+            end = Offset(startOffsetX + size.width.toFloat(), size.height.toFloat())
+        )
+    ).onGloballyPositioned {
+        size = it.size
     }
 }

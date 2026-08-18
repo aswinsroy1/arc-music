@@ -1,12 +1,13 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +67,7 @@ fun MissingContentScreen(
                         ) 
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        JellyIconButton(onClick = onNavigateBack) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     },
@@ -131,9 +138,7 @@ fun MissingContentScreen(
 
                 when (val state = uiState) {
                     is MissingContentUiState.Loading -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        }
+                        SkeletonMissingContent()
                     }
                     is MissingContentUiState.Empty -> {
                         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
@@ -165,7 +170,7 @@ fun MissingContentScreen(
                             }
                         } else {
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
                                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 120.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
@@ -188,8 +193,10 @@ fun MissingContentScreen(
                                                 .padding(16.dp),
                                             verticalArrangement = Arrangement.spacedBy(16.dp)
                                         ) {
-                                            items.forEach { missingItem ->
-                                                MissingItemRow(item = missingItem)
+                                            items.forEachIndexed { index, missingItem ->
+                                                StaggeredListItem(index = index) {
+                                                    MissingItemRow(item = missingItem)
+                                                }
                                             }
                                         }
                                     }
@@ -211,7 +218,7 @@ fun MissingItemRow(item: MissingContentItem) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
+            .jellyClick { expanded = !expanded }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         // Header row: thumbnail, title/subtitle, chevron or action button
@@ -267,7 +274,7 @@ fun MissingItemRow(item: MissingContentItem) {
             // Entire albums: show a YouTube Music button directly
             // Partial albums: show expand/collapse chevron
             if (item.isAlbum) {
-                IconButton(onClick = {
+                JellyIconButton(onClick = {
                     val query = "${item.title} album ${item.artistName}"
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}"))
                     try { context.startActivity(intent) } catch (e: Exception) {}
@@ -307,14 +314,14 @@ fun MissingItemRow(item: MissingContentItem) {
                         modifier = Modifier.padding(start = 80.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FilledTonalIconButton(onClick = {
+                        JellyFilledTonalIconButton(onClick = {
                             val query = "${item.title} ${item.artistName}"
                             val ytIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(query)}"))
                             try { context.startActivity(ytIntent) } catch (e: Exception) {}
                         }) {
                             Icon(Icons.Default.SmartDisplay, contentDescription = "YouTube Music", tint = Color(0xFFFF0000), modifier = Modifier.size(20.dp))
                         }
-                        FilledTonalIconButton(onClick = {
+                        JellyFilledTonalIconButton(onClick = {
                             val query = "album:${item.title} artist:${item.artistName}"
                             val spIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/${Uri.encode(query)}"))
                             try { context.startActivity(spIntent) } catch (e: Exception) {}
@@ -339,7 +346,7 @@ fun MissingItemRow(item: MissingContentItem) {
                                 maxLines = 2
                             )
                             // YouTube Music search for this specific track
-                            IconButton(
+                            JellyIconButton(
                                 onClick = {
                                     val ytQuery = "$trackName ${item.artistName}"
                                     val ytIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.youtube.com/search?q=${Uri.encode(ytQuery)}"))
@@ -355,7 +362,7 @@ fun MissingItemRow(item: MissingContentItem) {
                                 )
                             }
                             // Spotify search for this specific track
-                            IconButton(
+                            JellyIconButton(
                                 onClick = {
                                     val spQuery = "$trackName ${item.artistName}"
                                     val spIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/${Uri.encode(spQuery)}"))
@@ -381,5 +388,91 @@ fun MissingItemRow(item: MissingContentItem) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SkeletonMissingContent() {
+    LazyColumn(
+        modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        userScrollEnabled = false
+    ) {
+        items(3) {
+            // Artist Title Placeholder
+            Box(
+                modifier = Modifier
+                    .padding(top = 24.dp, bottom = 12.dp)
+                    .fillMaxWidth(0.4f)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmerLoading()
+            )
+            
+            // Container for Items
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                repeat(3) {
+                    SkeletonMissingItemRow()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonMissingItemRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Thumbnail Placeholder
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .shimmerLoading()
+        )
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
+            // Title Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmerLoading()
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            // Subtitle Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.4f)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmerLoading()
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Action Button / Chevron Placeholder
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .shimmerLoading()
+        )
     }
 }

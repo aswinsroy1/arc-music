@@ -117,12 +117,14 @@ sealed class MissingContentUiState {
 // ---------------------------------------------------------------------------
 
 sealed class GrowthCard {
+    abstract val imageUrl: String?
+
     data class CompleteCollection(
         val missingAlbumTitle: String,
         val artistName: String,
         val ownedCount: Int,
         val totalCount: Int,
-        val imageUrl: String?
+        override val imageUrl: String?
     ) : GrowthCard()
 
     data class NewRelease(
@@ -130,14 +132,14 @@ sealed class GrowthCard {
         val artistName: String,
         val releaseType: String,
         val releaseDateStr: String,
-        val imageUrl: String?
+        override val imageUrl: String?
     ) : GrowthCard()
 
     data class Discovery(
         val suggestedArtistName: String,
         val becauseOfArtist: String,
         val sharedGenre: String?,
-        val imageUrl: String?
+        override val imageUrl: String?
     ) : GrowthCard()
 
     data class MissingTracks(
@@ -146,21 +148,21 @@ sealed class GrowthCard {
         val missingCount: Int,
         val ownedCount: Int,
         val totalCount: Int,
-        val imageUrl: String?
+        override val imageUrl: String?
     ) : GrowthCard()
 
     data class NewSong(
         val trackTitle: String,
         val artistName: String,
         val releaseDateStr: String,
-        val imageUrl: String?
+        override val imageUrl: String?
     ) : GrowthCard()
 
     data class Trending(
         val trackTitle: String,
         val artistName: String,
         val matchedGenre: String?,
-        val imageUrl: String?
+        override val imageUrl: String?
     ) : GrowthCard()
 }
 
@@ -194,12 +196,13 @@ class MusicViewModel @Inject constructor(
     private val deezerRepository: com.aeswox.arcmusic.data.network.DeezerRepository,
     private val itunesService: com.aeswox.arcmusic.data.network.ItunesService,
     private val odesliService: com.aeswox.arcmusic.data.network.OdesliService,
-    private val musicBrainzService: com.aeswox.arcmusic.data.network.MusicBrainzService
+    private val musicBrainzService: com.aeswox.arcmusic.data.network.MusicBrainzService,
+    private val mediaScannerManager: com.aeswox.arcmusic.db.MediaScannerManager
 ) : ViewModel() {
 
     val randomPicks: StateFlow<List<Track>>
     val recentlyPlayed: StateFlow<List<Track>>
-    val recommended: StateFlow<List<Track>>
+    val homescreenRecommendations: StateFlow<List<GrowthCard>>
     
     val libraryAlbums: StateFlow<List<Album>>
     val libraryArtists: StateFlow<List<Artist>>
@@ -228,8 +231,58 @@ class MusicViewModel @Inject constructor(
     private val _growthState = MutableStateFlow<CollectionGrowthUiState>(CollectionGrowthUiState.Loading)
     val growthState: StateFlow<CollectionGrowthUiState> = _growthState.asStateFlow()
     
+    val missingLyricsTracks: StateFlow<List<Track>> = repository.getTracksMissingLyrics()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+    val missingMetadataTracks: StateFlow<List<Track>> = repository.getTracksMissingMetadata()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+    val corruptedTracks: StateFlow<List<Track>> = repository.getCorruptedTracks()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+    val lowQualityTracks: StateFlow<List<Track>> = repository.getLowQualityTracks()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+    val recentlySyncedLyrics: StateFlow<List<Track>> = repository.getRecentlySyncedLyrics()
+
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        
+    private val _isSyncingLyrics = MutableStateFlow(false)
+    val isSyncingLyrics: StateFlow<Boolean> = _isSyncingLyrics.asStateFlow()
+
+    private val _isRefreshingLocalLyrics = MutableStateFlow(false)
+    val isRefreshingLocalLyrics: StateFlow<Boolean> = _isRefreshingLocalLyrics.asStateFlow()
+
+    private val _isFetchingMetadata = MutableStateFlow(false)
+    val isFetchingMetadata: StateFlow<Boolean> = _isFetchingMetadata.asStateFlow()
+
+    private val _availableAudioFolders = MutableStateFlow<List<String>>(emptyList())
+    val availableAudioFolders: StateFlow<List<String>> = _availableAudioFolders.asStateFlow()
+
+    fun loadAvailableAudioFolders() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _availableAudioFolders.value = repository.getFoldersContainingAudio()
+        }
+    }
+
+    
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    fun getTrackById(trackId: String): Flow<Track?> = flow {
+        val track = repository.getTracksByAlbum("").first().firstOrNull() // Dummy to satisfy flow, wait, better use trackDao directly. Let's just use libraryTracks
+        emit(null) // We will fetch it dynamically from libraryTracks below instead
+    }
+    
+    fun getTrackFromLibrary(trackId: String): Track? {
+        return libraryTracks.value.find { it.id == trackId }
+    }
+    
+    fun updateTrackMetadata(trackId: String, title: String?, artist: String?, album: String?, genre: String?, year: Int?, trackNumber: Int?) {
+        viewModelScope.launch {
+            repository.updateTrackMetadata(trackId, title, artist, album, genre, year, trackNumber)
+        }
+    }
 
     private val _lyricsUiState = MutableStateFlow<com.aeswox.arcmusic.data.model.Lyrics?>(null)
     val lyricsUiState: StateFlow<com.aeswox.arcmusic.data.model.Lyrics?> = _lyricsUiState.asStateFlow()
@@ -363,35 +416,67 @@ class MusicViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
-    private val _scanResult = MutableStateFlow<com.aeswox.arcmusic.db.ScanResult?>(null)
-    val scanResult: StateFlow<com.aeswox.arcmusic.db.ScanResult?> = _scanResult.asStateFlow()
+    val scanResult: StateFlow<com.aeswox.arcmusic.db.ScanResult?> = mediaScannerManager.scanResult
 
-    private val _isScanning = MutableStateFlow(false)
-    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
-    
+    val scanProgress: StateFlow<com.aeswox.arcmusic.db.ScanProgress> = mediaScannerManager.scanProgress
+
     private val _isLibraryLoaded = MutableStateFlow(false)
     val isLibraryLoaded: StateFlow<Boolean> = _isLibraryLoaded.asStateFlow()
 
     private val _isMiniPlayerVisible = MutableStateFlow(true)
     val isMiniPlayerVisible: StateFlow<Boolean> = _isMiniPlayerVisible.asStateFlow()
+    
+    private val _isPlayerExpanded = MutableStateFlow(false)
+    val isPlayerExpanded: StateFlow<Boolean> = _isPlayerExpanded.asStateFlow()
+
+    private val _isNavBarVisible = MutableStateFlow(true)
+    val isNavBarVisible: StateFlow<Boolean> = _isNavBarVisible.asStateFlow()
+
+    private val _navBarHeight = MutableStateFlow(androidx.compose.ui.unit.Dp(0f))
+    val navBarHeight: StateFlow<androidx.compose.ui.unit.Dp> = _navBarHeight.asStateFlow()
 
     fun setMiniPlayerVisible(visible: Boolean) {
         _isMiniPlayerVisible.value = visible
     }
+    
+    fun setPlayerExpanded(expanded: Boolean) {
+        _isPlayerExpanded.value = expanded
+    }
+
+    fun setNavBarVisible(visible: Boolean) {
+        _isNavBarVisible.value = visible
+    }
+
+    fun setNavBarHeight(height: androidx.compose.ui.unit.Dp) {
+        _navBarHeight.value = height
+    }
+
+    // Keep backwards-compat property
+    val isScanning: StateFlow<Boolean> = mediaScannerManager.scanProgress
+        .map { it.isRunning }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun scanMediaStore() {
-        if (_isScanning.value) return
-        viewModelScope.launch {
-            _isScanning.value = true
-            try {
-                val result = repository.scanMediaStore()
-                repository.fetchMissingArtwork() // Fetch Deezer art for missing images
-                _scanResult.value = result
-            } catch (e: Exception) {
-                _scanResult.value = null
-            } finally {
-                _isScanning.value = false
-            }
+        if (mediaScannerManager.scanProgress.value.isRunning) return
+        val intent = android.content.Intent(context, com.aeswox.arcmusic.playback.MediaScannerService::class.java).apply {
+            action = com.aeswox.arcmusic.playback.MediaScannerService.ACTION_SCAN
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
+
+    fun rebuildDatabase() {
+        if (mediaScannerManager.scanProgress.value.isRunning) return
+        val intent = android.content.Intent(context, com.aeswox.arcmusic.playback.MediaScannerService::class.java).apply {
+            action = com.aeswox.arcmusic.playback.MediaScannerService.ACTION_REBUILD
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
         }
     }
 
@@ -521,7 +606,7 @@ class MusicViewModel @Inject constructor(
 
             val queue = limitedSourceList.mapNotNull { track ->
                 androidx.media3.common.MediaItem.Builder()
-                    .setUri(track.filePath)
+                    .setUri(android.net.Uri.fromFile(java.io.File(track.filePath)))
                     .setMediaId(track.id)
                     .setMediaMetadata(
                         androidx.media3.common.MediaMetadata.Builder()
@@ -568,6 +653,48 @@ class MusicViewModel @Inject constructor(
         musicPlayerConnection.sleepTimerManager?.start(minute)
     }
 
+    fun fetchLyricsForTrack(context: android.content.Context, track: Track) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val success = lyricsRepository.downloadAndSaveLyrics(track)
+                if (success) {
+                    repository.updateLyricsStatus(track.id, true, System.currentTimeMillis())
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Successfully fetched lyrics for ${track.title}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Failed to find lyrics for ${track.title}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error fetching lyrics: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun attachLrcFileToTrack(context: android.content.Context, track: Track, uri: android.net.Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val lyricsText = inputStream.bufferedReader().use { it.readText() }
+                    lyricsRepository.saveLyricsLocally(track, lyricsText)
+                    repository.updateLyricsStatus(track.id, true, System.currentTimeMillis())
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Successfully attached LRC file to ${track.title}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error attaching LRC file: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     fun clearSleepTimer() {
         musicPlayerConnection.sleepTimerManager?.clear()
     }
@@ -582,6 +709,14 @@ class MusicViewModel @Inject constructor(
 
     fun skipToQueueItem(index: Int) {
         musicPlayerConnection.skipToQueueItem(index)
+    }
+    
+    fun clearQueue() {
+        musicPlayerConnection.clearQueue()
+    }
+    
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        musicPlayerConnection.moveQueueItem(fromIndex, toIndex)
     }
 
     val currentPosition: StateFlow<Long> = musicPlayerConnection.currentPosition
@@ -745,6 +880,71 @@ class MusicViewModel @Inject constructor(
         }
     }
 
+
+    fun refreshLocalLyrics() {
+        if (_isRefreshingLocalLyrics.value) return
+        
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _isRefreshingLocalLyrics.value = true
+            try {
+                repository.syncLocalLyricsStatus()
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Local lyrics scan complete", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Failed to scan local lyrics: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                _isRefreshingLocalLyrics.value = false
+            }
+        }
+    }
+
+    fun syncMissingLyrics() {
+        if (_isSyncingLyrics.value) return
+        
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _isSyncingLyrics.value = true
+            var successCount = 0
+            var failCount = 0
+            
+            try {
+                val missingTracks = repository.getTracksMissingLyrics().first()
+                val total = missingTracks.size
+                
+                for (track in missingTracks) {
+                    val success = lyricsRepository.downloadAndSaveLyrics(track)
+                    if (success) {
+                        repository.updateLyricsStatus(track.id, true, System.currentTimeMillis())
+                        successCount++
+                    } else {
+                        failCount++
+                    }
+                }
+                
+                withContext(Dispatchers.Main) {
+                    val message = if (total == 0) {
+                        "No tracks missing lyrics"
+                    } else if (failCount == 0) {
+                        "Successfully fetched lyrics for all $successCount tracks!"
+                    } else if (successCount == 0) {
+                        "Failed to fetch lyrics for any of the $total tracks."
+                    } else {
+                        "Fetched $successCount lyrics, failed $failCount."
+                    }
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error fetching lyrics: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                _isSyncingLyrics.value = false
+            }
+        }
+    }
+
     fun addTracksToPlaylist(playlistId: String, trackIds: List<String>) {
         viewModelScope.launch {
             repository.addTracksToPlaylist(playlistId, trackIds)
@@ -817,7 +1017,7 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _growthState.value = CollectionGrowthUiState.Loading
             try {
-                val apiKey = lastFmApiKey.value
+                val apiKey = settingsRepository.lastFmApiKey.first()
                 val data = repository.loadCollectionGrowthData(lastFmApiKey = apiKey)
                 if (!data.hasQualifyingArtists) {
                     _growthState.value = CollectionGrowthUiState.Empty
@@ -846,6 +1046,24 @@ class MusicViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("MusicViewModel", "loadCollectionGrowth failed", e)
+                _growthState.value = CollectionGrowthUiState.Empty
+            }
+        }
+    }
+
+    fun forceRefreshCollectionGrowth() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _growthState.value = CollectionGrowthUiState.Loading
+            try {
+                val apiKey = settingsRepository.lastFmApiKey.first()
+                
+                // Force a background sync for all qualifying artists
+                repository.forceRefreshCollectionGrowthData(apiKey)
+                
+                // Reload the newly synced data
+                loadCollectionGrowth()
+            } catch (e: Exception) {
+                android.util.Log.e("MusicViewModel", "forceRefreshCollectionGrowth failed", e)
                 _growthState.value = CollectionGrowthUiState.Empty
             }
         }
@@ -885,9 +1103,29 @@ class MusicViewModel @Inject constructor(
     val listeningStats: StateFlow<ListeningStatsData>
 
     init {
+        loadCollectionGrowth()
+        
         randomPicks = repository.getRandomTracks(20).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
         recentlyPlayed = repository.getRecentlyPlayedTracks(4).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-        recommended = repository.getRandomTracks(10).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        homescreenRecommendations = growthState.map { state ->
+            if (state is CollectionGrowthUiState.Success) {
+                val newSongs = state.cards.filterIsInstance<GrowthCard.NewSong>()
+                val trending = state.cards.filterIsInstance<GrowthCard.Trending>()
+                val otherCards = state.cards.filter { it !is GrowthCard.NewSong && it !is GrowthCard.Trending }
+                
+                val songsWithArt = (newSongs + trending).filter { it.imageUrl != null }
+                val songsWithoutArt = (newSongs + trending).filter { it.imageUrl == null }
+                val otherWithArt = otherCards.filter { it.imageUrl != null }
+                val otherWithoutArt = otherCards.filter { it.imageUrl == null }
+                
+                val result = mutableListOf<GrowthCard>()
+                val prioritized = songsWithArt + songsWithoutArt + otherWithArt + otherWithoutArt
+                result.addAll(prioritized.take(5))
+                result
+            } else {
+                emptyList()
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
         
         libraryAlbums = repository.getAllAlbums().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
         allGenres = repository.getAllGenres()
@@ -1098,6 +1336,36 @@ class MusicViewModel @Inject constructor(
         runBlocking { settingsRepository.glowIntensity.first() }
     )
     
+    val physicsMass: StateFlow<Float> = settingsRepository.physicsMass.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        runBlocking { settingsRepository.physicsMass.first() }
+    )
+    
+    val physicsStiffness: StateFlow<Float> = settingsRepository.physicsStiffness.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        runBlocking { settingsRepository.physicsStiffness.first() }
+    )
+    
+    val physicsDampingRatio: StateFlow<Float> = settingsRepository.physicsDampingRatio.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        runBlocking { settingsRepository.physicsDampingRatio.first() }
+    )
+    
+    val physicsAmplitude: StateFlow<Float> = settingsRepository.physicsAmplitude.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = runBlocking { settingsRepository.physicsAmplitude.first() }
+    )
+    
+    val physicsGravity: StateFlow<Float> = settingsRepository.physicsGravity.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = runBlocking { settingsRepository.physicsGravity.first() }
+    )
+    
     private val _lightThemeForNowPlaying = MutableStateFlow(false)
     val lightThemeForNowPlaying: StateFlow<Boolean> = _lightThemeForNowPlaying.asStateFlow()
     
@@ -1122,6 +1390,36 @@ class MusicViewModel @Inject constructor(
     fun setGlowIntensity(value: Float) {
         viewModelScope.launch {
             settingsRepository.setGlowIntensity(value)
+        }
+    }
+    
+    fun setPhysicsMass(value: Float) {
+        viewModelScope.launch {
+            settingsRepository.setPhysicsMass(value)
+        }
+    }
+    
+    fun setPhysicsStiffness(value: Float) {
+        viewModelScope.launch {
+            settingsRepository.setPhysicsStiffness(value)
+        }
+    }
+    
+    fun setPhysicsDampingRatio(value: Float) {
+        viewModelScope.launch {
+            settingsRepository.setPhysicsDampingRatio(value)
+        }
+    }
+    
+    fun setPhysicsAmplitude(value: Float) {
+        viewModelScope.launch {
+            settingsRepository.setPhysicsAmplitude(value)
+        }
+    }
+    
+    fun setPhysicsGravity(value: Float) {
+        viewModelScope.launch {
+            settingsRepository.setPhysicsGravity(value)
         }
     }
     
@@ -1152,6 +1450,55 @@ class MusicViewModel @Inject constructor(
             settingsRepository.setFanartTvApiKey(key)
         }
     }
+
+    // ------- Media Management Settings -------
+
+    val coilDiskCacheLimitMb = settingsRepository.coilDiskCacheLimitMb.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 250
+    )
+
+    val minSongDurationSec = settingsRepository.minSongDurationSec.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 0
+    )
+
+    val minTracksPerAlbum = settingsRepository.minTracksPerAlbum.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 1
+    )
+
+    val excludedFolders = settingsRepository.excludedFolders.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    fun setMinSongDurationSec(value: Int) {
+        viewModelScope.launch { settingsRepository.setMinSongDurationSec(value) }
+    }
+
+    fun setMinTracksPerAlbum(value: Int) {
+        viewModelScope.launch { settingsRepository.setMinTracksPerAlbum(value) }
+    }
+
+    fun setCoilDiskCacheLimitMb(value: Int) {
+        viewModelScope.launch { settingsRepository.setCoilDiskCacheLimitMb(value) }
+    }
+
+    fun addExcludedFolder(path: String) {
+        viewModelScope.launch {
+            val current = settingsRepository.excludedFolders.first().toMutableList()
+            if (!current.contains(path)) {
+                current.add(path)
+                settingsRepository.setExcludedFolders(current)
+            }
+        }
+    }
+
+    fun removeExcludedFolder(path: String) {
+        viewModelScope.launch {
+            val current = settingsRepository.excludedFolders.first().toMutableList()
+            current.remove(path)
+            settingsRepository.setExcludedFolders(current)
+        }
+    }
+
 
 
     // ---------------------------------------------------------------------------
@@ -1298,15 +1645,30 @@ class MusicViewModel @Inject constructor(
     }
         // --- Missing Artwork Fix ---
     
+    fun embedArtworkFromUriById(trackId: String, uri: android.net.Uri) {
+        viewModelScope.launch {
+            val track = repository.getTrackById(trackId)
+            if (track != null) {
+                embedArtworkFromUri(track, uri)
+            } else {
+                android.util.Log.e("ArcMusic", "embedArtworkFromUriById: failed to find track $trackId")
+            }
+        }
+    }
+
     fun embedArtworkFromUri(track: Track, uri: android.net.Uri) {
         viewModelScope.launch {
             try {
+                android.util.Log.d("ArcMusic", "embedArtworkFromUri: track=${track.title}, uri=$uri, filePath=${track.filePath}")
                 val bytes: ByteArray? = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 }
+                android.util.Log.d("ArcMusic", "embedArtworkFromUri: bytes read=${bytes?.size ?: 0}")
                 if (bytes != null) {
                     val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                    android.util.Log.d("ArcMusic", "embedArtworkFromUri: mimeType=$mimeType, calling embedArtworkBytes")
                     val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes, mimeType)
+                    android.util.Log.d("ArcMusic", "embedArtworkFromUri: embedArtworkBytes result=$success")
                     if (success) {
                         // Update the DB so the Room query stops returning this track as missing
                         repository.updateTrackArtwork(track.id, uri.toString())
@@ -1317,9 +1679,22 @@ class MusicViewModel @Inject constructor(
                             missingArtworkTracks = currentList,
                             missingArtworkCount = currentList.size
                         )
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, "Artwork embedded successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, "Failed to embed artwork", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    android.util.Log.e("ArcMusic", "embedArtworkFromUri: failed to read bytes from URI")
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Failed to read image from gallery", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("ArcMusic", "embedArtworkFromUri: EXCEPTION: ${e.message}", e)
                 e.printStackTrace()
             }
         }
@@ -1367,6 +1742,110 @@ class MusicViewModel @Inject constructor(
                 _autoFindProgress.value = current to total
             }
             _isAutoFindingArtwork.value = false
+        }
+    }
+
+    fun fetchArtworkForTrack(context: android.content.Context, track: Track) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Determine search query: prioritize artist + title
+                val url = artworkRepository.fetchBestArtistImage(track.artist, track.title)
+                if (url != null) {
+                    val request = okhttp3.Request.Builder().url(url).build()
+                    val response = okhttp3.OkHttpClient().newCall(request).execute()
+                    val bytes = response.body?.bytes()
+                    if (bytes != null) {
+                        val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes)
+                        if (success) {
+                            repository.updateTrackArtwork(track.id, url)
+                            // Update health state if it was in the missing list
+                            val currentList = _healthState.value.missingArtworkTracks.toMutableList()
+                            val removed = currentList.removeAll { it.id == track.id }
+                            if (removed) {
+                                _healthState.value = _healthState.value.copy(
+                                    missingArtworkTracks = currentList,
+                                    missingArtworkCount = currentList.size
+                                )
+                            }
+                            
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(context, "Artwork fetched and embedded successfully", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(context, "Failed to embed artwork to file", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "No artwork found online", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error fetching artwork", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun fetchMissingMetadataForAll(context: android.content.Context) {
+        if (_isFetchingMetadata.value) return
+        viewModelScope.launch {
+            _isFetchingMetadata.value = true
+            var successCount = 0
+            var failCount = 0
+            var lastError: String? = null
+            
+            try {
+                val missingTracks = missingMetadataTracks.value
+                val total = missingTracks.size
+                for (track in missingTracks) {
+                    val result = repository.fetchAndSaveMissingMetadata(context, track, lastFmApiKey.value)
+                    if (result.isSuccess) {
+                        successCount++
+                    } else {
+                        failCount++
+                        lastError = result.exceptionOrNull()?.message
+                    }
+                    kotlinx.coroutines.delay(1500) // Rate limiting
+                }
+                
+                withContext(Dispatchers.Main) {
+                    val message = if (total == 0) {
+                        "No tracks missing metadata"
+                    } else if (failCount == 0) {
+                        "Successfully updated metadata for all $successCount tracks!"
+                    } else if (successCount == 0) {
+                        "Failed to update metadata. Reason: ${lastError ?: "Unknown error"}"
+                    } else {
+                        "Updated $successCount tracks, failed $failCount. Last error: ${lastError ?: "Unknown error"}"
+                    }
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                _isFetchingMetadata.value = false
+            }
+        }
+    }
+    fun fetchMetadataForTrack(context: android.content.Context, track: Track) {
+        viewModelScope.launch {
+            try {
+                val result = repository.fetchAndSaveMissingMetadata(context, track, lastFmApiKey.value)
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccess) {
+                        android.widget.Toast.makeText(context, "Metadata fetched successfully", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "Failed to fetch metadata: ${result.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 }

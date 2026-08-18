@@ -1,7 +1,6 @@
 package com.aeswox.arcmusic
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -16,12 +15,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @Composable
 fun AlbumDetailsScreen(
@@ -40,9 +43,13 @@ fun AlbumDetailsScreen(
     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
 
-    LazyColumn(
+    if (album == null) {
+        AlbumDetailsSkeleton(onNavigateBack = onNavigateBack)
+    } else {
+        LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .physicsBounceOverscroll()
             .padding(horizontal = 24.dp),
         contentPadding = PaddingValues(top = 48.dp, bottom = 120.dp)
     ) {
@@ -81,6 +88,7 @@ fun AlbumDetailsScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -90,7 +98,7 @@ fun AlbumDetailsHeader(onNavigateBack: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onNavigateBack) {
+        JellyIconButton(onClick = onNavigateBack) {
             Icon(
                 imageVector = Icons.Default.ArrowBackIosNew,
                 contentDescription = "Back",
@@ -98,7 +106,7 @@ fun AlbumDetailsHeader(onNavigateBack: () -> Unit) {
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconButton(onClick = { }) {
+            JellyIconButton(onClick = { }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "More",
@@ -154,7 +162,7 @@ fun AlbumDetailsInfo(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clickable { onNavigateToArtist(album?.artist ?: "") }
+                    .jellyClick { onNavigateToArtist(album?.artist ?: "") }
                     .padding(vertical = 8.dp)
             ) {
                 Text(
@@ -222,7 +230,7 @@ fun AlbumDetailsInfo(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
+                JellyButton(
                     onClick = onPlay,
                     modifier = Modifier.weight(1f).height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -240,7 +248,7 @@ fun AlbumDetailsInfo(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-                Button(
+                JellyButton(
                     onClick = onShuffle,
                     modifier = Modifier.weight(1f).height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -308,7 +316,7 @@ fun AlbumTracksList(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = true }
+                    .jellyClick { expanded = true }
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -341,7 +349,7 @@ fun AlbumTrackItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .jellyClick { onClick() }
             .background(if (isPlaying) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent)
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -430,11 +438,12 @@ fun MoreByArtistSection(
                 text = "See all",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clickable { onNavigateToArtist(artistName) }
+                modifier = Modifier.jellyClick { onNavigateToArtist(artistName) }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
         LazyRow(
+            modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(albums) { album ->
@@ -445,6 +454,103 @@ fun MoreByArtistSection(
                     onClick = { onNavigateToAlbum(album.id) }
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AlbumDetailsSkeleton(onNavigateBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .padding(top = 48.dp, bottom = 120.dp)
+    ) {
+        AlbumDetailsHeader(onNavigateBack = onNavigateBack)
+        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(280.dp)
+                    .clip(RoundedCornerShape(36.dp))
+                    .shimmerLoading()
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .shimmerLoading()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .shimmerLoading()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.3f)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .shimmerLoading()
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .shimmerLoading()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .shimmerLoading()
+                    )
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .shimmerLoading()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .shimmerLoading()
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(32.dp))
+        repeat(5) {
+            TrackListItemSkeleton(
+                modifier = Modifier.padding(horizontal = 0.dp),
+                showCover = false, 
+                showTrackNumber = true
+            )
         }
     }
 }

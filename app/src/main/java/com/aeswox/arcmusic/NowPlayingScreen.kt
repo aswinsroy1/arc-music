@@ -1,5 +1,7 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
+import androidx.compose.animation.SharedTransitionScope
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.isActive
 
@@ -28,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -88,6 +91,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.border
 
 import com.aeswox.arcmusic.db.entities.Track
+
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.animations.LocalJigglePhysicsSettings
+import com.aeswox.arcmusic.ui.components.*
 
 import kotlinx.coroutines.delay
 
@@ -235,9 +243,8 @@ fun NowPlayingScreen(
     onNavigateToQueue: () -> Unit = {},
 
     onNavigateToAlbum: (String) -> Unit = {},
-
-    onNavigateToArtist: (String) -> Unit = {}
-
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToEditMetadata: (String) -> Unit = {}
 ) {
 
     val context = LocalContext.current
@@ -261,6 +268,10 @@ fun NowPlayingScreen(
     
 
     var showLyrics by remember { mutableStateOf(false) }
+    
+    androidx.activity.compose.BackHandler(enabled = showLyrics) {
+        showLyrics = false
+    }
 
     var showOptionsSheet by remember { mutableStateOf(false) }
 
@@ -336,18 +347,18 @@ fun NowPlayingScreen(
 
     val textAlpha = if (isDarkTheme) 0.7f else 0.6f
 
-        val imageUrl = songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
+    val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
-
+    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+    val sharedScope = LocalSharedTransitionScope.current
+    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+    val navScope = LocalNavAnimatedVisibilityScope.current
+    val jiggleSettings = LocalJigglePhysicsSettings.current
 
     Box(
-
         modifier = Modifier
-
             .fillMaxSize()
-
             .background(Color.Transparent)
-
             .pointerInput(Unit) {
 
                 var totalDrag = 0f
@@ -474,15 +485,11 @@ fun NowPlayingScreen(
                 contentScale = ContentScale.Crop,
 
                 modifier = Modifier
-
-                    .fillMaxWidth()
-
-                    .aspectRatio(0.9f)
-
                     .align(Alignment.TopCenter)
-
+                    .fillMaxWidth()
+                    .aspectRatio(0.9f)
+                    .clip(RoundedCornerShape(32.dp))
                     .clickable { showLyrics = true }
-
                     .graphicsLayer { 
 
                         alpha = sharpImageAlpha
@@ -646,35 +653,20 @@ fun NowPlayingScreen(
                         Column(modifier = Modifier.weight(1f)) {
 
                             Text(
-
                                 text = songToPlay?.title ?: "Unknown",
-
                                 style = MaterialTheme.typography.displaySmall.copy(
-
                                     fontWeight = FontWeight.Bold,
-
                                     fontSize = 28.sp
-
                                 ),
-
                                 color = textColor,
-
                                 maxLines = 1
-
                             )
-
                             Spacer(modifier = Modifier.height(4.dp))
-
                             Text(
-
                                 text = songToPlay?.artist ?: "Unknown",
-
                                 style = MaterialTheme.typography.titleMedium,
-
                                 color = textColor.copy(alpha = textAlpha),
-
                                 maxLines = 1
-
                             )
 
                         }

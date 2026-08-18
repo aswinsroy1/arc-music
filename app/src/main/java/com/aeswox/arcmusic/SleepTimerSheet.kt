@@ -1,7 +1,6 @@
 package com.aeswox.arcmusic
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +22,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +82,7 @@ fun SleepTimerSheet(
                     )
                 )
                 
-                IconButton(
+                JellyIconButton(
                     onClick = { 
                         if (isCustomView) isCustomView = false 
                         else onDismiss() 
@@ -118,7 +120,7 @@ fun SleepTimerSheet(
                     ) {
                         // Hours
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            IconButton(onClick = { if (customHours < 23) customHours++ else customHours = 0 }) {
+                            JellyIconButton(onClick = { if (customHours < 23) customHours++ else customHours = 0 }) {
                                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Up", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
@@ -126,7 +128,7 @@ fun SleepTimerSheet(
                                 style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            IconButton(onClick = { if (customHours > 0) customHours-- else customHours = 23 }) {
+                            JellyIconButton(onClick = { if (customHours > 0) customHours-- else customHours = 23 }) {
                                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
@@ -145,7 +147,7 @@ fun SleepTimerSheet(
 
                         // Mins
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            IconButton(onClick = { if (customMins < 59) customMins++ else customMins = 0 }) {
+                            JellyIconButton(onClick = { if (customMins < 59) customMins++ else customMins = 0 }) {
                                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Up", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
@@ -153,7 +155,7 @@ fun SleepTimerSheet(
                                 style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            IconButton(onClick = { if (customMins > 0) customMins-- else customMins = 59 }) {
+                            JellyIconButton(onClick = { if (customMins > 0) customMins-- else customMins = 59 }) {
                                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
@@ -261,7 +263,7 @@ fun SleepTimerSheet(
                             .height(110.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(if (isEotSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                            .clickable { selectedPreset = -1 },
+                            .jellyClick { selectedPreset = -1 },
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -290,7 +292,7 @@ fun SleepTimerSheet(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                        .clickable { isCustomView = true }
+                        .jellyClick { isCustomView = true }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -320,7 +322,7 @@ fun SleepTimerSheet(
 
             // Action Button
             if (isCustomView) {
-                Button(
+                JellyButton(
                     onClick = { 
                         val totalMins = customHours * 60 + customMins
                         if (totalMins > 0) onStart(totalMins) 
@@ -340,7 +342,7 @@ fun SleepTimerSheet(
                     )
                 }
             } else if (isActive) {
-                Button(
+                JellyButton(
                     onClick = { onClear() },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -357,7 +359,7 @@ fun SleepTimerSheet(
                     )
                 }
             } else {
-                Button(
+                JellyButton(
                     onClick = { onStart(selectedPreset) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -391,7 +393,7 @@ fun PresetBlock(
             .height(110.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-            .clickable { onClick() },
+            .jellyClick { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Column(

@@ -24,6 +24,9 @@ interface AlbumDao {
     @Query("DELETE FROM albums WHERE title IN (:albumTitles)")
     suspend fun deleteAlbums(albumTitles: List<String>)
 
+    @Query("DELETE FROM albums")
+    suspend fun deleteAllAlbums()
+
     @Query("UPDATE albums SET isFavorite = :isFavorite WHERE id = :albumId")
     suspend fun updateAlbumFavoriteStatus(albumId: String, isFavorite: Boolean)
 

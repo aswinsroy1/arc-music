@@ -19,6 +19,7 @@ fun CustomHorizontalSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -34,6 +35,9 @@ fun CustomHorizontalSlider(
     
     val thumbColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val thumbStrokeColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    
+    val activeStepColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+    val inactiveStepColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
 
     Canvas(
         modifier = modifier
@@ -95,6 +99,21 @@ fun CustomHorizontalSlider(
                 size = Size(fillWidth, trackHeightPx),
                 cornerRadius = CornerRadius(trackHeightPx / 2f, trackHeightPx / 2f)
             )
+        }
+
+        // Draw Steps (Dots)
+        if (steps > 0) {
+            val stepWidth = trackWidthPx / (steps + 1).toFloat()
+            for (i in 0..steps + 1) {
+                val stepX = leftX + i * stepWidth
+                val isActive = stepX <= thumbX
+                val dotColor = if (isActive) activeStepColor else inactiveStepColor
+                drawCircle(
+                    color = dotColor,
+                    radius = trackHeightPx / 5f,
+                    center = Offset(stepX, centerY)
+                )
+            }
         }
 
         // 3. Draw Thumb

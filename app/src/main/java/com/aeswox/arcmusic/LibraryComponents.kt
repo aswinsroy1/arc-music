@@ -62,6 +62,11 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     val selectedItems = remember { mutableStateListOf<String>() }
     val isSelectionMode = selectedItems.isNotEmpty()
+    
+    androidx.activity.compose.BackHandler(enabled = isSelectionMode) {
+        selectedItems.clear()
+    }
+    
     var deleteTrigger by remember { mutableStateOf(0) }
     var renameTrigger by remember { mutableStateOf(0) }
     androidx.compose.runtime.LaunchedEffect(isSelectionMode) {

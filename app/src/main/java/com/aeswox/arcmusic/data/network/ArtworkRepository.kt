@@ -191,7 +191,19 @@ class ArtworkRepository @Inject constructor(
     }
     
     suspend fun fetchTrackArtwork(trackTitle: String, artistName: String): String? {
-        return deezerRepository.fetchTrackArtwork(trackTitle, artistName)
+        val direct = try { deezerRepository.fetchTrackArtwork(trackTitle, artistName) } catch (e: Exception) { null }
+        if (direct != null) return direct
+
+        try {
+            val cleanTitle = trackTitle.replace(Regex("(?i)\\s*-\\s*Single$|\\s*\\(.*?Edition\\)$|\\s*\\[.*?\\]$"), "").trim()
+            val term = "$cleanTitle $artistName"
+            val response = itunesService.searchTrack(term = term, limit = 1)
+            val itunesUrl = response.results?.firstOrNull()?.artworkUrl100?.replace("100x100bb", "600x600bb")
+            if (itunesUrl != null) return itunesUrl
+        } catch (e: Exception) {
+            Log.w("ArtworkRepository", "iTunes track fetch failed for $trackTitle by $artistName", e)
+        }
+        return null
     }
 
     suspend fun fetchArtistBio(artistName: String): String? = withContext(Dispatchers.IO) {
@@ -493,14 +505,8 @@ class ArtworkRepository @Inject constructor(
                 val matchesAnyOfficialEdition = localMatch != null && officialTrackCounts.contains(localMatch.value)
                 
                 if (localMatch == null) {
-                    // Entirely missing album — fetch cover from Cover Art Archive (bypasses Deezer region blocks)
-                    val rgId = rgReleases.first().releaseGroup?.id
-                    val caaUrl = if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else null
-                    val imageUrl = if (caaUrl != null && checkUrlExists(caaUrl)) {
-                        caaUrl
-                    } else {
-                        fetchAlbumCover(rgTitle, artistName)
-                    }
+                    // Entirely missing album
+                    val imageUrl = fetchAlbumCover(rgTitle, artistName)
                     val newItem = MissingContentItem(rgTitle, artistName, true, isSingle, imageUrl, missingCount = maxOfficialTrackCount)
                     if (isSingle) {
                         missingSingles.add(newItem)
@@ -549,15 +555,8 @@ class ArtworkRepository @Inject constructor(
                     val finalCount = if (rawOfficialTracks.isNotEmpty()) actualMissingTrackNames.size else (maxOfficialTrackCount - localMatch.value)
                     
                     if (finalCount <= 0) return@forEach
-                    // Use local artwork if available; fallback to Cover Art Archive, then iTunes/Deezer
-                    val rgId = rgReleases.first().releaseGroup?.id
-                    val caaUrl = if (rgId != null) "https://coverartarchive.org/release-group/$rgId/front" else null
-                    
-                    val imageUrl = localArtwork ?: if (caaUrl != null && checkUrlExists(caaUrl)) {
-                        caaUrl
-                    } else {
-                        fetchAlbumCover(rgTitle, artistName)
-                    }
+                    // Use local artwork if available; fallback to iTunes/Deezer
+                    val imageUrl = localArtwork ?: fetchAlbumCover(rgTitle, artistName)
                     val newItem = MissingContentItem(rgTitle, artistName, false, isSingle, imageUrl, missingCount = finalCount, missingTrackNames = actualMissingTrackNames)
                     if (isSingle) {
                         missingSingles.add(newItem)
@@ -628,8 +627,8 @@ class ArtworkRepository @Inject constructor(
                 val rgTitleLower = rg.title.lowercase()
                 if (localTitles.any { local -> local == rgTitleLower || local.contains(rgTitleLower) || rgTitleLower.contains(local) }) continue
 
-                // Use Cover Art Archive URL directly — if it doesn't load, Coil will show placeholder
-                val imageUrl = "https://coverartarchive.org/release-group/${rg.id}/front"
+                // Fetch cached URL from Deezer/iTunes for fast loading
+                val imageUrl = fetchAlbumCover(rg.title, artistName)
 
                 val releaseType = when {
                     rg.primaryType?.equals("Single", ignoreCase = true) == true -> "Single"
@@ -774,15 +773,14 @@ class ArtworkRepository @Inject constructor(
                 if (titleLower.contains("instrumental") || titleLower.contains("inst.") ||
                     titleLower.contains("karaoke") || titleLower.contains("acapella")) continue
 
-                // Artwork: Cover Art Archive doesn't index individual recordings — use null;
-                // the card will show a placeholder. A future enhancement could look up the
-                // release the recording appears on.
+                // Fetch artwork from Deezer/iTunes
+                val imageUrl = fetchTrackArtwork(rec.title, artistName)
                 results.add(NewSongItem(
                     trackTitle = rec.title,
                     artistName = artistName,
                     mbid = rec.id,
                     releaseDateStr = dateStr,
-                    imageUrl = null
+                    imageUrl = imageUrl
                 ))
 
                 if (results.size >= 5) break // cap per artist to avoid flooding the section
@@ -851,8 +849,17 @@ class ArtworkRepository @Inject constructor(
                     }
                 }
 
-                val imageUrl = track.image?.lastOrNull { it.text?.isNotBlank() == true &&
+                var imageUrl = track.image?.lastOrNull { it.text?.isNotBlank() == true &&
                     it.text.contains("2a96cbd8b46e442fc41c2b86b821562f") == false }?.text
+                
+                if (imageUrl.isNullOrBlank()) {
+                    try {
+                        kotlinx.coroutines.delay(300)
+                        imageUrl = fetchTrackArtwork(titleLower, artistName)
+                    } catch (e: Exception) {
+                        Log.w("ArtworkRepository", "Fallback image fetch failed for $titleLower by $artistName", e)
+                    }
+                }
 
                 scored.add(ScoredTrack(track, score, matchedGenre, imageUrl))
                 // Early exit: once we have enough high-scoring tracks, stop fetching tags

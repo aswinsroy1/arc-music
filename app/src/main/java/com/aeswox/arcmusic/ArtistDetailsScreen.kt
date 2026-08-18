@@ -1,7 +1,7 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,6 +42,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import com.aeswox.arcmusic.db.entities.Artist
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +59,11 @@ fun ArtistDetailsScreen(
     val artist by viewModel.getArtistById(artistId).collectAsState(initial = null)
     val tracks by viewModel.getTracksByArtist(artistId).collectAsState(initial = emptyList())
     val albums by viewModel.getAlbumsByArtist(artistId).collectAsState(initial = emptyList())
+
+    if (artist == null) {
+        ArtistDetailsSkeleton(onNavigateBack = onNavigateBack)
+        return
+    }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -87,7 +95,7 @@ fun ArtistDetailsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             item {
@@ -111,7 +119,7 @@ fun ArtistDetailsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
+            JellyIconButton(
                 onClick = onNavigateBack,
                 modifier = Modifier
                     .clip(CircleShape)
@@ -124,7 +132,7 @@ fun ArtistDetailsScreen(
                 )
             }
             Box {
-                IconButton(
+                JellyIconButton(
                     onClick = { showOptionsSheet = true },
                     modifier = Modifier
                         .clip(CircleShape)
@@ -248,7 +256,7 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                 
                 if (artist != null) {
                     Spacer(modifier = Modifier.width(16.dp))
-                    IconButton(
+                    JellyIconButton(
                         onClick = { viewModel.toggleArtistFavorite(listOf(artist.id), !artist.isFavorite) },
                         modifier = Modifier
                             .size(48.dp)
@@ -270,7 +278,7 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Button(
+                JellyButton(
                     onClick = { if (tracks.isNotEmpty()) viewModel.setCurrentlyPlaying(tracks.first(), tracks) },
                     modifier = Modifier.weight(1f).height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
@@ -281,7 +289,7 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                     Text("Play", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
                 
-                Button(
+                JellyButton(
                     onClick = { if (tracks.isNotEmpty()) viewModel.setCurrentlyPlaying(tracks.random(), tracks.shuffled()) },
                     modifier = Modifier.weight(1f).height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f), contentColor = MaterialTheme.colorScheme.onSurface),
@@ -309,7 +317,7 @@ fun ArtistPopularSection(tracks: List<Track>, viewModel: MusicViewModel, onNavig
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onNavigateToAllTracks() }) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.jellyClick { onNavigateToAllTracks() }) {
                 Text(
                     text = "See all",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
@@ -354,7 +362,7 @@ fun ArtistTrackItem(number: Int, title: String, subtitle: String, imageUrl: Stri
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .clickable { onClick() }
+            .jellyClick { onClick() }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -387,7 +395,7 @@ fun ArtistTrackItem(number: Int, title: String, subtitle: String, imageUrl: Stri
                 )
             }
         }
-        IconButton(onClick = { }) {
+        JellyIconButton(onClick = { }) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = "More",
@@ -412,7 +420,7 @@ fun ArtistAlbumsSection(albums: List<Album>, onNavigateToAlbum: (String) -> Unit
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onNavigateToAllAlbums() }) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.jellyClick { onNavigateToAllAlbums() }) {
                 Text(
                     text = "See all",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
@@ -430,6 +438,8 @@ fun ArtistAlbumsSection(albums: List<Album>, onNavigateToAlbum: (String) -> Unit
         Spacer(modifier = Modifier.height(16.dp))
         
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -448,7 +458,7 @@ fun ArtistAlbumsSection(albums: List<Album>, onNavigateToAlbum: (String) -> Unit
 
 @Composable
 fun ArtistAlbumItem(title: String, year: String, imageUrl: String, onClick: () -> Unit = {}) {
-    Column(modifier = Modifier.width(140.dp).clickable { onClick() }) {
+    Column(modifier = Modifier.width(140.dp).jellyClick { onClick() }) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(32.dp))
@@ -504,7 +514,7 @@ fun ArtistAboutSection(artist: Artist?) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
-                .clickable { }
+                .jellyClick { }
                 .padding(24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
@@ -564,8 +574,15 @@ fun ArtistImageSearchBottomSheet(
 
             val currentImages = images
             if (currentImages == null) {
-                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.physicsBounceOverscroll().heightIn(max = 400.dp)
+                ) {
+                    items(9) {
+                        SkeletonImageGridItem()
+                    }
                 }
             } else if (currentImages.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -576,7 +593,7 @@ fun ArtistImageSearchBottomSheet(
                     columns = GridCells.Fixed(3),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.heightIn(max = 400.dp)
+                    modifier = Modifier.physicsBounceOverscroll().heightIn(max = 400.dp)
                 ) {
                     items(currentImages) { imageUrl ->
                         AsyncImage(
@@ -586,11 +603,91 @@ fun ArtistImageSearchBottomSheet(
                             modifier = Modifier
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { onImageSelected(imageUrl) }
+                                .jellyClick { onImageSelected(imageUrl) }
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ArtistDetailsSkeleton(onNavigateBack: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 120.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 80.dp, bottom = 32.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4f/3f)
+                            .clip(RoundedCornerShape(48.dp))
+                            .shimmerLoading()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .shimmerLoading()
+                    )
+                }
+            }
+            
+            Column(modifier = Modifier.padding(top = 16.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.3f)
+                        .padding(horizontal = 24.dp)
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .shimmerLoading()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                repeat(3) {
+                    TrackListItemSkeleton(showCover = false, showTrackNumber = true)
+                }
+            }
+        }
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, start = 24.dp, end = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            JellyIconButton(
+                onClick = onNavigateBack,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f))
+            )
         }
     }
 }

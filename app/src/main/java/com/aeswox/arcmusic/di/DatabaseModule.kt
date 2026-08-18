@@ -87,6 +87,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideMusicRepository(
+        @ApplicationContext context: android.content.Context,
         trackDao: TrackDao,
         albumDao: AlbumDao,
         artistDao: ArtistDao,
@@ -100,12 +101,14 @@ object DatabaseModule {
         newSongDao: NewSongDao,
         trendingDao: TrendingDao,
         mediaStoreScanner: MediaStoreScanner,
-        artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository
+        artworkRepository: com.aeswox.arcmusic.data.network.ArtworkRepository,
+        lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository,
+        deezerService: com.aeswox.arcmusic.data.network.DeezerService
     ): MusicRepository {
         return MusicRepository(
-            trackDao, albumDao, artistDao, playlistDao, playHistoryDao,
+            context, trackDao, albumDao, artistDao, playlistDao, playHistoryDao,
             searchHistoryDao, missingContentDao, newReleaseDao, dismissedCardDao,
-            discoveryDao, newSongDao, trendingDao, mediaStoreScanner, artworkRepository
+            discoveryDao, newSongDao, trendingDao, mediaStoreScanner, artworkRepository, lyricsRepository, deezerService
         )
     }
 

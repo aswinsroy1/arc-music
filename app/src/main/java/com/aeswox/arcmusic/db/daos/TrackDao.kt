@@ -29,6 +29,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE filePath LIKE '%eac3%' OR filePath LIKE '%ac3%' OR codec LIKE '%eac3%' OR codec LIKE '%ac3%' LIMIT 1")
     suspend fun getEac3Track(): Track?
 
+    @Query("SELECT * FROM tracks WHERE id = :id LIMIT 1")
+    suspend fun getTrackById(id: String): Track?
+
     @Query("SELECT * FROM tracks")
     fun getAllTracks(): Flow<List<Track>>
 
@@ -51,7 +54,7 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE artworkUri IS NULL OR artworkUri = ''")
     fun getTracksMissingArtwork(): Flow<List<Track>>
 
-    @Query("SELECT * FROM tracks WHERE title IS NULL OR title = '' OR artist IS NULL OR artist = '' OR album IS NULL OR album = '' OR genre IS NULL OR genre = ''")
+    @Query("SELECT * FROM tracks WHERE title IS NULL OR title = '' OR title = '<unknown>' OR title = 'Unknown Title' OR artist IS NULL OR artist = '' OR artist = '<unknown>' OR artist = 'Unknown Artist' OR album IS NULL OR album = '' OR album = '<unknown>' OR album = 'Unknown Album'")
     fun getTracksMissingMetadata(): Flow<List<Track>>
 
     @Query("SELECT * FROM tracks WHERE bitrate < 192000")
@@ -59,6 +62,15 @@ interface TrackDao {
 
     @Query("SELECT * FROM tracks WHERE durationMs = 0 OR durationMs IS NULL")
     fun getCorruptedTracks(): Flow<List<Track>>
+
+    @Query("SELECT * FROM tracks WHERE hasLyrics = 0")
+    fun getTracksMissingLyrics(): Flow<List<Track>>
+
+    @Query("SELECT * FROM tracks WHERE lyricsSyncedAt > 0 ORDER BY lyricsSyncedAt DESC LIMIT :limit")
+    fun getRecentlySyncedLyrics(limit: Int): Flow<List<Track>>
+
+    @Query("UPDATE tracks SET hasLyrics = :hasLyrics, lyricsSyncedAt = :syncedAt WHERE id = :trackId")
+    suspend fun updateLyricsStatus(trackId: String, hasLyrics: Boolean, syncedAt: Long)
 
     @Query("UPDATE tracks SET playCount = playCount + 1, lastPlayedAt = :timestamp WHERE id = :trackId")
     suspend fun incrementPlayCountAndUpdateLastPlayed(trackId: String, timestamp: Long)
@@ -69,11 +81,17 @@ interface TrackDao {
     @Query("UPDATE tracks SET artworkUri = :artworkUri WHERE id = :trackId")
     suspend fun updateTrackArtwork(trackId: String, artworkUri: String?)
 
+    @Query("UPDATE tracks SET title = :title, artist = :artist, album = :album, genre = :genre, year = :year, trackNumber = :trackNumber WHERE id = :trackId")
+    suspend fun updateTrackMetadata(trackId: String, title: String?, artist: String?, album: String?, genre: String?, year: Int?, trackNumber: Int?)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTracks(tracks: List<Track>)
 
     @Query("DELETE FROM tracks WHERE id IN (:trackIds)")
     suspend fun deleteTracks(trackIds: List<String>)
+
+    @Query("DELETE FROM tracks")
+    suspend fun deleteAllTracks()
 
     @Query("""
         SELECT tracks.* FROM tracks

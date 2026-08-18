@@ -1,5 +1,6 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -23,6 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 // Genre icon mapping — deterministic, not listening-based
 private val genreIconMap = mapOf(
@@ -58,7 +65,7 @@ fun ListeningStatsScreenContent(
     LazyColumn(
         contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding + 24.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp),
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.physicsBounceOverscroll().fillMaxSize()
     ) {
         item {
             StatsHeader(onBackClick = onNavigateBack)
@@ -110,7 +117,7 @@ fun StatsHeader(onBackClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBackClick) {
+        JellyIconButton(onClick = onBackClick) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
@@ -283,6 +290,8 @@ fun TopArtistsSection(artists: List<ArtistStatEntry>) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {

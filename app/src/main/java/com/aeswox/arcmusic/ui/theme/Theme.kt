@@ -9,7 +9,9 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.runtime.CompositionLocalProvider
 private val LightColorScheme = lightColorScheme(
     primary = Primary,
     onPrimary = OnPrimary,
@@ -94,9 +96,15 @@ fun ArcMusicTheme(
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = CustomTypography,
-        content = content
-    )
+    @OptIn(ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+    CompositionLocalProvider(
+        LocalOverscrollConfiguration provides null,
+        androidx.compose.material3.LocalRippleConfiguration provides null
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = CustomTypography,
+            content = content
+        )
+    }
 }

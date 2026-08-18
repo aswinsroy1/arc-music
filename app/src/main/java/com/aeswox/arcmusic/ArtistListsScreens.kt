@@ -1,5 +1,6 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @Composable
 fun ArtistTracksScreen(
@@ -34,7 +41,7 @@ fun ArtistTracksScreen(
                 .padding(top = 48.dp, start = 24.dp, end = 24.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
+            JellyIconButton(
                 onClick = onNavigateBack,
                 modifier = Modifier
                     .clip(CircleShape)
@@ -55,7 +62,7 @@ fun ArtistTracksScreen(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -93,7 +100,7 @@ fun ArtistAlbumsScreen(
                 .padding(top = 48.dp, start = 24.dp, end = 24.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
+            JellyIconButton(
                 onClick = onNavigateBack,
                 modifier = Modifier
                     .clip(CircleShape)
@@ -118,7 +125,7 @@ fun ArtistAlbumsScreen(
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.physicsBounceOverscroll().fillMaxSize()
         ) {
             items(albums.size) { index ->
                 val album = albums[index]

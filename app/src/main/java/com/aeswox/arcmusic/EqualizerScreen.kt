@@ -2,7 +2,6 @@ package com.aeswox.arcmusic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -23,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeswox.arcmusic.playback.EqualizerViewModel
 import com.aeswox.arcmusic.ui.components.CustomVerticalSlider
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -57,7 +59,7 @@ fun EqualizerScreen(
             CenterAlignedTopAppBar(
                 title = { Text("Equalizer", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    JellyIconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -208,7 +210,7 @@ fun EqualizerScreen(
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                     shape = RoundedCornerShape(24.dp)
                                 )
-                                .clickable {
+                                .jellyClick {
                                     if (isEnabled) {
                                         selectedPreset = presetName
                                         presets[presetName]?.let { viewModel.applyPreset(it) }
@@ -236,7 +238,7 @@ fun EqualizerScreen(
                     .padding(bottom = 32.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedButton(
+                JellyOutlinedButton(
                     onClick = { 
                         if (isEnabled) {
                             viewModel.applyPreset(presets["Flat"]!!)
@@ -256,7 +258,7 @@ fun EqualizerScreen(
                     Text("Reset", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
 
-                Button(
+                JellyButton(
                     onClick = { /* Save custom preset logic */ },
                     modifier = Modifier
                         .weight(1f)

@@ -1,10 +1,10 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +37,9 @@ import dev.chrisbanes.haze.haze
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +98,7 @@ fun CreatePlaylistFlow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (currentStep == 1) {
-                        TextButton(onClick = onDismiss) {
+                        JellyTextButton(onClick = onDismiss) {
                             Text("close", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Text(
@@ -104,7 +107,7 @@ fun CreatePlaylistFlow(
                             fontWeight = FontWeight.Bold
                         )
                         val hasSelection = selectedTrackIds.isNotEmpty()
-                        TextButton(
+                        JellyTextButton(
                             onClick = { if (hasSelection) currentStep = 2 },
                             enabled = hasSelection,
                             colors = ButtonDefaults.textButtonColors(
@@ -123,7 +126,7 @@ fun CreatePlaylistFlow(
                             )
                         }
                     } else {
-                        IconButton(onClick = { currentStep = 1 }) {
+                        JellyIconButton(onClick = { currentStep = 1 }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                         Text(
@@ -161,7 +164,7 @@ fun CreatePlaylistFlow(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 120.dp)
                     ) {
                         items(filteredTracks) { track ->
@@ -173,7 +176,7 @@ fun CreatePlaylistFlow(
                                         if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                         else Color.Transparent
                                     )
-                                    .clickable {
+                                    .jellyClick {
                                         if (isSelected) {
                                             selectedTrackIds.remove(track.id)
                                         } else {
@@ -249,7 +252,7 @@ fun CreatePlaylistFlow(
                                 .size(240.dp)
                                 .clip(RoundedCornerShape(32.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable {
+                                .jellyClick {
                                     photoPickerLauncher.launch(
                                         androidx.activity.result.PickVisualMediaRequest(
                                             ActivityResultContracts.PickVisualMedia.ImageOnly
@@ -312,7 +315,7 @@ fun CreatePlaylistFlow(
                         
                         Spacer(modifier = Modifier.height(48.dp))
                         
-                        Button(
+                        JellyButton(
                             onClick = {
                                 onCreatePlaylist(playlistName, playlistDescription, coverArtUri?.toString(), selectedTrackIds.toList())
                                 onDismiss()

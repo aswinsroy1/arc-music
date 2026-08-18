@@ -26,6 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.clipToBounds
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +77,7 @@ fun DeviceSheet(
                     )
                 )
                 
-                IconButton(
+                JellyIconButton(
                     onClick = onDismiss,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)

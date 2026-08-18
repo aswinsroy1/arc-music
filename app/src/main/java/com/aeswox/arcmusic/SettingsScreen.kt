@@ -1,7 +1,7 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @Composable
 fun SettingsScreen(
@@ -38,11 +41,16 @@ fun SettingsScreen(
     onLightThemeForNowPlayingChange: (Boolean) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
+    coilDiskCacheLimitMb: Int,
+    onCoilDiskCacheLimitMbChange: (Int) -> Unit,
     onNavigateToAppearance: () -> Unit,
+    onNavigateToJigglePhysics: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
+    onNavigateToMediaManagement: () -> Unit,
     onNavigateBack: () -> Unit,
     onScanMediaStore: () -> Unit = {},
     onTestEac3: () -> Unit = {},
+    bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier = Modifier
 ) {
     val hazeState = remember { HazeState() }
@@ -62,13 +70,13 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                JellyTextButton(onClick = {
                     onLastFmApiKeyChange(apiKeyInput)
                     showApiKeyDialog = false
                 }) { Text("Save") }
             },
             dismissButton = {
-                TextButton(onClick = { showApiKeyDialog = false }) { Text("Cancel") }
+                JellyTextButton(onClick = { showApiKeyDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -89,13 +97,13 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                JellyTextButton(onClick = {
                     onFanartTvApiKeyChange(fanartTvApiKeyInput)
                     showFanartTvApiKeyDialog = false
                 }) { Text("Save") }
             },
             dismissButton = {
-                TextButton(onClick = { showFanartTvApiKeyDialog = false }) { Text("Cancel") }
+                JellyTextButton(onClick = { showFanartTvApiKeyDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -106,12 +114,12 @@ fun SettingsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .applyHazeAndBackdrop(hazeState = hazeState)
+
         ) {
             LazyColumn(
-                contentPadding = PaddingValues(top = 24.dp, bottom = 180.dp, start = 24.dp, end = 24.dp),
+                contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding, start = 24.dp, end = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.physicsBounceOverscroll().fillMaxSize()
             ) {
                 item {
                     SettingsHeader(onNavigateBack = onNavigateBack)
@@ -143,8 +151,9 @@ fun SettingsScreen(
                             },
                             showArrow = false
                         )
+                        SettingsItem(icon = Icons.Outlined.Animation, text = "Jiggle physics", onClick = onNavigateToJigglePhysics)
                         SettingsItem(
-                            icon = Icons.Outlined.LightMode, 
+                            icon = Icons.Outlined.LightMode,  
                             text = "Dynamic colors", 
                             trailingContent = {
                                 Switch(
@@ -200,6 +209,77 @@ fun SettingsScreen(
                         )
                     }
                 }
+                
+                item {
+                    SettingsGroup(title = "LIBRARY") {
+                        SettingsItem(
+                            icon = Icons.Outlined.Folder,
+                            text = "Media Management",
+                            onClick = onNavigateToMediaManagement,
+                            showArrow = true
+                        )
+                    }
+                }
+                
+                item {
+                    SettingsGroup(title = "DATA & STORAGE") {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Storage, 
+                                            contentDescription = null, 
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Text(
+                                            text = "Image Cache Limit",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Requires app restart",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                val displayValue = if (coilDiskCacheLimitMb >= 1000) {
+                                    String.format("%.1f GB", coilDiskCacheLimitMb / 1000f)
+                                } else {
+                                    "${coilDiskCacheLimitMb} MB"
+                                }
+                                Text(
+                                    text = displayValue,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            Slider(
+                                value = coilDiskCacheLimitMb.toFloat(),
+                                onValueChange = { onCoilDiskCacheLimitMbChange(it.toInt()) },
+                                valueRange = 250f..5000f,
+                                steps = 18, // (5000 - 250) / 250 = 19 points -> 18 steps
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
 
                 item {
                     SettingsGroup(title = "DEVELOPER") {
@@ -223,14 +303,14 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsHeader(modifier: Modifier = Modifier, onNavigateBack: () -> Unit = {}) {
+fun SettingsHeader(modifier: Modifier = Modifier, title: String = "Settings", onNavigateBack: () -> Unit = {}) {
     Row(
         modifier = modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Settings", 
+            text = title, 
             style = MaterialTheme.typography.displayLarge, 
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -273,7 +353,7 @@ fun SettingsItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick() }
+            .jellyClick(enabled = enabled) { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .alpha(if (enabled) 1f else 0.5f)
     ) {

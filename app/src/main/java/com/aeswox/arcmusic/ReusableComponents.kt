@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+
 package com.aeswox.arcmusic
 
 import dev.chrisbanes.haze.HazeStyle
@@ -10,7 +12,16 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.animation.SharedTransitionScope.OverlayClip
+import com.aeswox.arcmusic.ui.animations.LocalJigglePhysicsSettings
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
@@ -18,9 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
@@ -57,6 +72,9 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import android.graphics.drawable.BitmapDrawable
 import androidx.palette.graphics.Palette
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @Composable
 fun rememberDominantColor(imageUrl: String?, defaultColor: Color): State<Color> {
@@ -217,6 +235,7 @@ fun AnimatedGlowBackground(modifier: Modifier = Modifier, glowIntensity: Float, 
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MiniPlayer(
     modifier: Modifier = Modifier, 
@@ -230,16 +249,36 @@ fun MiniPlayer(
     onPlayPauseClick: () -> Unit = {},
     onSkipNextClick: () -> Unit = {},
     onClick: () -> Unit = {}, 
-    onDismiss: () -> Unit = {}
+    onDismiss: () -> Unit = {},
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 24.dp,
+    applyShapeAndBackground: Boolean = true,
+    enableSwipeToDismiss: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
     val offsetY = remember { Animatable(0f) }
+
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    val sharedScope = LocalSharedTransitionScope.current
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    val navScope = animatedVisibilityScope ?: LocalNavAnimatedVisibilityScope.current
+    
+    val jiggleSettings = LocalJigglePhysicsSettings.current
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    val boundsTransform = remember {
+        { _: Rect, _: Rect ->
+            spring<Rect>(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+            )
+        }
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .offset { IntOffset(0, offsetY.value.roundToInt()) }
-            .pointerInput(Unit) {
+            .then(if (enableSwipeToDismiss) Modifier.pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragEnd = {
                         coroutineScope.launch {
@@ -253,19 +292,18 @@ fun MiniPlayer(
                     },
                     onDragCancel = { 
                         coroutineScope.launch { offsetY.animateTo(0f) }
-                    }
-                ) { change, dragAmount ->
-                    change.consume()
-                    if (offsetY.value + dragAmount > 0) {
+                    },
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
                         coroutineScope.launch { offsetY.snapTo(offsetY.value + dragAmount) }
                     }
-                }
-            }
+                )
+            } else Modifier)
+            .padding(horizontal = horizontalPadding)
             .fillMaxWidth()
             .height(76.dp)
-            .clip(RoundedCornerShape(AppCornerRadius))
-            .glassEffect(hazeState, tintTransparency, noiseFactor)
-            .clickable(onClick = onClick)
+            .then(if (applyShapeAndBackground) Modifier.clip(RoundedCornerShape(AppCornerRadius)).glassEffect(hazeState, tintTransparency, noiseFactor) else Modifier)
+            .jellyClick(scaleDownTo = 0.92f, onClick = onClick)
             .padding(horizontal = 16.dp)
     ) {
         AsyncImage(
@@ -291,14 +329,14 @@ fun MiniPlayer(
                 maxLines = 1
             )
         }
-        IconButton(onClick = onPlayPauseClick) {
+        JellyIconButton(onClick = onPlayPauseClick) {
             Icon(
                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, 
                 contentDescription = if (isPlaying) "Pause" else "Play", 
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
-        IconButton(onClick = onSkipNextClick) {
+        JellyIconButton(onClick = onSkipNextClick) {
             Icon(
                 imageVector = Icons.Filled.SkipNext, 
                 contentDescription = "Skip Next", 
@@ -317,6 +355,27 @@ fun BottomNavigation(
     tintTransparency: Float = 0.4f, 
     noiseFactor: Float = 0.06f
 ) {
+    val rowInteractionSource = remember { MutableInteractionSource() }
+    val tab0InteractionSource = remember { MutableInteractionSource() }
+    val tab1InteractionSource = remember { MutableInteractionSource() }
+    val tab2InteractionSource = remember { MutableInteractionSource() }
+
+    val rowPressed by rowInteractionSource.collectIsPressedAsState()
+    val tab0Pressed by tab0InteractionSource.collectIsPressedAsState()
+    val tab1Pressed by tab1InteractionSource.collectIsPressedAsState()
+    val tab2Pressed by tab2InteractionSource.collectIsPressedAsState()
+
+    val anyPressed = rowPressed || tab0Pressed || tab1Pressed || tab2Pressed
+
+    val rowScale by animateFloatAsState(
+        targetValue = if (anyPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "navbar_jelly_scale"
+    )
+
     Row(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically,
@@ -325,6 +384,15 @@ fun BottomNavigation(
             .height(80.dp)
             .clip(RoundedCornerShape(AppCornerRadius))
             .glassEffect(hazeState, tintTransparency, noiseFactor)
+            .graphicsLayer {
+                scaleX = rowScale
+                scaleY = rowScale
+            }
+            .clickable(
+                interactionSource = rowInteractionSource,
+                indication = null,
+                onClick = {}
+            )
             .padding(horizontal = 24.dp)
     ) {
         Box(
@@ -333,7 +401,7 @@ fun BottomNavigation(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(if (currentTab == 0) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                .clickable { onTabSelected(0) }
+                .jellyClick(interactionSource = tab0InteractionSource, scaleDownTo = 0.85f) { onTabSelected(0) }
         ) {
             Icon(
                 imageVector = Icons.Default.Home, 
@@ -347,7 +415,7 @@ fun BottomNavigation(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(if (currentTab == 1) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                .clickable { onTabSelected(1) }
+                .jellyClick(interactionSource = tab1InteractionSource, scaleDownTo = 0.85f) { onTabSelected(1) }
         ) {
             Icon(
                 imageVector = Icons.Default.Search, 
@@ -361,7 +429,7 @@ fun BottomNavigation(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(if (currentTab == 2) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                .clickable { onTabSelected(2) }
+                .jellyClick(interactionSource = tab2InteractionSource, scaleDownTo = 0.85f) { onTabSelected(2) }
         ) {
             Icon(
                 imageVector = Icons.Default.LibraryMusic, 
@@ -382,7 +450,7 @@ fun AppPrimaryButton(
     contentColor: Color = MaterialTheme.colorScheme.onPrimary,
     contentPadding: PaddingValues = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
 ) {
-    Button(
+    JellyButton(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
@@ -414,7 +482,7 @@ fun DialogTextButton(
         color = color,
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .jellyClick(onClick = onClick)
             .padding(8.dp)
     )
 }
@@ -452,7 +520,7 @@ fun AppIconButton(
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     size: androidx.compose.ui.unit.Dp = 24.dp
 ) {
-    IconButton(onClick = onClick, modifier = modifier) {
+    JellyIconButton(onClick = onClick, modifier = modifier) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
@@ -500,4 +568,37 @@ fun ArcDropdownMenuItem(
         onClick = onClick,
         leadingIcon = { Icon(icon, contentDescription = null, tint = iconTint) }
     )
+}
+
+@Composable
+fun TrackListItemSkeleton(
+    modifier: Modifier = Modifier,
+    showCover: Boolean = true,
+    showTrackNumber: Boolean = false
+) {
+    Row(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (showCover) {
+            Box(modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+            Spacer(modifier = Modifier.width(16.dp))
+        } else if (showTrackNumber) {
+            Box(modifier = Modifier.size(24.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.height(16.dp).fillMaxWidth(0.6f).background(MaterialTheme.colorScheme.surfaceVariant))
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(modifier = Modifier.height(12.dp).fillMaxWidth(0.4f).background(MaterialTheme.colorScheme.surfaceVariant))
+        }
+    }
+}
+
+@Composable
+fun SkeletonImageGridItem() {
+    Column(modifier = Modifier.width(120.dp).padding(4.dp)) {
+        Box(modifier = Modifier.size(120.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(modifier = Modifier.height(14.dp).fillMaxWidth(0.8f).background(MaterialTheme.colorScheme.surfaceVariant))
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(modifier = Modifier.height(12.dp).fillMaxWidth(0.5f).background(MaterialTheme.colorScheme.surfaceVariant))
+    }
 }

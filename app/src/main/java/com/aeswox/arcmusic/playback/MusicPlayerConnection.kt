@@ -115,10 +115,12 @@ class MusicPlayerConnection @Inject constructor(
             scope.launch {
                 while (isActive) {
                     mediaController?.let { controller ->
+                        val dur = controller.duration
+                        if (dur > 0) {
+                            _duration.value = dur
+                        }
                         if (controller.isPlaying) {
                             _currentPosition.value = controller.currentPosition
-                            val dur = controller.duration
-                            _duration.value = if (dur < 0) 0L else dur
                         }
                     }
                     delay(32)
@@ -180,7 +182,11 @@ class MusicPlayerConnection @Inject constructor(
             _currentMediaItemIndex.value = mediaController?.currentMediaItemIndex ?: -1
             _currentPosition.value = 0L
             val dur = mediaController?.duration ?: 0L
-            _duration.value = if (dur < 0) 0L else dur
+            if (dur > 0) {
+                _duration.value = dur
+            } else {
+                _duration.value = mediaItem?.mediaMetadata?.extras?.getLong("durationMs") ?: 0L
+            }
 
             // Persist actual played time for the track we're leaving (skip / auto-advance before STATE_ENDED)
             val previousId = lastLoggedMediaId
@@ -239,6 +245,15 @@ class MusicPlayerConnection @Inject constructor(
         mediaController?.setMediaItems(mediaItems, startIndex, 0)
         mediaController?.prepare()
         mediaController?.play()
+    }
+    
+    fun clearQueue() {
+        mediaController?.clearMediaItems()
+        _currentQueue.value = emptyList()
+    }
+    
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        mediaController?.moveMediaItem(fromIndex, toIndex)
     }
 
     fun play() {

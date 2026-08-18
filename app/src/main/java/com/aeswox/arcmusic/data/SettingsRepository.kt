@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aeswox.arcmusic.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,12 +17,34 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
+    companion object {
+        val DEFAULT_EXCLUDED_FOLDERS = listOf(
+            "/Android/media",
+            "/Android/data",
+            "/Downloads/VoiceNotes",
+            "/WhatsApp/Media/WhatsApp Audio",
+            "/WhatsApp/Media/WhatsApp Voice Notes",
+            "/WhatsApp/Media/Sent"
+        )
+    }
     private val LAST_FM_KEY   = stringPreferencesKey("last_fm_api_key")
     private val FANART_TV_KEY = stringPreferencesKey("fanart_tv_api_key")
     private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
     private val TINT_TRANSPARENCY_KEY = floatPreferencesKey("tint_transparency")
     private val NOISE_FACTOR_KEY = floatPreferencesKey("noise_factor")
     private val GLOW_INTENSITY_KEY = floatPreferencesKey("glow_intensity")
+    private val MIN_SONG_DURATION_KEY = intPreferencesKey("min_song_duration_sec")
+    private val MIN_TRACKS_PER_ALBUM_KEY = intPreferencesKey("min_tracks_per_album")
+    // Stored as pipe-separated string e.g. "/Android/media|/Downloads/VoiceNotes"
+    private val EXCLUDED_FOLDERS_KEY = stringPreferencesKey("excluded_folders")
+    private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
+    private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
+
+    private val MASS_KEY = floatPreferencesKey("physics_mass")
+    private val STIFFNESS_KEY = floatPreferencesKey("physics_stiffness")
+    private val DAMPING_RATIO_KEY = floatPreferencesKey("physics_damping_ratio")
+    private val AMPLITUDE_KEY = floatPreferencesKey("physics_amplitude")
+    private val GRAVITY_KEY = floatPreferencesKey("physics_gravity")
 
     val lastFmApiKey: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[LAST_FM_KEY]
@@ -50,6 +73,26 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     
     val glowIntensity: Flow<Float> = context.dataStore.data.map { preferences ->
         preferences[GLOW_INTENSITY_KEY] ?: 0.6f
+    }
+    
+    val physicsMass: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[MASS_KEY] ?: 0.2f
+    }
+    
+    val physicsStiffness: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[STIFFNESS_KEY] ?: 100.0f
+    }
+    
+    val physicsDampingRatio: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[DAMPING_RATIO_KEY] ?: 0.25f
+    }
+    
+    val physicsAmplitude: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[AMPLITUDE_KEY] ?: 1.0f
+    }
+    
+    val physicsGravity: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[GRAVITY_KEY] ?: 9.81f
     }
 
     suspend fun setLastFmApiKey(key: String) {
@@ -83,7 +126,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     suspend fun setTintTransparency(value: Float) {
-        context.dataStore.edit { preferences -> preferences[TINT_TRANSPARENCY_KEY] = value }
+        context.dataStore.edit { preferences ->
+            preferences[TINT_TRANSPARENCY_KEY] = value
+        }
     }
     
     suspend fun setNoiseFactor(value: Float) {
@@ -92,5 +137,64 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     
     suspend fun setGlowIntensity(value: Float) {
         context.dataStore.edit { preferences -> preferences[GLOW_INTENSITY_KEY] = value }
+    }
+    
+    suspend fun setPhysicsMass(value: Float) {
+        context.dataStore.edit { preferences -> preferences[MASS_KEY] = value }
+    }
+    
+    suspend fun setPhysicsStiffness(value: Float) {
+        context.dataStore.edit { preferences -> preferences[STIFFNESS_KEY] = value }
+    }
+    
+    suspend fun setPhysicsDampingRatio(value: Float) {
+        context.dataStore.edit { preferences -> preferences[DAMPING_RATIO_KEY] = value }
+    }
+    
+    suspend fun setPhysicsAmplitude(value: Float) {
+        context.dataStore.edit { preferences -> preferences[AMPLITUDE_KEY] = value }
+    }
+    
+    suspend fun setPhysicsGravity(value: Float) {
+        context.dataStore.edit { preferences -> preferences[GRAVITY_KEY] = value }
+    }
+
+    // ------- Media Management Prefs -------
+
+    val minSongDurationSec: Flow<Int> = context.dataStore.data.map { it[MIN_SONG_DURATION_KEY] ?: 0 }
+    val minTracksPerAlbum: Flow<Int> = context.dataStore.data.map { it[MIN_TRACKS_PER_ALBUM_KEY] ?: 1 }
+    val excludedFolders: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        if (prefs.contains(EXCLUDED_FOLDERS_KEY)) {
+            prefs[EXCLUDED_FOLDERS_KEY]?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
+        } else {
+            DEFAULT_EXCLUDED_FOLDERS
+        }
+    }
+    val lightThemeForNowPlaying: Flow<Boolean> = context.dataStore.data.map {
+        it[LIGHT_THEME_NOW_PLAYING_KEY] == "true"
+    }
+    
+    val coilDiskCacheLimitMb: Flow<Int> = context.dataStore.data.map {
+        it[COIL_DISK_CACHE_LIMIT_MB_KEY] ?: 250 // default 250MB
+    }
+
+    suspend fun setMinSongDurationSec(value: Int) {
+        context.dataStore.edit { it[MIN_SONG_DURATION_KEY] = value }
+    }
+
+    suspend fun setMinTracksPerAlbum(value: Int) {
+        context.dataStore.edit { it[MIN_TRACKS_PER_ALBUM_KEY] = value }
+    }
+
+    suspend fun setExcludedFolders(folders: List<String>) {
+        context.dataStore.edit { it[EXCLUDED_FOLDERS_KEY] = folders.joinToString("|") }
+    }
+
+    suspend fun setLightThemeForNowPlaying(value: Boolean) {
+        context.dataStore.edit { it[LIGHT_THEME_NOW_PLAYING_KEY] = value.toString() }
+    }
+    
+    suspend fun setCoilDiskCacheLimitMb(value: Int) {
+        context.dataStore.edit { it[COIL_DISK_CACHE_LIMIT_MB_KEY] = value }
     }
 }

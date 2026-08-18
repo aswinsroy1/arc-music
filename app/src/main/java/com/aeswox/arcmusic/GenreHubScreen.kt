@@ -1,11 +1,11 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -26,6 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @Composable
 fun GenreHubScreenContent(
@@ -58,7 +64,7 @@ fun GenreHubScreenContent(
     LazyColumn(
         contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding + 24.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp),
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.physicsBounceOverscroll().fillMaxSize()
     ) {
         item {
             Header(
@@ -157,7 +163,7 @@ fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, m
                 text = "View All",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clickable { }
+                modifier = Modifier.jellyClick { }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -171,7 +177,7 @@ fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, m
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { }
+                        .jellyClick { }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -202,7 +208,7 @@ fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, m
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        IconButton(onClick = { }, modifier = Modifier.size(24.dp)) {
+                        JellyIconButton(onClick = { }, modifier = Modifier.size(24.dp)) {
                             Icon(imageVector = Icons.Default.MoreHoriz, contentDescription = "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -226,11 +232,13 @@ fun GenreEssentialAlbumsSection(albums: List<com.aeswox.arcmusic.db.entities.Alb
         val albumsUi = albums.map { Triple(it.title, it.artist ?: "Unknown Artist", it.artworkUri ?: "") }
         
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(albumsUi.size) { index ->
-                Column(modifier = Modifier.width(176.dp).clickable { }) {
+                Column(modifier = Modifier.width(176.dp).jellyClick { }) {
                     AsyncImage(
                         model = albumsUi[index].third,
                         contentDescription = null,
@@ -271,11 +279,13 @@ fun GenreFeaturedArtistsSection(artists: List<com.aeswox.arcmusic.db.entities.Ar
         val artistsUi = artists.map { Pair(it.name, it.photoUri ?: "") }
         
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(artistsUi.size) { index ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(112.dp).clickable { }) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(112.dp).jellyClick { }) {
                     AsyncImage(
                         model = artistsUi[index].second,
                         contentDescription = null,

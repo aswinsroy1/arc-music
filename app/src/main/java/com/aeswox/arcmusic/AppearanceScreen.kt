@@ -1,7 +1,7 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -18,6 +18,12 @@ import androidx.compose.ui.unit.dp
 import com.aeswox.arcmusic.ui.components.CustomHorizontalSlider
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @Composable
 fun AppearanceScreen(
@@ -38,12 +44,12 @@ fun AppearanceScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .applyHazeAndBackdrop(hazeState = hazeState)
+
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(top = 24.dp, bottom = 180.dp, start = 24.dp, end = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.physicsBounceOverscroll().fillMaxSize()
             ) {
                 item {
                     AppearanceHeader(onNavigateBack = onNavigateBack)
@@ -106,7 +112,7 @@ fun AppearanceHeader(modifier: Modifier = Modifier, onNavigateBack: () -> Unit =
         modifier = modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onNavigateBack, modifier = Modifier.padding(end = 8.dp)) {
+        JellyIconButton(onClick = onNavigateBack, modifier = Modifier.padding(end = 8.dp)) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack, 
                 contentDescription = "Back", 

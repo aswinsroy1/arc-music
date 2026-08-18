@@ -1,11 +1,15 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.animation.core.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -34,10 +38,13 @@ import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Track
 
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QueueScreen(onNavigateBack: () -> Unit) {
+fun QueueScreen(onNavigateBack: () -> Unit, onNavigateToLibrary: () -> Unit) {
     val viewModel: MusicViewModel = hiltViewModel()
     val currentQueue by viewModel.currentQueue.collectAsState()
     val currentQueueIndex by viewModel.currentQueueIndex.collectAsState()
@@ -48,6 +55,7 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
         .filter { it.first > currentQueueIndex }
 
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
+    var showClearQueueDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -89,7 +97,7 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(onClick = { }) {
+                    JellyIconButton(onClick = { }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options")
                     }
                 }
@@ -108,14 +116,14 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
                     .weight(1f)
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(36.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.1f))
                     .border(1.dp, MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f), RoundedCornerShape(36.dp))
             ) {
                 if (currentQueue.isEmpty()) {
-                    QueueEmptyState()
+                    QueueEmptyState(onNavigateToLibrary = onNavigateToLibrary)
                 } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
                     item {
@@ -133,7 +141,7 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
                                     .background(MaterialTheme.colorScheme.surfaceContainer)
                             ) {
                                 AsyncImage(
-                                    model = currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" },
+                                    model = currentlyPlaying?.artworkUri,
                                     contentDescription = "Now Playing Cover",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -173,7 +181,7 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            IconButton(onClick = { }) {
+                            JellyIconButton(onClick = { }) {
                                 Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
                             }
                         }
@@ -194,7 +202,13 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
                             index = listIndex + 1,
                             track = track,
                             isDragHandleVisible = true,
-                            onClick = { viewModel.skipToQueueItem(originalIndex) }
+                            onClick = { viewModel.skipToQueueItem(originalIndex) },
+                            onMove = { itemsMoved ->
+                                val targetIndex = (originalIndex + itemsMoved).coerceIn(currentQueueIndex + 1, currentQueue.lastIndex)
+                                if (targetIndex != originalIndex) {
+                                    viewModel.moveQueueItem(originalIndex, targetIndex)
+                                }
+                            }
                         )
                     }
 
@@ -207,10 +221,10 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(onClick = { }) {
+                            JellyTextButton(onClick = { showClearQueueDialog = true }) {
                                 Text("Clear queue", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Button(
+                            JellyButton(
                                 onClick = { showAddToPlaylistSheet = true },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -233,15 +247,47 @@ fun QueueScreen(onNavigateBack: () -> Unit) {
         val trackIds = currentQueue.map { it.id }
         AddToPlaylistSheet(trackIds = trackIds, onDismissRequest = { showAddToPlaylistSheet = false })
     }
+
+    if (showClearQueueDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearQueueDialog = false },
+            title = { Text("Clear Queue") },
+            text = { Text("Are you sure you want to clear the entire queue?") },
+            confirmButton = {
+                JellyTextButton(
+                    onClick = {
+                        viewModel.clearQueue()
+                        showClearQueueDialog = false
+                    }
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                JellyTextButton(onClick = { showClearQueueDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable
-fun QueueItemRow(index: Int, track: Track, isDragHandleVisible: Boolean, onClick: () -> Unit = {}) {
+fun QueueItemRow(index: Int, track: Track, isDragHandleVisible: Boolean, onClick: () -> Unit = {}, onMove: (Int) -> Unit = {}) {
     var isHovered by remember { mutableStateOf(false) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+    val rowHeightPx = with(density) { 64.dp.toPx() }
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .zIndex(if (offsetY != 0f) 1f else 0f)
+            .graphicsLayer { translationY = offsetY }
+            .jellyClick(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 12.dp)
             .defaultMinSize(minHeight = 64.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -259,7 +305,7 @@ fun QueueItemRow(index: Int, track: Track, isDragHandleVisible: Boolean, onClick
                 .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
             AsyncImage(
-                model = track.albumId?.let { "content://media/external/audio/albumart/$it" },
+                model = track.artworkUri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -282,14 +328,32 @@ fun QueueItemRow(index: Int, track: Track, isDragHandleVisible: Boolean, onClick
             Icon(
                 imageVector = Icons.Default.DragHandle,
                 contentDescription = "Reorder",
-                tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                modifier = Modifier.pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            val itemsMoved = (offsetY / rowHeightPx).roundToInt()
+                            if (itemsMoved != 0) {
+                                onMove(itemsMoved)
+                            }
+                            offsetY = 0f
+                        },
+                        onDragCancel = {
+                            offsetY = 0f
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            offsetY += dragAmount
+                        }
+                    )
+                }
             )
         }
     }
 }
 
 @Composable
-fun QueueEmptyState(modifier: Modifier = Modifier) {
+fun QueueEmptyState(modifier: Modifier = Modifier, onNavigateToLibrary: () -> Unit) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -332,7 +396,7 @@ fun QueueEmptyState(modifier: Modifier = Modifier) {
         
         AppPrimaryButton(
             text = "Go to Library",
-            onClick = { /* TODO: Navigate to Library */ },
+            onClick = onNavigateToLibrary,
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
             modifier = Modifier.width(220.dp)
         )

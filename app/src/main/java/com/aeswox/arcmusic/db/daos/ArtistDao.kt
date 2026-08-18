@@ -21,6 +21,9 @@ interface ArtistDao {
     @Query("DELETE FROM artists WHERE name IN (:artistNames)")
     suspend fun deleteArtists(artistNames: List<String>)
 
+    @Query("DELETE FROM artists")
+    suspend fun deleteAllArtists()
+
     @Query("UPDATE artists SET isFavorite = :isFavorite WHERE id = :artistId")
     suspend fun updateArtistFavoriteStatus(artistId: String, isFavorite: Boolean)
 

@@ -1,7 +1,7 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeswox.arcmusic.db.entities.Track
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,13 +32,16 @@ fun CollectionHealthScreen(
     onNavigateBack: () -> Unit,
     onNavigateToMissingContent: () -> Unit = {},
     onNavigateToMissingArtwork: () -> Unit = {},
-    onNavigateToMissingLyrics: () -> Unit = {},
+    onNavigateToMissingLyrics: () -> Unit,
+    onNavigateToMissingMetadata: () -> Unit,
+    onNavigateToDuplicateSongs: () -> Unit,
+    onNavigateToCorruptedTags: () -> Unit,
+    onNavigateToLowQualityFiles: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MusicViewModel = hiltViewModel(),
-    glowIntensity: Float = 0.6f
+    glowIntensity: Float
 ) {
     val healthState by viewModel.healthState.collectAsState()
-    var showDuplicateSheet by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
@@ -48,15 +54,11 @@ fun CollectionHealthScreen(
                         ) 
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        JellyIconButton(onClick = onNavigateBack) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     },
-                    actions = {
-                        IconButton(onClick = { /* TODO */ }) {
-                            Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More options")
-                        }
-                    },
+
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
@@ -67,7 +69,7 @@ fun CollectionHealthScreen(
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
             LazyColumn(
-                modifier = Modifier
+                modifier = Modifier.physicsBounceOverscroll()
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 24.dp),
@@ -82,7 +84,11 @@ fun CollectionHealthScreen(
                     CollectionHealthBreakdownSection(
                         state = healthState,
                         onNavigateToMissingArtwork = onNavigateToMissingArtwork,
-                        onNavigateToMissingLyrics = onNavigateToMissingLyrics
+                        onNavigateToMissingLyrics = onNavigateToMissingLyrics,
+                        onNavigateToMissingMetadata = onNavigateToMissingMetadata,
+                        onNavigateToDuplicateSongs = onNavigateToDuplicateSongs,
+                        onNavigateToCorruptedTags = onNavigateToCorruptedTags,
+                        onNavigateToLowQualityFiles = onNavigateToLowQualityFiles
                     )
                 }
                 
@@ -99,22 +105,12 @@ fun CollectionHealthScreen(
                     item {
                         CollectionHealthDuplicatesCard(
                             groupCount = healthState.duplicateGroups.size,
-                            onReviewClick = { showDuplicateSheet = true }
+                            onReviewClick = onNavigateToDuplicateSongs
                         )
                     }
                 }
             }
         }
-    }
-    
-    if (showDuplicateSheet) {
-        DuplicateReviewSheet(
-            duplicateGroups = healthState.duplicateGroups,
-            onDismiss = { showDuplicateSheet = false },
-            onDeleteTracks = { tracksToDelete ->
-                viewModel.deleteTracks(tracksToDelete)
-            }
-        )
     }
 }
 
@@ -172,7 +168,11 @@ fun CollectionHealthScoreSection(score: Int) {
 fun CollectionHealthBreakdownSection(
     state: CollectionHealthState,
     onNavigateToMissingArtwork: () -> Unit = {},
-    onNavigateToMissingLyrics: () -> Unit = {}
+    onNavigateToMissingLyrics: () -> Unit = {},
+    onNavigateToMissingMetadata: () -> Unit = {},
+    onNavigateToDuplicateSongs: () -> Unit = {},
+    onNavigateToCorruptedTags: () -> Unit = {},
+    onNavigateToLowQualityFiles: () -> Unit = {}
 ) {
     GlassCard {
         Column(
@@ -184,7 +184,7 @@ fun CollectionHealthBreakdownSection(
                 iconBg = if (state.missingArtworkCount > 0) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
                 title = "Missing artwork",
                 subtitle = if (state.missingArtworkCount > 0) "${state.missingArtworkCount} songs missing artwork" else "All songs have artwork",
-                onClick = if (state.missingArtworkCount > 0) onNavigateToMissingArtwork else null
+                onClick = onNavigateToMissingArtwork
             )
             HealthBreakdownItem(
                 icon = Icons.Default.Info,
@@ -199,30 +199,36 @@ fun CollectionHealthBreakdownSection(
                 iconTint = if (state.missingMetadataCount > 0) Color(0xFFFDD835) else Color(0xFF43A047),
                 iconBg = if (state.missingMetadataCount > 0) Color(0xFFFFF9C4) else Color(0xFFE8F5E9),
                 title = "Missing metadata",
-                subtitle = if (state.missingMetadataCount > 0) "${state.missingMetadataCount} items with incomplete tags" else "All tags complete"
+                subtitle = if (state.missingMetadataCount > 0) "${state.missingMetadataCount} items with incomplete tags" else "All tags complete",
+                onClick = onNavigateToMissingMetadata
             )
             HealthBreakdownItem(
                 icon = if (state.duplicateGroups.isNotEmpty()) Icons.Default.FilterNone else Icons.Default.CheckCircle,
                 iconTint = if (state.duplicateGroups.isNotEmpty()) Color(0xFF1E88E5) else Color(0xFF43A047),
                 iconBg = if (state.duplicateGroups.isNotEmpty()) Color(0xFFE3F2FD) else Color(0xFFE8F5E9),
                 title = "Duplicate songs",
-                subtitle = if (state.duplicateGroups.isNotEmpty()) "${state.duplicateGroups.size} duplicate groups found" else "No duplicates found"
+                subtitle = if (state.duplicateGroups.isNotEmpty()) "${state.duplicateGroups.size} duplicate groups found" else "No duplicates found",
+                onClick = onNavigateToDuplicateSongs
             )
             HealthBreakdownItem(
                 icon = if (state.corruptedTagsCount > 0) Icons.Default.Warning else Icons.Default.CheckCircle,
                 iconTint = if (state.corruptedTagsCount > 0) Color(0xFFE53935) else Color(0xFF43A047),
                 iconBg = if (state.corruptedTagsCount > 0) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
                 title = "Corrupted tags",
-                subtitle = if (state.corruptedTagsCount > 0) "${state.corruptedTagsCount} items with unreadable data" else "No corrupted tags found"
+                subtitle = if (state.corruptedTagsCount > 0) "${state.corruptedTagsCount} items with unreadable data" else "No corrupted tags found",
+                onClick = onNavigateToCorruptedTags
             )
             HealthBreakdownItem(
                 icon = if (state.lowQualityCount > 0) Icons.Default.Warning else Icons.Default.CheckCircle,
                 iconTint = if (state.lowQualityCount > 0) Color(0xFFE53935) else Color(0xFF43A047),
                 iconBg = if (state.lowQualityCount > 0) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
                 title = "Low quality files",
-                subtitle = if (state.lowQualityCount > 0) "${state.lowQualityCount} tracks below 192kbps" else "All tracks high quality"
+
+                subtitle = if (state.lowQualityCount > 0) "${state.lowQualityCount} tracks below 192kbps" else "All tracks high quality",
+                onClick = onNavigateToLowQualityFiles
             )
         }
+
     }
 }
 
@@ -239,7 +245,7 @@ fun HealthBreakdownItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .jellyClick(enabled = onClick != null) { onClick?.invoke() }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -358,7 +364,7 @@ fun GapCard(
         modifier = modifier
             .clip(RoundedCornerShape(32.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
-            .clickable { onClick() }
+            .jellyClick { onClick() }
             .padding(20.dp)
     ) {
         Column {
@@ -414,7 +420,7 @@ fun CollectionHealthDuplicatesCard(groupCount: Int, onReviewClick: () -> Unit) {
             modifier = Modifier.width(280.dp)
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(
+        JellyButton(
             onClick = onReviewClick,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.onPrimary,
@@ -431,132 +437,4 @@ fun CollectionHealthDuplicatesCard(groupCount: Int, onReviewClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DuplicateReviewSheet(
-    duplicateGroups: List<DuplicateGroup>,
-    onDismiss: () -> Unit,
-    onDeleteTracks: (List<String>) -> Unit
-) {
-    val selectedTracksToDelete = remember { mutableStateListOf<String>() }
-    
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxHeight(0.9f)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Text(
-                text = "Review Duplicates",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(24.dp)
-            )
-            
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(duplicateGroups) { group ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f))
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "${group.title} • ${group.artist}",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        group.tracks.forEach { track ->
-                            val isSelected = selectedTracksToDelete.contains(track.id)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        if (isSelected) {
-                                            selectedTracksToDelete.remove(track.id)
-                                        } else {
-                                            selectedTracksToDelete.add(track.id)
-                                        }
-                                    }
-                                    .padding(8.dp)
-                            ) {
-                                Checkbox(
-                                    checked = isSelected,
-                                    onCheckedChange = null
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "${(track.bitrate ?: 0) / 1000}kbps • ${track.codec ?: "Unknown"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = track.filePath.substringAfterLast('/'),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isSelected) 0.3f else 0.7f),
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // Suggestion: Select all but highest bitrate
-                        Button(
-                            onClick = {
-                                val highestQuality = group.tracks.maxByOrNull { it.bitrate ?: 0 }
-                                group.tracks.forEach { track ->
-                                    if (track.id != highestQuality?.id && !selectedTracksToDelete.contains(track.id)) {
-                                        selectedTracksToDelete.add(track.id)
-                                    } else if (track.id == highestQuality?.id) {
-                                        selectedTracksToDelete.remove(track.id)
-                                    }
-                                }
-                            },
-                            colors = ButtonDefaults.textButtonColors(),
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("Keep best quality")
-                        }
-                    }
-                }
-            }
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(24.dp)
-            ) {
-                Button(
-                    onClick = {
-                        if (selectedTracksToDelete.isNotEmpty()) {
-                            onDeleteTracks(selectedTracksToDelete)
-                        }
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text(
-                        text = if (selectedTracksToDelete.isNotEmpty()) "Delete ${selectedTracksToDelete.size} items" else "Done",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-            }
-        }
-    }
-}
+

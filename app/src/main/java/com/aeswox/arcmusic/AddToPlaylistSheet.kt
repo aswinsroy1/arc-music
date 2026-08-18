@@ -1,7 +1,7 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.*
 
 data class PlaylistSimple(
     val title: String,
@@ -82,7 +85,7 @@ fun AddToPlaylistSheet(
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )
-                IconButton(onClick = onDismissRequest) {
+                JellyIconButton(onClick = onDismissRequest) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
@@ -95,7 +98,7 @@ fun AddToPlaylistSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showNewPlaylistDialog = true }
+                    .jellyClick { showNewPlaylistDialog = true }
                     .padding(horizontal = 24.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -128,13 +131,13 @@ fun AddToPlaylistSheet(
             
             // Playlist items
             LazyColumn(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.physicsBounceOverscroll().fillMaxWidth()
             ) {
                 items(playlists) { playlist ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .jellyClick {
                                 if (trackIds.isNotEmpty()) {
                                     viewModel.addTracksToPlaylist(playlist.id, trackIds)
                                 }
@@ -217,13 +220,13 @@ fun AddToPlaylistSheet(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(
+                        JellyTextButton(
                             onClick = { showNewPlaylistDialog = false },
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                         }
-                        Button(
+                        JellyButton(
                             onClick = {
                                 if (playlistName.isNotBlank() && trackIds.isNotEmpty()) {
                                     viewModel.createPlaylist(playlistName, null, null, trackIds)

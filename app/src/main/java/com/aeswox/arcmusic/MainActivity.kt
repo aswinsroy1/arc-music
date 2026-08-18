@@ -1,5 +1,6 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -13,11 +14,11 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.delay
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -58,6 +59,12 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.AnimatedVisibilityScope
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -77,6 +84,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Track
+import com.aeswox.arcmusic.ui.animations.JigglePhysicsSettings
+import com.aeswox.arcmusic.ui.animations.LocalJigglePhysicsSettings
 import com.aeswox.arcmusic.ui.theme.ArcMusicTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -89,6 +98,7 @@ import androidx.compose.animation.core.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,6 +108,18 @@ import androidx.compose.foundation.isSystemInDarkTheme
 
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.viewModels
+import com.aeswox.arcmusic.ui.animations.jellyClick
+import com.aeswox.arcmusic.ui.animations.jelly
+import com.aeswox.arcmusic.ui.components.JellyIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
+import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
+import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+val LocalNavAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
 @AndroidEntryPoint
 @kotlin.OptIn(com.google.accompanist.permissions.ExperimentalPermissionsApi::class)
@@ -142,46 +164,182 @@ class MainActivity : ComponentActivity() {
                     drawContent()
                 }
 
+                val physicsMass by viewModel.physicsMass.collectAsState()
+                val physicsStiffness by viewModel.physicsStiffness.collectAsState()
+                val physicsDampingRatio by viewModel.physicsDampingRatio.collectAsState()
+                val physicsAmplitude by viewModel.physicsAmplitude.collectAsState()
+                val physicsGravity by viewModel.physicsGravity.collectAsState()
+
                 androidx.compose.runtime.CompositionLocalProvider(
-                    LocalAppBackdrop provides appBackdrop
+                    LocalAppBackdrop provides appBackdrop,
+                    LocalJigglePhysicsSettings provides JigglePhysicsSettings(
+                        mass = physicsMass,
+                        stiffness = physicsStiffness,
+                        dampingRatio = physicsDampingRatio,
+                        amplitudeMultiplier = physicsAmplitude,
+                        gravity = physicsGravity
+                    )
                 ) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = MaterialTheme.colorScheme.background
                     ) { innerPadding ->
                         val navController = rememberNavController()
+                        val density = LocalDensity.current
                     val tintTransparency by viewModel.tintTransparency.collectAsState()
                     val noiseFactor by viewModel.noiseFactor.collectAsState()
                     val glowIntensity by viewModel.glowIntensity.collectAsState()
                     val lightThemeForNowPlaying by viewModel.lightThemeForNowPlaying.collectAsState()
                     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
                     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
-                    val artworkUrl = if (isMiniPlayerVisible) currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" } else null
+                    val artworkUrl = if (isMiniPlayerVisible) currentlyPlaying?.artworkUri ?: currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" } else null
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
 
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
-                        
-                        NavHost(
-                            navController = navController,
-                            startDestination = "home"
+                    val isPlayerExpanded by viewModel.isPlayerExpanded.collectAsState()
+                    val isPlaying by viewModel.isPlaying.collectAsState()
+                    val hazeState = remember { HazeState() }
+                    val globalNavBarHeight by viewModel.navBarHeight.collectAsState()
+                    val globalNavBarVisible by viewModel.isNavBarVisible.collectAsState()
+                    val isDarkThemeForNowPlaying = !lightThemeForNowPlaying
+                    
+                    var currentTab by rememberSaveable { mutableIntStateOf(0) }
+                    var isLibrarySelectionMode by rememberSaveable { mutableStateOf(false) }
+                    var showCreatePlaylistFlow by rememberSaveable { mutableStateOf(false) }
+                    var selectedGenre by rememberSaveable { mutableStateOf<String?>(null) }
+                    
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+                    val isNavBarVisible = currentRoute == "home" && !isLibrarySelectionMode && currentTab in 0..2 && selectedGenre == null
+                    
+                    LaunchedEffect(isNavBarVisible) {
+                        viewModel.setNavBarVisible(isNavBarVisible)
+                        if (!isNavBarVisible) {
+                            viewModel.setNavBarHeight(0.dp)
+                        }
+                    }
+                    
+                    val bottomOffset = if (isNavBarVisible) {
+                        if (globalNavBarHeight > 0.dp) globalNavBarHeight + 20.dp + innerPadding.calculateBottomPadding() else 128.dp + innerPadding.calculateBottomPadding()
+                    } else {
+                        24.dp + innerPadding.calculateBottomPadding()
+                    }
+                    val contentBottomPadding = bottomOffset + if (isMiniPlayerVisible && currentlyPlaying != null) 80.dp else 0.dp
+
+                    @OptIn(ExperimentalSharedTransitionApi::class)
+                    SharedTransitionLayout {
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            LocalSharedTransitionScope provides this
                         ) {
-                        composable("home") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
-                                MusicHomeScreen(
-                                    onNavigateToCollectionGrowth = { navController.navigate("collection_growth") },
-                                    onNavigateToCollectionHealth = { navController.navigate("collection_health") },
-                                    tintTransparency = tintTransparency,
-                                    noiseFactor = noiseFactor,
-                                    glowIntensity = glowIntensity,
-                                    onNavigateToSettings = { navController.navigate("settings") },
-                                    onNavigateToNowPlaying = { navController.navigate("now_playing") },
-                                    onNavigateToAlbumDetails = { albumId -> navController.navigate("album_details/$albumId") },
-                                    onNavigateToPlaylistDetails = { playlistId -> navController.navigate("playlist_details/$playlistId") },
-                                    onNavigateToArtistDetails = { artistId -> navController.navigate("artist_details/$artistId") },
-                                    viewModel = viewModel
-                                )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                
+                                com.aeswox.arcmusic.ui.components.PlayerBottomSheet(
+                                    isExpanded = isPlayerExpanded,
+                                    isVisible = isMiniPlayerVisible && currentlyPlaying != null,
+                                    onExpand = { viewModel.setPlayerExpanded(true) },
+                                    onCollapse = { viewModel.setPlayerExpanded(false) },
+                                    onMiniPlayerDismiss = { 
+                                        viewModel.setMiniPlayerVisible(false)
+                                        viewModel.pause()
+                                    },
+                                    miniPlayerHeight = 80.dp,
+                                    bottomOffset = bottomOffset,
+                                    miniPlayerContent = {
+                                        if (isMiniPlayerVisible && currentlyPlaying != null) {
+                                            MiniPlayer(
+                                                title = currentlyPlaying!!.title,
+                                                artist = currentlyPlaying!!.artist,
+                                                imageUrl = currentlyPlaying!!.artworkUri ?: currentlyPlaying!!.albumId?.let { "content://media/external/audio/albumart/$it" } ?: "",
+                                                hazeState = hazeState, 
+                                                tintTransparency = tintTransparency, 
+                                                noiseFactor = noiseFactor, 
+                                                isPlaying = isPlaying,
+                                                onPlayPauseClick = { viewModel.togglePlayPause() },
+                                                onSkipNextClick = { viewModel.skipToNext() },
+                                                onClick = { viewModel.setPlayerExpanded(true) },
+                                                onDismiss = { 
+                                                    viewModel.setMiniPlayerVisible(false)
+                                                    viewModel.pause()
+                                                },
+                                                animatedVisibilityScope = null,
+                                                horizontalPadding = 0.dp,
+                                                enableSwipeToDismiss = false // Drag handled by bottom sheet
+                                            )
+                                        }
+                                    },
+                                    nowPlayingContent = {
+                                        androidx.activity.compose.BackHandler(
+                                            enabled = isPlayerExpanded
+                                        ) {
+                                            viewModel.setPlayerExpanded(false)
+                                        }
+                                        NowPlayingScreen(
+                                            tintTransparency = tintTransparency,
+                                            noiseFactor = noiseFactor,
+                                            glowIntensity = glowIntensity,
+                                            isDarkTheme = isDarkThemeForNowPlaying,
+                                            onNavigateBack = { viewModel.setPlayerExpanded(false) },
+                                            onNavigateToQueue = { 
+                                                viewModel.setPlayerExpanded(false)
+                                                navController.navigate("queue") 
+                                            },
+                                            onNavigateToAlbum = { albumId -> 
+                                                viewModel.setPlayerExpanded(false)
+                                                navController.navigate("album_details/$albumId") 
+                                            },
+                                            onNavigateToArtist = { artistId -> 
+                                                viewModel.setPlayerExpanded(false)
+                                                navController.navigate("artist_details/$artistId") 
+                                            },
+                                            onNavigateToEditMetadata = { trackId -> 
+                                                viewModel.setPlayerExpanded(false)
+                                                navController.navigate("edit_metadata/$trackId?readOnly=true") 
+                                            }
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        Box(modifier = Modifier.fillMaxSize().applyHazeAndBackdrop(hazeState = hazeState)) {
+                                            AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
+                                            NavHost(
+                                                navController = navController,
+                                                startDestination = "home"
+                                            ) {
+                                                composable(
+                                                    "home"
+                                                ) {
+                                                    androidx.compose.runtime.CompositionLocalProvider(
+                                                        LocalNavAnimatedVisibilityScope provides this
+                                                    ) {
+                                                        Box(modifier = Modifier.fillMaxSize()) {
+                                                            MusicHomeScreen(
+                                                                innerPadding = innerPadding,
+                                                                currentTab = currentTab,
+                                                                onTabSelected = { 
+                                                                    currentTab = it
+                                                                    if (it != 1) selectedGenre = null
+                                                                },
+                                                                selectedGenre = selectedGenre,
+                                                                onGenreSelected = { selectedGenre = it },
+                                                                isLibrarySelectionMode = isLibrarySelectionMode,
+                                                                onLibrarySelectionModeChange = { isLibrarySelectionMode = it },
+                                                                showCreatePlaylistFlow = showCreatePlaylistFlow,
+                                                                onShowCreatePlaylistFlowChange = { showCreatePlaylistFlow = it },
+                                                                bottomPadding = contentBottomPadding,
+                                        onNavigateToCollectionGrowth = { navController.navigate("collection_growth") },
+                                        onNavigateToCollectionHealth = { navController.navigate("collection_health") },
+                                        tintTransparency = tintTransparency,
+                                        noiseFactor = noiseFactor,
+                                        glowIntensity = glowIntensity,
+                                        onNavigateToSettings = { navController.navigate("settings") },
+                                        onNavigateToAlbumDetails = { albumId -> navController.navigate("album_details/$albumId") },
+                                        onNavigateToPlaylistDetails = { playlistId -> navController.navigate("playlist_details/$playlistId") },
+                                        onNavigateToArtistDetails = { artistId -> navController.navigate("artist_details/$artistId") },
+                                        onNavigateToQueue = { navController.navigate("queue") },
+                                        onNavigateToEditMetadata = { trackId -> navController.navigate("edit_metadata/$trackId?readOnly=true") },
+                                        viewModel = viewModel
+                                    )
+                                }
                             }
                         }
                                                 composable("collection_growth") {
@@ -200,6 +358,10 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToMissingContent = { navController.navigate("missing_content") },
                                     onNavigateToMissingArtwork = { navController.navigate("missing_artwork") },
                                     onNavigateToMissingLyrics = { navController.navigate("missing_lyrics") },
+                                    onNavigateToMissingMetadata = { navController.navigate("missing_metadata") },
+                                    onNavigateToDuplicateSongs = { navController.navigate("duplicate_songs") },
+                                    onNavigateToCorruptedTags = { navController.navigate("corrupted_tags") },
+                                    onNavigateToLowQualityFiles = { navController.navigate("low_quality_files") },
                                     glowIntensity = glowIntensity
                                 )
                             }
@@ -223,6 +385,63 @@ class MainActivity : ComponentActivity() {
                         composable("missing_lyrics") {
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 MissingLyricsScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable("missing_metadata") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                MissingMetadataScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateToEditMetadata = { trackId -> navController.navigate("edit_metadata/$trackId?readOnly=false") }
+                                )
+                            }
+                        }
+                        composable("duplicate_songs") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                DuplicateSongsScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable("corrupted_tags") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                CorruptedTagsScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateToEditMetadata = { trackId -> navController.navigate("edit_metadata/$trackId?readOnly=false") }
+                                )
+                            }
+                        }
+                        composable("low_quality_files") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                LowQualityFilesScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+
+                        composable(
+                            "edit_metadata/{trackId}?readOnly={readOnly}",
+                            arguments = listOf(
+                                androidx.navigation.navArgument("trackId") { type = androidx.navigation.NavType.StringType },
+                                androidx.navigation.navArgument("readOnly") { 
+                                    type = androidx.navigation.NavType.BoolType
+                                    defaultValue = false 
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val trackId = backStackEntry.arguments?.getString("trackId") ?: return@composable
+                            val readOnly = backStackEntry.arguments?.getBoolean("readOnly") ?: false
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                EditMetadataScreen(
+                                    trackId = trackId,
+                                    viewModel = viewModel,
+                                    isReadOnlyDefault = readOnly,
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
@@ -278,20 +497,16 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("now_playing") {
-                            NowPlayingScreen(
-                                tintTransparency = tintTransparency,
-                                noiseFactor = noiseFactor,
-                                glowIntensity = glowIntensity,
-                                isDarkTheme = !lightThemeForNowPlaying,
-                                onNavigateBack = { navController.popBackStack() },
-                                onNavigateToQueue = { navController.navigate("queue") },
-                                onNavigateToAlbum = { albumTitle -> navController.navigate("album_details/$albumTitle") },
-                                onNavigateToArtist = { artistName -> navController.navigate("artist_details/$artistName") }
-                            )
-                        }
+                        // Removed now_playing composable
                         composable("queue") {
-                            QueueScreen(onNavigateBack = { navController.popBackStack() })
+                            QueueScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToLibrary = { 
+                                    navController.navigate("home") { 
+                                        popUpTo("home") { inclusive = false } 
+                                    } 
+                                }
+                            )
                         }
                         composable("settings") {
                             val context = LocalContext.current
@@ -303,9 +518,18 @@ class MainActivity : ComponentActivity() {
                             val settingsPermissionsState = rememberMultiplePermissionsState(permissions = settingsPermissionsList)
                             val lastFmApiKey by viewModel.lastFmApiKey.collectAsState()
                             val fanartTvApiKey by viewModel.fanartTvApiKey.collectAsState()
+                            val coilDiskCacheLimitMb by viewModel.coilDiskCacheLimitMb.collectAsState()
+                            
+                            val dynamicBottomPadding by remember(isMiniPlayerVisible, currentlyPlaying) {
+                                derivedStateOf {
+                                    val miniPlayerOffset = if (isMiniPlayerVisible && currentlyPlaying != null) 96.dp else 0.dp
+                                    24.dp + miniPlayerOffset
+                                }
+                            }
                             
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 SettingsScreen(
+                                    bottomPadding = dynamicBottomPadding,
                                     tintTransparency = tintTransparency,
                                     noiseFactor = noiseFactor,
                                     glowIntensity = glowIntensity,
@@ -317,8 +541,12 @@ class MainActivity : ComponentActivity() {
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
+                                    coilDiskCacheLimitMb = coilDiskCacheLimitMb,
+                                    onCoilDiskCacheLimitMbChange = { viewModel.setCoilDiskCacheLimitMb(it) },
                                     onNavigateToAppearance = { navController.navigate("appearance") },
+                                    onNavigateToJigglePhysics = { navController.navigate("jiggle_physics") },
                                     onNavigateToEqualizer = { navController.navigate("equalizer") },
+                                    onNavigateToMediaManagement = { navController.navigate("media_management") },
                                     onNavigateBack = { navController.popBackStack() },
                                     onScanMediaStore = {
                                         if (settingsPermissionsState.allPermissionsGranted) {
@@ -344,24 +572,109 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                        composable("jiggle_physics") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                JigglePhysicsScreen(
+                                    physicsMass = physicsMass,
+                                    physicsStiffness = physicsStiffness,
+                                    physicsDampingRatio = physicsDampingRatio,
+                                    physicsAmplitude = physicsAmplitude,
+                                    physicsGravity = physicsGravity,
+                                    onPhysicsMassChange = { viewModel.setPhysicsMass(it) },
+                                    onPhysicsStiffnessChange = { viewModel.setPhysicsStiffness(it) },
+                                    onPhysicsDampingRatioChange = { viewModel.setPhysicsDampingRatio(it) },
+                                    onPhysicsAmplitudeChange = { viewModel.setPhysicsAmplitude(it) },
+                                    onPhysicsGravityChange = { viewModel.setPhysicsGravity(it) },
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
                         composable("equalizer") {
                             EqualizerScreen(
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
-                    }
-                    }
-                    }
+                        composable("media_management") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                MediaManagementScreen(
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateToExcludedFolders = { navController.navigate("excluded_folders") },
+                                    viewModel = viewModel
+                                )
+                            }
+                        }
+                        composable("excluded_folders") {
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                ExcludedFoldersScreen(
+                                    onNavigateBack = { navController.popBackStack() },
+                                    viewModel = viewModel
+                                )
+                            }
+                        } // ExcludedFoldersScreen Box
+                    } // NavHost
+                                        } // Box (applyHazeAndBackdrop)
+                                        
+                                        if (isNavBarVisible) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .padding(start = 24.dp, end = 24.dp, bottom = 12.dp + innerPadding.calculateBottomPadding())
+                                                    .onSizeChanged { size ->
+                                                        val height = with(density) { size.height.toDp() }
+                                                        viewModel.setNavBarHeight(height)
+                                                    },
+                                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                            ) {
+                                                com.aeswox.arcmusic.BottomNavigation(
+                                                    currentTab = currentTab,
+                                                    onTabSelected = { 
+                                                        currentTab = it
+                                                        if (it != 1) selectedGenre = null
+                                                    },
+                                                    hazeState = hazeState, 
+                                                    tintTransparency = tintTransparency, 
+                                                    noiseFactor = noiseFactor
+                                                )
+                                            }
+                                        }
+                                    } // Box (line 287)
+                                } // PlayerBottomSheet trailing lambda
+                            
+                            if (showCreatePlaylistFlow) {
+                                val tracks by viewModel.libraryTracks.collectAsState()
+                                com.aeswox.arcmusic.CreatePlaylistFlow(
+                                    tracks = tracks,
+                                    hazeState = hazeState,
+                                    glowColor = glowColor,
+                                    onDismiss = { showCreatePlaylistFlow = false },
+                                    onCreatePlaylist = { name, description, coverArtUri, trackIds ->
+                                        viewModel.createPlaylist(name, description, coverArtUri, trackIds)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+        }
+    }
 
 @OptIn(com.google.accompanist.permissions.ExperimentalPermissionsApi::class)
 @Composable
 fun MusicHomeScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    currentTab: Int,
+    onTabSelected: (Int) -> Unit,
+    selectedGenre: String?,
+    onGenreSelected: (String?) -> Unit,
+    isLibrarySelectionMode: Boolean,
+    onLibrarySelectionModeChange: (Boolean) -> Unit,
+    showCreatePlaylistFlow: Boolean,
+    onShowCreatePlaylistFlowChange: (Boolean) -> Unit,
+    bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
     onNavigateToCollectionGrowth: () -> Unit = {},
     onNavigateToCollectionHealth: () -> Unit = {},
     onNavigateToPlaylistDetails: (String) -> Unit = {},
@@ -370,21 +683,17 @@ fun MusicHomeScreen(
     noiseFactor: Float = 0.06f,
     glowIntensity: Float = 0.6f,
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToNowPlaying: () -> Unit = {},
     onNavigateToAlbumDetails: (String) -> Unit = {},
     onNavigateToArtistDetails: (String) -> Unit = {},
+    onNavigateToQueue: () -> Unit = {},
+    onNavigateToEditMetadata: (String) -> Unit = {},
     viewModel: MusicViewModel = hiltViewModel()
 ) {
     val hazeState = remember { HazeState() }
-    var bottomPadding by remember { mutableStateOf(240.dp) }
-    var currentTab by remember { mutableIntStateOf(0) }
-    var isLibrarySelectionMode by remember { mutableStateOf(false) }
-    var showCreatePlaylistFlow by remember { mutableStateOf(false) }
-    var selectedGenre by remember { mutableStateOf<String?>(null) }
     val density = LocalDensity.current
     val currentlyPlayingEntity by viewModel.currentlyPlaying.collectAsState()
     val currentSong = currentlyPlayingEntity
-    val artworkUrl = currentSong?.albumId?.let { "content://media/external/audio/albumart/$it" }
+    val artworkUrl = currentSong?.artworkUri ?: currentSong?.albumId?.let { "content://media/external/audio/albumart/$it" }
     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
     val libraryTracks by viewModel.libraryTracks.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -392,9 +701,18 @@ fun MusicHomeScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
 
+    // Bottom padding is provided by MainActivity now
+
     LaunchedEffect(currentlyPlayingEntity, isPlaying) {
         if (currentlyPlayingEntity != null && isPlaying) {
             viewModel.setMiniPlayerVisible(true)
+        }
+    }
+    
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            viewModel.setNavBarVisible(false)
+            viewModel.setNavBarHeight(0.dp)
         }
     }
 
@@ -405,25 +723,34 @@ fun MusicHomeScreen(
     }
     val permissionsState = rememberMultiplePermissionsState(permissions = permissionsList)
     
+    androidx.activity.compose.BackHandler(
+        enabled = showCreatePlaylistFlow || isLibrarySelectionMode || selectedGenre != null || currentTab != 0
+    ) {
+        when {
+            showCreatePlaylistFlow -> onShowCreatePlaylistFlowChange(false)
+            isLibrarySelectionMode -> onLibrarySelectionModeChange(false)
+            selectedGenre != null -> onGenreSelected(null)
+            currentTab != 0 -> onTabSelected(0)
+        }
+    }
+
     val onSongClick: (Track, List<Track>?) -> Unit = { song, queue ->
         viewModel.setCurrentlyPlaying(song, queue)
         viewModel.setMiniPlayerVisible(true)
     }
 
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
+            .padding(
+                top = innerPadding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding()
+            )
     ) {
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .applyHazeAndBackdrop(hazeState = hazeState)
-        ) {
-            when (currentTab) {
-                0 -> {
-                    if (isLibraryLoaded) {
-                        if (libraryTracks.isEmpty()) {
+        when (currentTab) {
+            0 -> {
+                if (isLibraryLoaded) {
+                    if (libraryTracks.isEmpty()) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -491,7 +818,7 @@ fun MusicHomeScreen(
                         LazyColumn(
                             contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding),
                             verticalArrangement = Arrangement.spacedBy(32.dp),
-                            modifier = Modifier
+                            modifier = Modifier.physicsBounceOverscroll()
                                 .fillMaxSize()
                         ) {
                             item {
@@ -514,14 +841,14 @@ fun MusicHomeScreen(
                                 RandomPicksSection(onSongClick = onSongClick)
                             }
                             item {
-                                RecommendedDownloadsSection(onSongClick = onSongClick, onNavigateToCollectionGrowth = onNavigateToCollectionGrowth)
+                                RecommendedDownloadsSection(onNavigateToCollectionGrowth = onNavigateToCollectionGrowth)
                             }
                             item {
                                 CollectionHealthSection(onClick = onNavigateToCollectionHealth)
                             }
                             item {
                                 val stats by viewModel.listeningStats.collectAsState()
-                                ListeningStatsSection(stats = stats, onClick = { currentTab = 3 })
+                                ListeningStatsSection(stats = stats, onClick = { onTabSelected(3) })
                             }
                         }
                     }
@@ -532,81 +859,25 @@ fun MusicHomeScreen(
                         GenreHubScreenContent(
                             genreName = selectedGenre!!,
                             bottomPadding = bottomPadding,
-                            onNavigateBack = { selectedGenre = null }
+                            onNavigateBack = { onGenreSelected(null) }
                         )
                     } else {
-                        SearchScreenContent(viewModel = viewModel, bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { selectedGenre = it })
+                        SearchScreenContent(viewModel = viewModel, bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { onGenreSelected(it) })
                     }
                 }
                 2 -> {
-                    LibraryScreenContent(bottomPadding = if (isLibrarySelectionMode) 100.dp else bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onSelectionModeChange = { isLibrarySelectionMode = it }, onCreatePlaylistClick = { showCreatePlaylistFlow = true })
+                    LibraryScreenContent(bottomPadding = if (isLibrarySelectionMode) 100.dp else bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
                 }
                 3 -> {
                     val stats by viewModel.listeningStats.collectAsState()
-                    ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { currentTab = 0 })
+                    ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) })
                 }
             }
-        }
-        
-        if (!isLibrarySelectionMode) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
-                    .onSizeChanged { size ->
-                        bottomPadding = with(density) { size.height.toDp() } + 48.dp
-                    },
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-            if (isMiniPlayerVisible && currentSong != null) {
-                MiniPlayer(
-                    title = currentSong!!.title,
-                    artist = currentSong!!.artist,
-                    imageUrl = currentSong!!.albumId?.let { "content://media/external/audio/albumart/$it" } ?: "",
-                    hazeState = hazeState, 
-                    tintTransparency = tintTransparency, 
-                    noiseFactor = noiseFactor, 
-                    isPlaying = isPlaying,
-                    onPlayPauseClick = { viewModel.togglePlayPause() },
-                    onSkipNextClick = { viewModel.skipToNext() },
-                    onClick = onNavigateToNowPlaying,
-                    onDismiss = { 
-                        viewModel.setMiniPlayerVisible(false)
-                        viewModel.pause()
-                    }
-                )
-            }
-            BottomNavigation(
-                currentTab = currentTab,
-                onTabSelected = { 
-                    currentTab = it
-                    if (it != 1) selectedGenre = null
-                },
-                hazeState = hazeState, 
-                tintTransparency = tintTransparency, 
-                noiseFactor = noiseFactor
-            )
-        }
-        
-        if (showCreatePlaylistFlow) {
-            val tracks by viewModel.libraryTracks.collectAsState()
-            CreatePlaylistFlow(
-                tracks = tracks,
-                hazeState = hazeState,
-                glowColor = glowColor,
-                onDismiss = { showCreatePlaylistFlow = false },
-                onCreatePlaylist = { name, description, coverArtUri, trackIds ->
-                    viewModel.createPlaylist(name, description, coverArtUri, trackIds)
-                }
-            )
-        }
-
-        }
     }
 }
 
 @Composable
-fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettingsClick: () -> Unit = {}, onBackClick: () -> Unit = { /*TODO*/ }) {
+fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettingsClick: () -> Unit = {}, onBackClick: () -> Unit = {}) {
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -621,7 +892,7 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
             )
             Spacer(modifier = Modifier.weight(1f))
         } else {
-            IconButton(onClick = onBackClick) {
+            JellyIconButton(onClick = onBackClick) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Down",
@@ -631,7 +902,7 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
             }
             Spacer(modifier = Modifier.weight(1f))
         }
-        IconButton(onClick = onSettingsClick) {
+        JellyIconButton(onClick = onSettingsClick) {
             Icon(
                 imageVector = Icons.Default.MoreVert, 
                 contentDescription = "More", 
@@ -665,10 +936,10 @@ fun HeroSection(
                 .fillMaxWidth()
                 .aspectRatio(1.57f)
                 .clip(RoundedCornerShape(36.dp))
-                .clickable { showLyrics = !showLyrics }
+                .jellyClick { showLyrics = !showLyrics }
         ) {
             AsyncImage(
-                model = currentSong.albumId?.let { "content://media/external/audio/albumart/$it" },
+                model = currentSong.artworkUri ?: currentSong.albumId?.let { "content://media/external/audio/albumart/$it" },
                 contentDescription = currentSong.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(blurRadius)
@@ -866,18 +1137,20 @@ fun HorizontalArtworkListSection(title: String, songs: List<Track>, onSongClick:
             modifier = Modifier.padding(horizontal = 24.dp)
         )
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(songs) { song ->
                 AsyncImage(
-                    model = song.albumId?.let { "content://media/external/audio/albumart/$it" },
+                    model = song.artworkUri ?: song.albumId?.let { "content://media/external/audio/albumart/$it" },
                     contentDescription = song.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(160.dp)
                         .clip(RoundedCornerShape(24.dp))
-                        .clickable { onSongClick(song, songs) }
+                        .jellyClick { onSongClick(song, songs) }
                 )
             }
         }
@@ -931,12 +1204,12 @@ fun RecentlyPlayedItem(song: Track, onSongClick: (Track) -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSongClick(song) }
+            .jellyClick { onSongClick(song) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = song.albumId?.let { "content://media/external/audio/albumart/$it" },
+            model = song.artworkUri ?: song.albumId?.let { "content://media/external/audio/albumart/$it" },
             contentDescription = song.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -956,7 +1229,7 @@ fun RecentlyPlayedItem(song: Track, onSongClick: (Track) -> Unit = {}) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        IconButton(onClick = { /*TODO*/ }) {
+        JellyIconButton(onClick = {}) {
             Icon(
                 imageVector = Icons.Default.MoreVert, 
                 contentDescription = "More",
@@ -967,11 +1240,28 @@ fun RecentlyPlayedItem(song: Track, onSongClick: (Track) -> Unit = {}) {
 }
 
 @Composable
-fun RecommendedDownloadsSection(onSongClick: (Track, List<Track>?) -> Unit, onNavigateToCollectionGrowth: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun RecommendedDownloadsSection(onNavigateToCollectionGrowth: () -> Unit = {}, modifier: Modifier = Modifier) {
     val viewModel: MusicViewModel = hiltViewModel()
-    val songs by viewModel.recommended.collectAsState()
+    val cards by viewModel.homescreenRecommendations.collectAsState()
     
-    if (songs.isEmpty()) return
+    if (cards.isEmpty()) {
+        Column(
+            modifier = modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "Recommended Downloads", 
+                style = MaterialTheme.typography.headlineMedium, 
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No new songs or trending tracks right now. Favorite more artists or listen to more music!", 
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+        return
+    }
     
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -980,7 +1270,7 @@ fun RecommendedDownloadsSection(onSongClick: (Track, List<Track>?) -> Unit, onNa
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onNavigateToCollectionGrowth() }
+                .jellyClick { onNavigateToCollectionGrowth() }
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -1003,8 +1293,8 @@ fun RecommendedDownloadsSection(onSongClick: (Track, List<Track>?) -> Unit, onNa
             Column(
                 modifier = Modifier.padding(vertical = 12.dp)
             ) {
-                songs.forEach { song ->
-                    RecommendedDownloadItem(song, onSongClick = { s -> onSongClick(s, songs) })
+                cards.forEach { card ->
+                    RecommendedDownloadItem(card, viewModel)
                 }
             }
         }
@@ -1012,17 +1302,65 @@ fun RecommendedDownloadsSection(onSongClick: (Track, List<Track>?) -> Unit, onNa
 }
 
 @Composable
-fun RecommendedDownloadItem(song: Track, onSongClick: (Track) -> Unit = {}) {
+fun RecommendedDownloadItem(card: GrowthCard, viewModel: MusicViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val scope = rememberCoroutineScope()
+    
+    val title = when (card) {
+        is GrowthCard.NewSong -> card.trackTitle
+        is GrowthCard.Trending -> card.trackTitle
+        is GrowthCard.NewRelease -> card.albumTitle
+        is GrowthCard.MissingTracks -> card.albumTitle
+        is GrowthCard.CompleteCollection -> card.missingAlbumTitle
+        is GrowthCard.Discovery -> card.suggestedArtistName
+    }
+    
+    val artist = when (card) {
+        is GrowthCard.NewSong -> card.artistName
+        is GrowthCard.Trending -> card.artistName
+        is GrowthCard.NewRelease -> card.artistName
+        is GrowthCard.MissingTracks -> card.artistName
+        is GrowthCard.CompleteCollection -> card.artistName
+        is GrowthCard.Discovery -> "Similar to ${card.becauseOfArtist}"
+    }
+    
+    val imageUrl = card.imageUrl
+
+    val badgeText = when (card) {
+        is GrowthCard.NewSong -> "NEW "
+        is GrowthCard.Trending -> "TRENDING "
+        is GrowthCard.NewRelease -> "ALBUM "
+        is GrowthCard.MissingTracks -> "MISSING "
+        is GrowthCard.CompleteCollection -> "COMPLETE "
+        is GrowthCard.Discovery -> "ARTIST "
+    }
+    
+    val badgeColor = when (card) {
+        is GrowthCard.NewSong -> MaterialTheme.colorScheme.primary
+        is GrowthCard.Trending -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.secondary
+    }
+
+    val downloadType = when (card) {
+        is GrowthCard.NewSong, is GrowthCard.Trending -> SpotiFlacDownloadType.TRACK
+        is GrowthCard.NewRelease, is GrowthCard.MissingTracks, is GrowthCard.CompleteCollection -> SpotiFlacDownloadType.ALBUM
+        is GrowthCard.Discovery -> SpotiFlacDownloadType.ARTIST
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSongClick(song) }
+            .jellyClick { 
+                val encodedQuery = java.net.URLEncoder.encode("$title $artist", "UTF-8")
+                uriHandler.openUri("https://music.youtube.com/search?q=$encodedQuery")
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = song.albumId?.let { "content://media/external/audio/albumart/$it" },
-            contentDescription = song.title,
+            model = imageUrl,
+            contentDescription = title,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(48.dp)
@@ -1031,17 +1369,31 @@ fun RecommendedDownloadItem(song: Track, onSongClick: (Track) -> Unit = {}) {
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = song.title, 
+                text = title, 
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), 
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = song.artist, 
-                style = MaterialTheme.typography.bodyMedium, 
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = badgeText, 
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), 
+                    color = badgeColor
+                )
+                Text(
+                    text = artist, 
+                    style = MaterialTheme.typography.bodyMedium, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
-        IconButton(onClick = { /*TODO*/ }) {
+        JellyIconButton(onClick = {
+            val query = if (downloadType == SpotiFlacDownloadType.ARTIST) title else "$title $artist"
+            performSpotiFlacDownload(context, scope, viewModel, query, downloadType)
+        }) {
             Icon(
                 imageVector = Icons.Outlined.Download, 
                 contentDescription = "Download",
@@ -1100,7 +1452,7 @@ fun ListeningStatsSection(
         GlassCard(
             modifier = Modifier
                 .padding(horizontal = 24.dp)
-                .clickable { onClick() }
+                .jellyClick { onClick() }
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
 
@@ -1251,7 +1603,7 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
     val genreCounts by viewModel.genreCounts.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    var selectedFilter by remember { mutableStateOf("All") }
+    var selectedFilter by rememberSaveable { mutableStateOf("All") }
     
     // Reset selected filter when search query transitions between empty and active
     LaunchedEffect(searchQuery.isEmpty()) {
@@ -1261,7 +1613,7 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
     LazyColumn(
         contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(32.dp),
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.physicsBounceOverscroll().fillMaxSize()
     ) {
         item {
             SearchHeader(modifier = Modifier.padding(horizontal = 24.dp))
@@ -1370,7 +1722,7 @@ fun SearchHeader(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurface
         )
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            IconButton(onClick = { }) {
+            JellyIconButton(onClick = { }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert, 
                     contentDescription = "More", 
@@ -1423,7 +1775,7 @@ fun SearchBar(
             }
         )
         if (query.isEmpty()) {
-            IconButton(onClick = { }) {
+            JellyIconButton(onClick = { }) {
                 Icon(
                     imageVector = Icons.Default.Mic,
                     contentDescription = "Mic",
@@ -1431,7 +1783,7 @@ fun SearchBar(
                 )
             }
         } else {
-            IconButton(onClick = { onQueryChange("") }) {
+            JellyIconButton(onClick = { onQueryChange("") }) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Clear",
@@ -1452,7 +1804,7 @@ fun FilterChips(isSearchActive: Boolean = false, selectedFilter: String, onFilte
     LazyRow(
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.physicsBounceOverscroll(isHorizontal = true).fillMaxWidth()
     ) {
         items(filters) { filter ->
             val isSelected = filter == selectedFilter
@@ -1460,7 +1812,7 @@ fun FilterChips(isSearchActive: Boolean = false, selectedFilter: String, onFilte
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
                     .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .clickable { onFilterSelected(filter) }
+                    .jellyClick { onFilterSelected(filter) }
                     .padding(horizontal = 24.dp, vertical = 12.dp)
             ) {
                 Text(
@@ -1499,7 +1851,7 @@ fun RecentSearchesSection(
                     text = "Clear all",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { onClearAll() }
+                    modifier = Modifier.jellyClick { onClearAll() }
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -1611,7 +1963,7 @@ fun CategoryCard(category: Category, modifier: Modifier = Modifier, onClick: () 
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .background(category.color.copy(alpha = 0.12f))
-            .clickable { onClick() }
+            .jellyClick { onClick() }
             .padding(24.dp)
     ) {
         Column(
@@ -1648,7 +2000,7 @@ fun TopResultSection(track: com.aeswox.arcmusic.db.entities.Track, modifier: Mod
                 .fillMaxWidth()
                 .height(220.dp)
                 .clip(RoundedCornerShape(36.dp))
-                .clickable { onClick() }
+                .jellyClick { onClick() }
         ) {
             val fallbackImage = "https://lh3.googleusercontent.com/aida/AP1WRLv2WecEYcFjvYBf-M3uEQ_any0wLnlOIbEuk_z6TQbKqKTSZoFVZNYQ-1t8glDuBotg9yeGnMK8FZEE-kgwiLAVRBXzvQimz6mY682dnzbndydZF2E-RtA81Z-B73vftEA1FvCkglrC0eRpulttSej5eBpotQsOJDlrWXWG2NcJDqKcgI2WBx09sqJfbw09cTRFbu54vdDLp3z42vq-SHV4IdKULZGUnC2hu9U6zJ1iQMIX1k012Bm-U6I"
             AsyncImage(
@@ -1714,7 +2066,7 @@ fun TopResultSection(track: com.aeswox.arcmusic.db.entities.Track, modifier: Mod
                             .size(56.dp)
                             .clip(CircleShape)
                             .background(Color.White)
-                            .clickable { onClick() },
+                            .jellyClick { onClick() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1742,7 +2094,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.jellyClick { }) {
             Text(
                 text = "See all",
                 style = MaterialTheme.typography.bodyMedium,
@@ -1873,7 +2225,7 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: St
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.width(16.dp))
-        IconButton(onClick = { }) {
+        JellyIconButton(onClick = { }) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = null,
@@ -1889,6 +2241,8 @@ fun AlbumsResultSection(albums: List<com.aeswox.arcmusic.db.entities.Album>, mod
         SectionHeader(title = "Albums")
         Spacer(modifier = Modifier.height(16.dp))
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(albums) { album ->
@@ -1960,6 +2314,8 @@ fun ArtistsResultSection(artists: List<com.aeswox.arcmusic.db.entities.Artist>, 
         SectionHeader(title = "Artists")
         Spacer(modifier = Modifier.height(16.dp))
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             items(artists) { artist ->
@@ -2036,6 +2392,8 @@ fun PlaylistsResultSection(playlists: List<com.aeswox.arcmusic.db.entities.Playl
         SectionHeader(title = "Playlists")
         Spacer(modifier = Modifier.height(16.dp))
         LazyRow(
+modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(playlists) { playlist ->
@@ -2122,7 +2480,7 @@ fun CollectionHealthSection(modifier: Modifier = Modifier, onClick: () -> Unit =
         )
         
         GlassCard(
-            modifier = Modifier.padding(horizontal = 24.dp).clickable { onClick() }
+            modifier = Modifier.padding(horizontal = 24.dp).jellyClick { onClick() }
         ) {
             Column(
                 modifier = Modifier
@@ -2268,7 +2626,7 @@ fun SearchSuggestionChip(label: String) {
             .clip(RoundedCornerShape(50))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.surface)
-            .clickable { }
+            .jellyClick { }
             .padding(horizontal = 20.dp, vertical = 10.dp)
     ) {
         Text(

@@ -24,6 +24,7 @@ class PlaybackService : MediaSessionService() {
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .setUsage(C.USAGE_MEDIA)
+            .setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_AUTO)
             .build()
             
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
@@ -35,7 +36,21 @@ class PlaybackService : MediaSessionService() {
             )
             .build()
             
+        val extractorsFactory = com.aeswox.arcmusic.playback.extractor.CustomExtractorsFactory()
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this, extractorsFactory)
+            
+        val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this)
+        trackSelector.parameters = trackSelector.buildUponParameters()
+            .setAudioOffloadPreferences(
+                androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.Builder()
+                    .setAudioOffloadMode(androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED)
+                    .build()
+            )
+            .build()
+            
         player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setTrackSelector(trackSelector)
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .setLoadControl(loadControl)
