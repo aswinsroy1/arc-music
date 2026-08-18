@@ -46,7 +46,7 @@ object NetworkModule {
     fun provideOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder().addInterceptor { chain ->
             val request = chain.request().newBuilder()
-                .header("User-Agent", "ArcMusic/1.0 ( placeholder@email.com )")
+                .header("User-Agent", "ArcMusic/1.0 ( contact@arcmusic.app )")
                 .build()
             chain.proceed(request)
         }.build()
@@ -94,6 +94,17 @@ object NetworkModule {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(com.aeswox.arcmusic.data.network.LrcLibApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLyricsPlusService(moshi: Moshi, okHttpClient: OkHttpClient): com.aeswox.arcmusic.data.network.LyricsPlusService {
+        return Retrofit.Builder()
+            .baseUrl("https://lyricsplus.prjktla.my.id/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(com.aeswox.arcmusic.data.network.LyricsPlusService::class.java)
     }
 
     @Provides
