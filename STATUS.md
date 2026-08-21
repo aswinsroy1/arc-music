@@ -66,3 +66,5 @@
 - Missing content scan takes longer now (correct behaviour) because it does a per-album release lookup to MusicBrainz to get actual track names. This is only done once per artist (cached for 7 days).
 - New Release cards are similarly slow on first load (per-artist MBID resolution + MusicBrainz query). Subsequent loads use the 7-day cache and are instant.
 - LyricsPlus is a single-maintainer side project with no uptime SLA. If it is unreachable, the app falls through to LRCLIB silently — no error is surfaced to the user. Lyrics caching means the fallback only triggers on first fetch for a given track.
+
+- Implemented smooth Play/Pause animated morphing using androidx.graphics.shapes and real Lucide icon paths in NowPlaying and MiniPlayer.

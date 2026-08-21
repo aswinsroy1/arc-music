@@ -807,25 +807,11 @@ fun NowPlayingScreen(
 
                         ) {
 
-                            if (isPlaying) {
-
-                                CustomPauseIcon(color = textColor, modifier = Modifier.size(32.dp, 40.dp))
-
-                            } else {
-
-                                Icon(
-
-                                    imageVector = Icons.Rounded.PlayArrow, 
-
-                                    contentDescription = "Play",
-
-                                    tint = textColor,
-
-                                    modifier = Modifier.size(60.dp)
-
-                                )
-
-                            }
+                            com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
+                                isPlaying = isPlaying,
+                                tint = textColor,
+                                modifier = Modifier.size(50.dp)
+                            )
 
                         }
 

@@ -327,3 +327,31 @@ efreshArtistGrowthData background worker.
 - **Follow-up**: Added `setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_AUTO)` and configured `AudioOffloadPreferences` in `PlaybackService.kt` to explicitly engage Android 12+ Spatializer (internal speakers) and hardware offload bitstreaming (HDMI/eARC receivers).
 
 - **Bug 4 - Hashtag in filename**: Fixed a crash where files containing '#' in their name (e.g. '#selfie') failed to play. ExoPlayer treated the string as a raw URI, parsing the '#' as a fragment identifier instead of part of the file path. Wrapped the path in Uri.fromFile(File(path)) inside MusicViewModel to properly URL-encode special characters.
+
+## Add musicmeta as Second-Priority Artist Image Source (2026-08-18)
+- **Goal**: Reorder the artist-image fallback chain to add musicmeta as a new step 2, without removing any existing steps, and verify it applies to Collection Growth suggested artists.
+- **Changed**:
+  - uild.gradle.kts: Added io.github.famesjranko:musicmeta-core and musicmeta-android dependencies (v0.12.0).
+  - ArtworkRepository.kt: Inserted a private etchArtistImageViaMusicMeta() helper that creates an EnrichmentEngine on demand. It wires existing SettingsRepository keys for Last.fm and Fanart.tv, keeping them live, and omitting absent keys gracefully.
+  - Reordered etchBestArtistImage() to prioritize musicmeta as step 2 (after Deezer track-based precision), and retained MBID-based Fanart/TheAudioDB, Deezer (plain), TheAudioDB (plain), and Last.fm fallbacks as subsequent steps.
+- **Verified**: Confirmed etchSimilarArtists() already defers to etchBestArtistImage(), naturally granting suggested artists the same updated priority chain. The code compiles properly with com.landofoz.musicmeta.* imports.
+
+## 2026-08-20 — Animated Play/Pause Morphing Icon
+
+### Goal
+Implement a smooth morphing animation between Play and Pause states in the Now Playing and Mini Player screens using ndroidx.graphics.shapes, pulling the exact vector coordinates from Lucide icons.
+
+### Changed Files
+- **pp/build.gradle.kts**: Added ndroidx.graphics:graphics-shapes:1.0.1 dependency.
+- **PlayPauseMorphIcon.kt**: Created a new reusable composable defining the playPolygon (a 3-point triangle with radius 2) and pausePolygon (a single continuous 12-point shape routing a zero-width gap at y=12 to represent the two distinct bars with radius 1). It computes Morph(play, pause) and scales it to fit the 24dp canvas perfectly.
+- **NowPlayingScreen.kt**: Replaced standard Icons.Rounded.PlayArrow and CustomPauseIcon with PlayPauseMorphIcon.
+- **ReusableComponents.kt**: Wired PlayPauseMorphIcon into MiniPlayer replacing Icons.Filled.PlayArrow and Icons.Filled.Pause.
+
+### Key Decisions
+- No AnimatedVectorDrawable: A pure programmatic approach using Compose graphics avoids XML overhead.
+- True Pause Bar Shapes: Used precise polygon modeling with a zero-width connection line at y=12 (middle) and CornerRounding(0f) to allow RoundedPolygon to trace disjoint shapes without leaking corners into the invisible bridge.
+- Interpolation: The nimateFloatAsState uses a spring animation with Spring.DampingRatioNoBouncy for a clean premium snappy morph.
+
+### Build
+- Compiled successfully with 0 errors.
+

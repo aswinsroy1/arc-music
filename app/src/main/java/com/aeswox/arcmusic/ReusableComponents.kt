@@ -27,7 +27,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.*
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
+
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -330,10 +331,10 @@ fun MiniPlayer(
             )
         }
         JellyIconButton(onClick = onPlayPauseClick) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, 
-                contentDescription = if (isPlaying) "Pause" else "Play", 
-                tint = MaterialTheme.colorScheme.onSurface
+            com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
+                isPlaying = isPlaying, 
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(24.dp)
             )
         }
         JellyIconButton(onClick = onSkipNextClick) {
@@ -395,50 +396,126 @@ fun BottomNavigation(
             )
             .padding(horizontal = 24.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (currentTab == 0) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                .jellyClick(interactionSource = tab0InteractionSource, scaleDownTo = 0.85f) { onTabSelected(0) }
-        ) {
-            Icon(
-                imageVector = Icons.Default.Home, 
-                contentDescription = "Home", 
-                tint = if (currentTab == 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (currentTab == 1) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                .jellyClick(interactionSource = tab1InteractionSource, scaleDownTo = 0.85f) { onTabSelected(1) }
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search, 
-                contentDescription = "Search", 
-                tint = if (currentTab == 1) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (currentTab == 2) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                .jellyClick(interactionSource = tab2InteractionSource, scaleDownTo = 0.85f) { onTabSelected(2) }
-        ) {
-            Icon(
-                imageVector = Icons.Default.LibraryMusic, 
-                contentDescription = "Library", 
-                tint = if (currentTab == 2) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
+        NavBarItem(
+            selected = currentTab == 0,
+            icon = Icons.Default.Home,
+            contentDescription = "Home",
+            interactionSource = tab0InteractionSource,
+            onClick = { onTabSelected(0) }
+        )
+        NavBarItem(
+            selected = currentTab == 1,
+            icon = Icons.Default.Search,
+            contentDescription = "Search",
+            interactionSource = tab1InteractionSource,
+            onClick = { onTabSelected(1) }
+        )
+        NavBarItem(
+            selected = currentTab == 2,
+            icon = Icons.Default.LibraryMusic,
+            contentDescription = "Library",
+            interactionSource = tab2InteractionSource,
+            onClick = { onTabSelected(2) }
+        )
     }
 }
+
+/**
+ * Single animated nav bar item with a Material You Expressive pill indicator.
+ *
+ * Pill width animates 0dp → 56dp with a bouncy spring (DampingRatioMediumBouncy).
+ * Icon tint uses a slow spring for smooth color crossfade.
+ * Item scale gives bouncy press feedback then settles at 1.05f when selected.
+ * All state is driven via graphicsLayer — runs on the RenderThread at 120fps,
+ * animations are naturally interruptible mid-flight (non-linear).
+ */
+@Composable
+private fun NavBarItem(
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit
+) {
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Pill scale: expands with a bouncy spring when selected (GPU accelerated)
+    val pillScaleX by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "pill_scale_$contentDescription"
+    )
+
+    // Pill alpha: hides the pill quickly when unselected to prevent seeing the bouncy overshoot
+    val pillAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "pill_alpha_$contentDescription"
+    )
+
+    // Icon tint: smooth spring-based color crossfade
+    val iconTint by animateColorAsState(
+        targetValue = if (selected)
+            MaterialTheme.colorScheme.onPrimaryContainer
+        else
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "icon_tint_$contentDescription"
+    )
+
+    // Item scale: bouncy press feedback + slight grow when selected
+    val itemScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.85f
+            selected  -> 1.05f
+            else      -> 1f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "item_scale_$contentDescription"
+    )
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .height(48.dp)
+            .graphicsLayer {
+                scaleX = itemScale
+                scaleY = itemScale
+            }
+            .jellyClick(interactionSource = interactionSource, scaleDownTo = 0.85f) { onClick() }
+            .padding(horizontal = 8.dp)
+    ) {
+        // Animated pill background (GPU accelerated)
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = pillScaleX
+                    alpha = pillAlpha
+                }
+                .size(width = 56.dp, height = 32.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
+        )
+        // Icon rendered on top of pill
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = iconTint
+        )
+    }
+}
+
 
 @Composable
 fun AppPrimaryButton(
