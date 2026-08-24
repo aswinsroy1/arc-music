@@ -68,3 +68,4 @@
 - LyricsPlus is a single-maintainer side project with no uptime SLA. If it is unreachable, the app falls through to LRCLIB silently — no error is surfaced to the user. Lyrics caching means the fallback only triggers on first fetch for a given track.
 
 - Implemented smooth Play/Pause animated morphing using androidx.graphics.shapes and real Lucide icon paths in NowPlaying and MiniPlayer.
+- Fixed duplicate-filename handling for received tracks in Nearby Share by appending a disambiguator `(received)` to collisions before MediaStore insertion.
