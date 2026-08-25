@@ -1515,38 +1515,52 @@ fun FadeLyricLine(
     plainWords: List<String>,
     activeLineIndexProvider: () -> Int,
     currentPositionProvider: () -> Long,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     textColor: Color
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
-    val distance by remember { derivedStateOf { kotlin.math.abs(lineIndex - activeLineIndexProvider()) } }
-
-    // Opacity-only dimming — no blur anywhere in this branch.
-    val targetAlpha = when {
-        isActive      -> 1f
-        distance == 1 -> 0.60f
-        distance == 2 -> 0.35f
-        distance == 3 -> 0.15f
-        else          -> 0.05f
-    }
-    val lineAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = tween(durationMillis = 350),
-        label = "fadeLyricAlpha"
-    )
-
-    // Active line text is larger (e.g. 32sp) and inactive is smaller (e.g. 26sp).
-    val targetFontSize = if (isActive) 32f else 26f
-    val fontSize by animateFloatAsState(
-        targetValue = targetFontSize,
-        animationSpec = tween(durationMillis = 350),
-        label = "fadeLyricFontSize"
-    )
 
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer { alpha = lineAlpha },
+            .padding(vertical = 4.dp)
+            .graphicsLayer {
+                val layoutInfo = listState.layoutInfo
+                val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == lineIndex }
+                
+                if (itemInfo != null) {
+                    val viewportHeight = layoutInfo.viewportSize.height.toFloat()
+                    
+                    // The focal point is exactly at the top content padding (160.dp in pixels)
+                    val focalPointY = 160.dp.toPx()
+                    
+                    // Distance from item's top edge to the focal point
+                    val distance = kotlin.math.abs(itemInfo.offset - focalPointY)
+                    
+                    val maxDistance = viewportHeight * 0.4f
+                    val progress = (distance / maxDistance).coerceIn(0f, 1f)
+                    
+                    val targetScale = if (progress < 0.2f) {
+                        1f - (progress * 1.25f) // scales down to 0.75
+                    } else {
+                        0.75f
+                    }
+                    
+                    val targetAlpha = when {
+                        progress < 0.1f -> 1f - (progress * 4f)
+                        progress < 0.3f -> 0.6f - ((progress - 0.1f) * 1.5f)
+                        else -> 0.3f - ((progress - 0.3f) * 0.5f)
+                    }.coerceIn(0.0f, 1f)
+                    
+                    scaleX = targetScale
+                    scaleY = targetScale
+                    alpha = targetAlpha
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) // Scale from left-center
+                } else {
+                    alpha = 0f
+                }
+            },
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -1573,7 +1587,7 @@ fun FadeLyricLine(
                     text = syncedWord.word,
                     color = textColor.copy(alpha = wordAlpha),
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = fontSize.sp,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -1585,7 +1599,7 @@ fun FadeLyricLine(
                     text = word,
                     color = textColor,
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = fontSize.sp,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -1690,8 +1704,8 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
 
 
     LaunchedEffect(activeLineIndex) {
-        if (activeLineIndex > 1) {
-            listState.animateScrollToItem((activeLineIndex - 1).coerceAtLeast(0))
+        if (activeLineIndex >= 0 && activeLineIndex < linesToRender.size) {
+            listState.animateScrollToItem(activeLineIndex)
         }
     }
 
@@ -1817,6 +1831,7 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                         plainWords = words,
                         activeLineIndexProvider = activeLineIndexProvider,
                         currentPositionProvider = { currentPositionState.value },
+                        listState = listState,
                         textColor = textColor
                     )
                 } else {
