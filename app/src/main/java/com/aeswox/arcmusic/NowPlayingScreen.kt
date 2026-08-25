@@ -6,6 +6,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.isActive
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -1704,7 +1705,18 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
 
     LaunchedEffect(activeLineIndex) {
         if (activeLineIndex >= 0 && activeLineIndex < linesToRender.size) {
-            listState.animateScrollToItem(activeLineIndex)
+            val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == activeLineIndex }
+            if (visibleItem != null && visibleItem.offset != 0) {
+                listState.animateScrollBy(
+                    value = visibleItem.offset.toFloat(),
+                    animationSpec = androidx.compose.animation.core.spring<Float>(
+                        dampingRatio = 0.75f, // slight bounce
+                        stiffness = 50f // smooth and slow
+                    )
+                )
+            } else {
+                listState.animateScrollToItem(activeLineIndex)
+            }
         }
     }
 
