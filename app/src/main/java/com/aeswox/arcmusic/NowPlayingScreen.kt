@@ -1514,7 +1514,7 @@ fun FadeLyricLine(
     syncedLine: SyncedLine?,
     plainWords: List<String>,
     activeLineIndexProvider: () -> Int,
-    currentPositionMsProvider: () -> Long,
+    activeWordIndexProvider: () -> Int,
     textColor: Color
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
@@ -1542,11 +1542,11 @@ fun FadeLyricLine(
     ) {
         val words = syncedLine?.words
         if (!words.isNullOrEmpty()) {
-            // Word-timed path: cumulative fill — wordTime <= currentPos means bright.
-            words.forEach { syncedWord ->
+            // Word-timed path: cumulative fill — wordIndex <= activeWordIndex means bright.
+            words.forEachIndexed { wordIndex, syncedWord ->
                 val isBright by remember {
                     derivedStateOf {
-                        isActive && syncedWord.time <= currentPositionMsProvider()
+                        isActive && wordIndex <= activeWordIndexProvider()
                     }
                 }
                 val wordAlpha by animateFloatAsState(
@@ -1806,9 +1806,7 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                         syncedLine = syncedLines?.getOrNull(lineIndex),
                         plainWords = words,
                         activeLineIndexProvider = activeLineIndexProvider,
-                        // Lambda reads current value directly from the StateFlow — no extra
-                        // collection needed; recomposition is driven by activeLineIndex changes.
-                        currentPositionMsProvider = { viewModel.currentPlaybackPosition.value },
+                        activeWordIndexProvider = activeWordIndexProvider,
                         textColor = textColor
                     )
                 } else {
