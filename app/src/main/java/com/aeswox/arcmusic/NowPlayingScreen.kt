@@ -1532,11 +1532,10 @@ fun FadeLyricLine(
                 if (itemInfo != null) {
                     val viewportHeight = layoutInfo.viewportSize.height.toFloat()
                     
-                    // The focal point is exactly at the top content padding (160.dp in pixels)
-                    val focalPointY = 160.dp.toPx()
-                    
-                    // Distance from item's top edge to the focal point
-                    val distance = kotlin.math.abs(itemInfo.offset - focalPointY)
+                    // In LazyColumn, itemInfo.offset is 0 when the item is perfectly aligned with the viewport start
+                    // (which happens automatically when animateScrollToItem is called, placing it right below the top content padding).
+                    // Therefore, the item is perfectly at the focal point when its offset is 0.
+                    val distance = kotlin.math.abs(itemInfo.offset).toFloat()
                     
                     val maxDistance = viewportHeight * 0.4f
                     val progress = (distance / maxDistance).coerceIn(0f, 1f)
