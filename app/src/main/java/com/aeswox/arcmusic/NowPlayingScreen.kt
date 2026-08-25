@@ -1523,14 +1523,23 @@ fun FadeLyricLine(
     // Opacity-only dimming — no blur anywhere in this branch.
     val targetAlpha = when {
         isActive      -> 1f
-        distance == 1 -> 0.45f
-        distance >= 3 -> 0.20f
-        else          -> 0.30f
+        distance == 1 -> 0.60f
+        distance == 2 -> 0.35f
+        distance == 3 -> 0.15f
+        else          -> 0.05f
     }
     val lineAlpha by animateFloatAsState(
         targetValue = targetAlpha,
         animationSpec = tween(durationMillis = 350),
         label = "fadeLyricAlpha"
+    )
+
+    // Active line text is larger (e.g. 32sp) and inactive is smaller (e.g. 26sp).
+    val targetFontSize = if (isActive) 32f else 26f
+    val fontSize by animateFloatAsState(
+        targetValue = targetFontSize,
+        animationSpec = tween(durationMillis = 350),
+        label = "fadeLyricFontSize"
     )
 
     FlowRow(
@@ -1562,7 +1571,7 @@ fun FadeLyricLine(
                     text = syncedWord.word,
                     color = textColor.copy(alpha = wordAlpha),
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = 24.sp,
+                        fontSize = fontSize.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -1574,7 +1583,7 @@ fun FadeLyricLine(
                     text = word,
                     color = textColor,
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = 24.sp,
+                        fontSize = fontSize.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -1785,11 +1794,13 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                 )
         )
 
+        val listSpacing = if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) 42.dp else 28.dp
+
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 160.dp, horizontal = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(28.dp)
+            verticalArrangement = Arrangement.spacedBy(listSpacing)
         ) {
             itemsIndexed(linesToRender) { lineIndex, line ->
                 val words = remember(lineIndex, syncedLines, line) {
