@@ -17,6 +17,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE name = :playlistName LIMIT 1")
     fun getPlaylist(playlistName: String): Flow<Playlist?>
 
+    @Query("SELECT * FROM playlists WHERE name = :playlistName LIMIT 1")
+    suspend fun getPlaylistByName(playlistName: String): Playlist?
+
     @Query("""
         SELECT t.* FROM tracks t
         INNER JOIN playlist_tracks pt ON t.id = pt.trackId
@@ -37,8 +40,14 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylist(playlist: Playlist)
 
+    @androidx.room.Update
+    suspend fun updatePlaylist(playlist: Playlist)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylistTracks(playlistTracks: List<PlaylistTrack>)
+
+    @Query("SELECT * FROM playlists WHERE name IN (:playlistNames)")
+    suspend fun getPlaylistsByNames(playlistNames: List<String>): List<Playlist>
 
     @Query("DELETE FROM playlists WHERE name IN (:playlistNames)")
     suspend fun deletePlaylists(playlistNames: List<String>)

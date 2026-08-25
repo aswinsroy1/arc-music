@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aeswox.arcmusic.ThemeMode
+import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -39,6 +40,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val EXCLUDED_FOLDERS_KEY = stringPreferencesKey("excluded_folders")
     private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
     private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
+    private val LYRICS_DISPLAY_STYLE_KEY = stringPreferencesKey("lyrics_display_style")
 
     private val MASS_KEY = floatPreferencesKey("physics_mass")
     private val STIFFNESS_KEY = floatPreferencesKey("physics_stiffness")
@@ -60,6 +62,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             "dark"   -> ThemeMode.Dark
             "system" -> ThemeMode.System
             else     -> ThemeMode.Light
+        }
+    }
+
+    /**
+     * Persisted lyrics display style. Emits [LyricsDisplayStyle.FADE] by default
+     * (first-run and any unrecognised value), so new installs and users who have
+     * not yet chosen get the lighter FADE style automatically.
+     */
+    val lyricsDisplayStyle: Flow<LyricsDisplayStyle> = context.dataStore.data.map { preferences ->
+        when (preferences[LYRICS_DISPLAY_STYLE_KEY]) {
+            "distance_blur" -> LyricsDisplayStyle.DISTANCE_BLUR
+            else            -> LyricsDisplayStyle.FADE
         }
     }
 
@@ -196,5 +210,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     
     suspend fun setCoilDiskCacheLimitMb(value: Int) {
         context.dataStore.edit { it[COIL_DISK_CACHE_LIMIT_MB_KEY] = value }
+    }
+
+    suspend fun setLyricsDisplayStyle(style: LyricsDisplayStyle) {
+        context.dataStore.edit {
+            it[LYRICS_DISPLAY_STYLE_KEY] = when (style) {
+                LyricsDisplayStyle.FADE          -> "fade"
+                LyricsDisplayStyle.DISTANCE_BLUR -> "distance_blur"
+            }
+        }
     }
 }

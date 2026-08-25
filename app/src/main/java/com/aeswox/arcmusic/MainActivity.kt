@@ -1,11 +1,16 @@
 package com.aeswox.arcmusic
 
+import com.aeswox.arcmusic.sharing.ReceiveScreen
+import com.aeswox.arcmusic.sharing.ShareScreen
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
+import com.aeswox.arcmusic.ui.animations.NavTransitions
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aeswox.arcmusic.sharing.ShareScreen
 
 import android.os.Bundle
 import androidx.compose.animation.*
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.sp
 import android.Manifest
@@ -105,6 +110,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.viewModels
@@ -218,12 +225,36 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     
-                    val bottomOffset = if (isNavBarVisible) {
+                    // Raw (target) offset — driven by nav-bar visibility, library selection mode and measured height
+                    val rawBottomOffset = if (isNavBarVisible || isLibrarySelectionMode) {
                         if (globalNavBarHeight > 0.dp) globalNavBarHeight + 20.dp + innerPadding.calculateBottomPadding() else 128.dp + innerPadding.calculateBottomPadding()
                     } else {
                         24.dp + innerPadding.calculateBottomPadding()
                     }
-                    val contentBottomPadding = bottomOffset + if (isMiniPlayerVisible && currentlyPlaying != null) 80.dp else 0.dp
+
+                    // Smooth spring transition so the miniplayer glides when the nav bar
+                    // appears / disappears instead of jumping instantly.
+                    val bottomOffset by animateDpAsState(
+                        targetValue = rawBottomOffset,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "miniPlayerBottomOffset"
+                    )
+
+                    // Animate the mini-player's height contribution to content padding so
+                    // lists don't jump when the player appears / disappears.
+                    val rawMiniPlayerHeightContrib = if (isMiniPlayerVisible && currentlyPlaying != null) 80.dp else 0.dp
+                    val animMiniPlayerHeightContrib by animateDpAsState(
+                        targetValue = rawMiniPlayerHeightContrib,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "miniPlayerHeightContrib"
+                    )
+                    val contentBottomPadding = bottomOffset + animMiniPlayerHeightContrib
 
                     @OptIn(ExperimentalSharedTransitionApi::class)
                     SharedTransitionLayout {
@@ -290,6 +321,10 @@ class MainActivity : ComponentActivity() {
                                                 viewModel.setPlayerExpanded(false)
                                                 navController.navigate("artist_details/$artistId") 
                                             },
+                                            onNavigateToShare = { type, id ->
+                                                viewModel.setPlayerExpanded(false)
+                                                navController.navigate("share?type=$type&id=$id")
+                                            },
                                             onNavigateToEditMetadata = { trackId -> 
                                                 viewModel.setPlayerExpanded(false)
                                                 navController.navigate("edit_metadata/$trackId?readOnly=true") 
@@ -303,10 +338,44 @@ class MainActivity : ComponentActivity() {
                                             AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
                                             NavHost(
                                                 navController = navController,
-                                                startDestination = "home"
+                                                startDestination = "home",
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .then(
+                                                        if (android.os.Build.VERSION.SDK_INT < 34) {
+                                                            Modifier.pointerInput(Unit) {
+                                                                var popped = false
+                                                                var totalDrag = 0f
+                                                                detectHorizontalDragGestures(
+                                                                    onDragStart = {
+                                                                        totalDrag = 0f
+                                                                        popped = false
+                                                                    },
+                                                                    onHorizontalDrag = { change, dragAmount ->
+                                                                        if (!popped) {
+                                                                            totalDrag += dragAmount
+                                                                            if (totalDrag > 100f) {
+                                                                                val route = navController.currentDestination?.route
+                                                                                if (route != "home" && route != "library" && route != "search") {
+                                                                                    navController.popBackStack()
+                                                                                    popped = true
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }
+                                                        } else {
+                                                            Modifier
+                                                        }
+                                                    )
                                             ) {
                                                 composable(
-                                                    "home"
+                                                    route = "home",
+                                                    enterTransition = { NavTransitions.HomeEnter },
+                                                    exitTransition = { NavTransitions.HomeExit },
+                                                    popEnterTransition = { NavTransitions.HomePopEnter },
+                                                    popExitTransition = { NavTransitions.HomePopExit }
                                                 ) {
                                                     androidx.compose.runtime.CompositionLocalProvider(
                                                         LocalNavAnimatedVisibilityScope provides this
@@ -335,15 +404,23 @@ class MainActivity : ComponentActivity() {
                                         onNavigateToAlbumDetails = { albumId -> navController.navigate("album_details/$albumId") },
                                         onNavigateToPlaylistDetails = { playlistId -> navController.navigate("playlist_details/$playlistId") },
                                         onNavigateToArtistDetails = { artistId -> navController.navigate("artist_details/$artistId") },
+                                        onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") },
                                         onNavigateToQueue = { navController.navigate("queue") },
                                         onNavigateToEditMetadata = { trackId -> navController.navigate("edit_metadata/$trackId?readOnly=true") },
+                                        onNavigateToReceive = { navController.navigate("receive") },
                                         viewModel = viewModel
                                     )
                                 }
                             }
                         }
-                                                composable("collection_growth") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                                                composable(
+                                                    route = "collection_growth",
+                                                    enterTransition = { NavTransitions.SheetEnter },
+                                                    exitTransition = { NavTransitions.SheetExit },
+                                                    popEnterTransition = { NavTransitions.SheetPopEnter },
+                                                    popExitTransition = { NavTransitions.SheetPopExit }
+                                                ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 CollectionGrowthScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     glowIntensity = glowIntensity,
@@ -351,8 +428,14 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("collection_health") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "collection_health",
+                            enterTransition = { NavTransitions.SheetEnter },
+                            exitTransition = { NavTransitions.SheetExit },
+                            popEnterTransition = { NavTransitions.SheetPopEnter },
+                            popExitTransition = { NavTransitions.SheetPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 CollectionHealthScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToMissingContent = { navController.navigate("missing_content") },
@@ -366,32 +449,56 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("missing_content") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "missing_content",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 MissingContentScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     viewModel = viewModel
                                 )
                             }
                         }
-                        composable("missing_artwork") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "missing_artwork",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 MissingArtworkScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }
-                        composable("missing_lyrics") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "missing_lyrics",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 MissingLyricsScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }
-                        composable("missing_metadata") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "missing_metadata",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 MissingMetadataScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() },
@@ -399,16 +506,28 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("duplicate_songs") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "duplicate_songs",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 DuplicateSongsScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }
-                        composable("corrupted_tags") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "corrupted_tags",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 CorruptedTagsScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() },
@@ -416,8 +535,14 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("low_quality_files") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "low_quality_files",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 LowQualityFilesScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() }
@@ -433,11 +558,15 @@ class MainActivity : ComponentActivity() {
                                     type = androidx.navigation.NavType.BoolType
                                     defaultValue = false 
                                 }
-                            )
+                            ),
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
                         ) { backStackEntry ->
                             val trackId = backStackEntry.arguments?.getString("trackId") ?: return@composable
                             val readOnly = backStackEntry.arguments?.getBoolean("readOnly") ?: false
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 EditMetadataScreen(
                                     trackId = trackId,
                                     viewModel = viewModel,
@@ -446,30 +575,49 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("artist_details/{artistId}") { backStackEntry ->
+                        composable(
+                            route = "artist_details/{artistId}",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) { backStackEntry ->
                             val artistId = backStackEntry.arguments?.getString("artistId") ?: return@composable
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 ArtistDetailsScreen(
                                     artistId = artistId,
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToAlbum = { albumId -> navController.navigate("album_details/$albumId") },
                                     onNavigateToAllTracks = { aId -> navController.navigate("artist_tracks/$aId") },
-                                    onNavigateToAllAlbums = { aId -> navController.navigate("artist_albums/$aId") }
+                                    onNavigateToAllAlbums = { aId -> navController.navigate("artist_albums/$aId") },
+                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") }
                                 )
                             }
                         }
-                        composable("artist_tracks/{artistId}") { backStackEntry ->
+                        composable(
+                            route = "artist_tracks/{artistId}",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) { backStackEntry ->
                             val artistId = backStackEntry.arguments?.getString("artistId") ?: return@composable
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 ArtistTracksScreen(
                                     artistId = artistId,
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
                         }
-                        composable("artist_albums/{artistId}") { backStackEntry ->
+                        composable(
+                            route = "artist_albums/{artistId}",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) { backStackEntry ->
                             val artistId = backStackEntry.arguments?.getString("artistId") ?: return@composable
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 ArtistAlbumsScreen(
                                     artistId = artistId,
                                     onNavigateBack = { navController.popBackStack() },
@@ -477,9 +625,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("album_details/{albumId}") { backStackEntry ->
+                        composable(
+                            route = "album_details/{albumId}",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) { backStackEntry ->
                             val albumId = backStackEntry.arguments?.getString("albumId") ?: return@composable
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 AlbumDetailsScreen(
                                     albumId = albumId,
                                     onNavigateBack = { navController.popBackStack() },
@@ -488,17 +642,30 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("playlist_details/{playlistId}") { backStackEntry ->
+                        composable(
+                            route = "playlist_details/{playlistId}",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) { backStackEntry ->
                             val playlistId = backStackEntry.arguments?.getString("playlistId") ?: return@composable
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 PlaylistDetailsScreen(
                                     playlistId = playlistId,
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") }
                                 )
                             }
                         }
                         // Removed now_playing composable
-                        composable("queue") {
+                        composable(
+                            route = "queue",
+                            enterTransition = { NavTransitions.SheetEnter },
+                            exitTransition = { NavTransitions.SheetExit },
+                            popEnterTransition = { NavTransitions.SheetPopEnter },
+                            popExitTransition = { NavTransitions.SheetPopExit }
+                        ) {
                             QueueScreen(
                                 onNavigateBack = { navController.popBackStack() },
                                 onNavigateToLibrary = { 
@@ -508,7 +675,13 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable("settings") {
+                        composable(
+                            route = "settings",
+                            enterTransition = { NavTransitions.SheetEnter },
+                            exitTransition = { NavTransitions.SheetExit },
+                            popEnterTransition = { NavTransitions.SheetPopEnter },
+                            popExitTransition = { NavTransitions.SheetPopExit }
+                        ) {
                             val context = LocalContext.current
                             val settingsPermissionsList = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 listOf(Manifest.permission.READ_MEDIA_AUDIO)
@@ -519,6 +692,7 @@ class MainActivity : ComponentActivity() {
                             val lastFmApiKey by viewModel.lastFmApiKey.collectAsState()
                             val fanartTvApiKey by viewModel.fanartTvApiKey.collectAsState()
                             val coilDiskCacheLimitMb by viewModel.coilDiskCacheLimitMb.collectAsState()
+                            val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
                             
                             val dynamicBottomPadding by remember(isMiniPlayerVisible, currentlyPlaying) {
                                 derivedStateOf {
@@ -527,7 +701,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 SettingsScreen(
                                     bottomPadding = dynamicBottomPadding,
                                     tintTransparency = tintTransparency,
@@ -535,10 +709,12 @@ class MainActivity : ComponentActivity() {
                                     glowIntensity = glowIntensity,
                                     themeMode = themeMode,
                                     lightThemeForNowPlaying = lightThemeForNowPlaying,
+                                    lyricsDisplayStyle = lyricsDisplayStyle,
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
+                                    onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
                                     coilDiskCacheLimitMb = coilDiskCacheLimitMb,
@@ -555,12 +731,62 @@ class MainActivity : ComponentActivity() {
                                             settingsPermissionsState.launchMultiplePermissionRequest()
                                         }
                                     },
-                                    onTestEac3 = { viewModel.testEac3Playback(context) }
+                                    onTestEac3 = { viewModel.testEac3Playback(context) },
+                                    onImportM3u = { uri -> viewModel.importM3uPlaylist(context, uri) },
+                                    onExportM3u = { uri, playlistId -> viewModel.exportM3uPlaylist(context, uri, playlistId) },
+                                    playlists = viewModel.libraryPlaylists.collectAsState().value
                                 )
                             }
                         }
-                        composable("appearance") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "share?type={type}&id={id}",
+                            arguments = listOf(
+                                androidx.navigation.navArgument("type") { 
+                                    type = androidx.navigation.NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                },
+                                androidx.navigation.navArgument("id") { 
+                                    type = androidx.navigation.NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                }
+                            ),
+                            enterTransition = { NavTransitions.SheetEnter },
+                            exitTransition = { NavTransitions.SheetExit },
+                            popEnterTransition = { NavTransitions.SheetPopEnter },
+                            popExitTransition = { NavTransitions.SheetPopExit }
+                        ) { backStackEntry ->
+                            val payloadType = backStackEntry.arguments?.getString("type")
+                            val payloadId = backStackEntry.arguments?.getString("id")
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                ShareScreen(
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onExternalShareClick = { /* TODO implement external share intent */ }
+                                )
+                            }
+                        }
+                        composable(
+                            route = "receive",
+                            enterTransition = { NavTransitions.SheetEnter },
+                            exitTransition = { NavTransitions.SheetExit },
+                            popEnterTransition = { NavTransitions.SheetPopEnter },
+                            popExitTransition = { NavTransitions.SheetPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                ReceiveScreen(
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable(
+                            route = "appearance",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 AppearanceScreen(
                                     tintTransparency = tintTransparency,
                                     noiseFactor = noiseFactor,
@@ -572,8 +798,14 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("jiggle_physics") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "jiggle_physics",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 JigglePhysicsScreen(
                                     physicsMass = physicsMass,
                                     physicsStiffness = physicsStiffness,
@@ -589,13 +821,25 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("equalizer") {
+                        composable(
+                            route = "equalizer",
+                            enterTransition = { NavTransitions.SheetEnter },
+                            exitTransition = { NavTransitions.SheetExit },
+                            popEnterTransition = { NavTransitions.SheetPopEnter },
+                            popExitTransition = { NavTransitions.SheetPopExit }
+                        ) {
                             EqualizerScreen(
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
-                        composable("media_management") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "media_management",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 MediaManagementScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToExcludedFolders = { navController.navigate("excluded_folders") },
@@ -603,8 +847,14 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("excluded_folders") {
-                            Box(modifier = Modifier.padding(innerPadding)) {
+                        composable(
+                            route = "excluded_folders",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 ExcludedFoldersScreen(
                                     onNavigateBack = { navController.popBackStack() },
                                     viewModel = viewModel
@@ -614,10 +864,71 @@ class MainActivity : ComponentActivity() {
                     } // NavHost
                                         } // Box (applyHazeAndBackdrop)
                                         
-                                        if (isNavBarVisible) {
+                                        // ── Gradient scrim behind bottom chrome ──────────────────────────────
+                                        // Mirrors Rhythm's LocalNavigation approach: the scrim height is animated
+                                        // so it grows/shrinks as the nav bar and miniplayer come and go.
+                                        val miniPlayerVisible = isMiniPlayerVisible && currentlyPlaying != null
+                                        val miniPlayerH = 80.dp
+                                        val navBarH = if (globalNavBarHeight > 0.dp) globalNavBarHeight else 80.dp
+                                        val rawGradientHeight = when {
+                                            isNavBarVisible && miniPlayerVisible -> navBarH + 16.dp + miniPlayerH + 32.dp
+                                            isNavBarVisible -> navBarH + 32.dp
+                                            miniPlayerVisible -> miniPlayerH + 32.dp
+                                            else -> 0.dp
+                                        } + innerPadding.calculateBottomPadding()
+                                        val animGradientHeight by animateDpAsState(
+                                            targetValue = rawGradientHeight,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            ),
+                                            label = "bottomChromeGradientHeight"
+                                        )
+                                        val bottomChromeVisible = isNavBarVisible || miniPlayerVisible
+                                        val gradientAlpha by animateFloatAsState(
+                                            targetValue = if (bottomChromeVisible) 1f else 0f,
+                                            animationSpec = tween(durationMillis = 220),
+                                            label = "bottomChromeGradientAlpha"
+                                        )
+                                        BottomChromeGradient(
+                                            height = animGradientHeight,
+                                            alpha = gradientAlpha,
+                                            modifier = Modifier.align(Alignment.BottomCenter)
+                                        )
+
+                                        // ── Navigation bar (animated show/hide) ──────────────────────────────
+                                        // ENTER: slide up from below + fade with a medium-bouncy spring (satisfying pop).
+                                        // EXIT:  slide down + fade with a no-bounce spring (snappy disappear).
+                                        AnimatedVisibility(
+                                            visible = isNavBarVisible,
+                                            modifier = Modifier.align(Alignment.BottomCenter),
+                                            enter = slideInVertically(
+                                                initialOffsetY = { fullHeight -> fullHeight / 2 },
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessLow
+                                                )
+                                            ) + fadeIn(
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessLow
+                                                )
+                                            ),
+                                            exit = slideOutVertically(
+                                                targetOffsetY = { fullHeight -> fullHeight / 2 },
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessLow
+                                                )
+                                            ) + fadeOut(
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessLow
+                                                )
+                                            )
+                                        ) {
                                             Column(
                                                 modifier = Modifier
-                                                    .align(Alignment.BottomCenter)
                                                     .padding(start = 24.dp, end = 24.dp, bottom = 12.dp + innerPadding.calculateBottomPadding())
                                                     .onSizeChanged { size ->
                                                         val height = with(density) { size.height.toDp() }
@@ -678,6 +989,8 @@ fun MusicHomeScreen(
     onNavigateToCollectionGrowth: () -> Unit = {},
     onNavigateToCollectionHealth: () -> Unit = {},
     onNavigateToPlaylistDetails: (String) -> Unit = {},
+    onNavigateToShare: (String, String) -> Unit = { _, _ -> },
+    onNavigateToReceive: () -> Unit = {},
     modifier: Modifier = Modifier,
     tintTransparency: Float = 0.4f,
     noiseFactor: Float = 0.06f,
@@ -739,6 +1052,8 @@ fun MusicHomeScreen(
         viewModel.setMiniPlayerVisible(true)
     }
 
+    val previousTab = remember { androidx.compose.runtime.mutableIntStateOf(currentTab) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -747,137 +1062,170 @@ fun MusicHomeScreen(
                 bottom = innerPadding.calculateBottomPadding()
             )
     ) {
-        when (currentTab) {
-            0 -> {
-                if (isLibraryLoaded) {
-                    if (libraryTracks.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 24.dp, bottom = bottomPadding)
-                        ) {
-                            Header(modifier = Modifier.padding(horizontal = 24.dp), onSettingsClick = onNavigateToSettings)
-                            
-                            Box(
+        AnimatedContent(
+            targetState = currentTab,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                val goingRight = targetState > initialState
+                val enter = fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(200)
+                ) + slideInHorizontally(
+                    initialOffsetX = { if (goingRight) it else -it },
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                    )
+                )
+                val exit = fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(180)
+                ) + slideOutHorizontally(
+                    targetOffsetX = { if (goingRight) -it else it },
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                    )
+                )
+                enter.togetherWith(exit)
+            },
+            label = "tab_switch"
+        ) { tab ->
+            when (tab) {
+                0 -> {
+                    if (isLibraryLoaded) {
+                        if (libraryTracks.isEmpty()) {
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxSize()
+                                    .padding(top = 24.dp, bottom = bottomPadding)
                             ) {
-                                GlassCard(
-                                    modifier = Modifier.fillMaxWidth()
+                                Header(modifier = Modifier.padding(horizontal = 24.dp), onSettingsClick = onNavigateToSettings, onTitleLongClick = onNavigateToReceive)
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.padding(32.dp).fillMaxWidth()
+                                    GlassCard(
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.LibraryMusic,
-                                            contentDescription = "No music",
-                                            modifier = Modifier.size(64.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            text = "No music found",
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "Scan your device to find songs or grant storage permissions if you haven't yet.",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                        )
-                                        Spacer(modifier = Modifier.height(32.dp))
-                                        if (isScanning) {
-                                            CircularProgressIndicator(
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(12.dp)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.LibraryMusic,
+                                                contentDescription = "No music",
+                                                modifier = Modifier.size(64.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
-                                        } else {
-                                            AppPrimaryButton(
-                                                text = "Scan Storage",
-                                                onClick = {
-                                                    if (!permissionsState.allPermissionsGranted) {
-                                                        permissionsState.launchMultiplePermissionRequest()
-                                                    } else {
-                                                        viewModel.scanMediaStore()
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            Text(
+                                                text = "No music found",
+                                                style = MaterialTheme.typography.headlineMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = "Scan your device to find songs or grant storage permissions if you haven't yet.",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                            )
+                                            Spacer(modifier = Modifier.height(32.dp))
+                                            if (isScanning) {
+                                                CircularProgressIndicator(
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(12.dp)
+                                                )
+                                            } else {
+                                                AppPrimaryButton(
+                                                    text = "Scan Storage",
+                                                    onClick = {
+                                                        if (!permissionsState.allPermissionsGranted) {
+                                                            permissionsState.launchMultiplePermissionRequest()
+                                                        } else {
+                                                            viewModel.scanMediaStore()
+                                                        }
                                                     }
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding),
-                            verticalArrangement = Arrangement.spacedBy(32.dp),
-                            modifier = Modifier.physicsBounceOverscroll()
-                                .fillMaxSize()
-                        ) {
-                            item {
-                                Header(modifier = Modifier.padding(horizontal = 24.dp), onSettingsClick = onNavigateToSettings)
-                            }
-                            // Debug buttons moved to Settings > Developer section
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding),
+                                verticalArrangement = Arrangement.spacedBy(32.dp),
+                                modifier = Modifier.physicsBounceOverscroll()
+                                    .fillMaxSize()
+                            ) {
+                                item {
+                                    Header(modifier = Modifier.padding(horizontal = 24.dp), onSettingsClick = onNavigateToSettings, onTitleLongClick = onNavigateToReceive)
+                                }
+                                // Debug buttons moved to Settings > Developer section
     
-                            item {
-                                HeroSection(
-                                    currentSong = currentSong,
-                                    isPlaying = isMiniPlayerVisible,
-                                    onPlayClick = onSongClick,
-                                    modifier = Modifier.padding(horizontal = 24.dp)
-                                )
-                            }
-                            item {
-                                RecentlyPlayedSection(onSongClick = onSongClick)
-                            }
-                            item {
-                                RandomPicksSection(onSongClick = onSongClick)
-                            }
-                            item {
-                                RecommendedDownloadsSection(onNavigateToCollectionGrowth = onNavigateToCollectionGrowth)
-                            }
-                            item {
-                                CollectionHealthSection(onClick = onNavigateToCollectionHealth)
-                            }
-                            item {
-                                val stats by viewModel.listeningStats.collectAsState()
-                                ListeningStatsSection(stats = stats, onClick = { onTabSelected(3) })
+                                item {
+                                    HeroSection(
+                                        currentSong = currentSong,
+                                        isPlaying = isMiniPlayerVisible,
+                                        onPlayClick = onSongClick,
+                                        modifier = Modifier.padding(horizontal = 24.dp)
+                                    )
+                                }
+                                item {
+                                    RecentlyPlayedSection(onSongClick = onSongClick)
+                                }
+                                item {
+                                    RandomPicksSection(onSongClick = onSongClick)
+                                }
+                                item {
+                                    RecommendedDownloadsSection(onNavigateToCollectionGrowth = onNavigateToCollectionGrowth)
+                                }
+                                item {
+                                    val healthState by viewModel.healthState.collectAsState()
+                                    CollectionHealthSection(
+                                        healthScore = healthState.healthScore,
+                                        onClick = onNavigateToCollectionHealth
+                                    )
+                                }
+                                item {
+                                    val stats by viewModel.listeningStats.collectAsState()
+                                    ListeningStatsSection(stats = stats, onClick = { onTabSelected(3) })
+                                }
                             }
                         }
                     }
-                }
-                }
-                1 -> {
-                    if (selectedGenre != null) {
-                        GenreHubScreenContent(
-                            genreName = selectedGenre!!,
-                            bottomPadding = bottomPadding,
-                            onNavigateBack = { onGenreSelected(null) }
-                        )
-                    } else {
-                        SearchScreenContent(viewModel = viewModel, bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { onGenreSelected(it) })
+                    }
+                    1 -> {
+                        if (selectedGenre != null) {
+                            GenreHubScreenContent(
+                                genreName = selectedGenre!!,
+                                bottomPadding = bottomPadding,
+                                onNavigateBack = { onGenreSelected(null) }
+                            )
+                        } else {
+                            SearchScreenContent(viewModel = viewModel, bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { onGenreSelected(it) })
+                        }
+                    }
+                    2 -> {
+                        LibraryScreenContent(bottomPadding = if (isLibrarySelectionMode) 100.dp else bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onNavigateToShare = onNavigateToShare, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
+                    }
+                    3 -> {
+                        val stats by viewModel.listeningStats.collectAsState()
+                        ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) })
                     }
                 }
-                2 -> {
-                    LibraryScreenContent(bottomPadding = if (isLibrarySelectionMode) 100.dp else bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
-                }
-                3 -> {
-                    val stats by viewModel.listeningStats.collectAsState()
-                    ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) })
-                }
-            }
+        }
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettingsClick: () -> Unit = {}, onBackClick: () -> Unit = {}) {
+fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettingsClick: () -> Unit = {}, onBackClick: () -> Unit = {}, onTitleLongClick: () -> Unit = {}) {
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -888,7 +1236,11 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
             Text(
                 text = title, 
                 style = MaterialTheme.typography.displayLarge, 
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.combinedClickable(
+                    onClick = { /* Do nothing on normal click */ },
+                    onLongClick = onTitleLongClick
+                )
             )
             Spacer(modifier = Modifier.weight(1f))
         } else {
@@ -2467,7 +2819,7 @@ fun PlaylistResultItem(title: String, subtitle: String, imageUrl: String, modifi
 }
 
 @Composable
-fun CollectionHealthSection(modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+fun CollectionHealthSection(healthScore: Int = 100, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier
@@ -2512,7 +2864,7 @@ fun CollectionHealthSection(modifier: Modifier = Modifier, onClick: () -> Unit =
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(64.dp)) {
                         CircularProgressIndicator(
-                            progress = { 0.84f },
+                            progress = { healthScore / 100f },
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.onSurface,
                             trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
@@ -2520,7 +2872,7 @@ fun CollectionHealthSection(modifier: Modifier = Modifier, onClick: () -> Unit =
                             strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
                         Text(
-                            text = "84%",
+                            text = "${healthScore}%",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -2530,12 +2882,12 @@ fun CollectionHealthSection(modifier: Modifier = Modifier, onClick: () -> Unit =
                     
                     Column {
                         Text(
-                            text = "84%",
+                            text = "${healthScore}%",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Your collection is in great\nshape.",
+                            text = if (healthScore == 100) "Your collection is perfect!" else "Your collection is in great\nshape.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp

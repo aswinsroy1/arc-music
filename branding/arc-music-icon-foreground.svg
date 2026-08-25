@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9DB6D9"/>
+      <stop offset="55%" stop-color="#5C86A8"/>
+      <stop offset="100%" stop-color="#8A5468"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Transparent background — this layer is ONLY the mark, kept inside the 66dp safe zone
+       (centered, max extent ~30.6dp from center) so no launcher mask shape clips it -->
+  <g transform="translate(54 54)">
+    <circle
+      r="27"
+      fill="none"
+      stroke="url(#arcGradient)"
+      stroke-width="7.2"
+      stroke-linecap="round"
+      stroke-dasharray="127 170"
+      transform="rotate(-45)"
+    />
+    <circle cx="19.08" cy="-19.08" r="3.4" fill="#F2F2ED"/>
+  </g>
+</svg>

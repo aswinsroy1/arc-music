@@ -96,6 +96,8 @@ import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.animations.LocalJigglePhysicsSettings
 import com.aeswox.arcmusic.ui.components.*
+import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
+import com.aeswox.arcmusic.data.model.SyncedLine
 
 import kotlinx.coroutines.delay
 
@@ -244,6 +246,7 @@ fun NowPlayingScreen(
 
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToShare: (String, String) -> Unit = { _, _ -> },
     onNavigateToEditMetadata: (String) -> Unit = {}
 ) {
 
@@ -1243,15 +1246,7 @@ fun NowPlayingScreen(
 
                                     songToPlay?.let { track ->
 
-                                        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-
-                                            type = "audio/*"
-
-                                            putExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri.parse(track.filePath))
-
-                                        }
-
-                                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Share song"))
+                                        onNavigateToShare("track", track.id)
 
                                     }
 
@@ -1500,26 +1495,105 @@ fun CustomListIcon(color: Color, modifier: Modifier = Modifier) {
         }
 
     }
-
 }
 
+/**
 
+ * FADE style: renders a single lyric line with:
+ *  - Bold weight on every word (active and inactive alike)
+ *  - Inactive lines: opacity-only dimming, ZERO text blur
+ *  - Active line: cumulative word-fill — every word whose [SyncedWord.time] <=
+ *    [currentPositionMsProvider] stays bright and never reverts for the
+ *    duration of that line. Words not yet reached are dim.
+ *  - Inactive lines' opacity animates smoothly with the existing 350ms tween.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun FadeLyricLine(
+    lineIndex: Int,
+    syncedLine: SyncedLine?,
+    plainWords: List<String>,
+    activeLineIndexProvider: () -> Int,
+    currentPositionMsProvider: () -> Long,
+    textColor: Color
+) {
+    val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
+    val distance by remember { derivedStateOf { kotlin.math.abs(lineIndex - activeLineIndexProvider()) } }
+
+    // Opacity-only dimming — no blur anywhere in this branch.
+    val targetAlpha = when {
+        isActive      -> 1f
+        distance == 1 -> 0.45f
+        distance >= 3 -> 0.20f
+        else          -> 0.30f
+    }
+    val lineAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = tween(durationMillis = 350),
+        label = "fadeLyricAlpha"
+    )
+
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = lineAlpha },
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val words = syncedLine?.words
+        if (!words.isNullOrEmpty()) {
+            // Word-timed path: cumulative fill — wordTime <= currentPos means bright.
+            words.forEach { syncedWord ->
+                val isBright by remember {
+                    derivedStateOf {
+                        isActive && syncedWord.time <= currentPositionMsProvider()
+                    }
+                }
+                val wordAlpha by animateFloatAsState(
+                    targetValue = when {
+                        !isActive -> 1f   // inactive line renders at line-level alpha, all words uniform
+                        isBright  -> 1f   // sung — full brightness
+                        else      -> 0.35f // not yet reached — dim
+                    },
+                    animationSpec = tween(durationMillis = 150),
+                    label = "fadeWordAlpha"
+                )
+                Text(
+                    text = syncedWord.word,
+                    color = textColor.copy(alpha = wordAlpha),
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        } else {
+            // No word timing — plain text words, all at full alpha (line controls dimming).
+            plainWords.forEach { word ->
+                Text(
+                    text = word,
+                    color = textColor,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        }
+    }
+}
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-
 @Composable
-
 fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
-
     val viewModel: MusicViewModel = hiltViewModel()
-
     val songToPlay by viewModel.currentlyPlaying.collectAsState()
 
     val imageUrl = songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
     val lyricsData by viewModel.lyricsUiState.collectAsState()
 
-
+    val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
 
     val syncedLines = lyricsData?.synced
 
@@ -1726,14 +1800,27 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                     }
                 }
 
-                LyricLine(
-                    line = line,
-                    words = words,
-                    lineIndex = lineIndex,
-                    activeLineIndexProvider = activeLineIndexProvider,
-                    activeWordIndexProvider = activeWordIndexProvider,
-                    textColor = textColor
-                )
+                if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) {
+                    FadeLyricLine(
+                        lineIndex = lineIndex,
+                        syncedLine = syncedLines?.getOrNull(lineIndex),
+                        plainWords = words,
+                        activeLineIndexProvider = activeLineIndexProvider,
+                        // Lambda reads current value directly from the StateFlow — no extra
+                        // collection needed; recomposition is driven by activeLineIndex changes.
+                        currentPositionMsProvider = { viewModel.currentPlaybackPosition.value },
+                        textColor = textColor
+                    )
+                } else {
+                    LyricLine(
+                        line = line,
+                        words = words,
+                        lineIndex = lineIndex,
+                        activeLineIndexProvider = activeLineIndexProvider,
+                        activeWordIndexProvider = activeWordIndexProvider,
+                        textColor = textColor
+                    )
+                }
             }
         }
     }

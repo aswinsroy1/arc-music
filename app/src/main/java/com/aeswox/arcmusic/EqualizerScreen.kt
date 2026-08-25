@@ -54,7 +54,7 @@ fun EqualizerScreen(
 
     Scaffold(
         modifier = modifier.background(MaterialTheme.colorScheme.background),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Equalizer", fontWeight = FontWeight.SemiBold) },
@@ -250,7 +250,7 @@ fun EqualizerScreen(
                         .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
+                        containerColor = MaterialTheme.colorScheme.background,
                         contentColor = MaterialTheme.colorScheme.onBackground
                     ),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)

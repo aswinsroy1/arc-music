@@ -142,6 +142,7 @@ dependencies {
   implementation("net.jthink:jaudiotagger:3.0.1")
   implementation("io.github.famesjranko:musicmeta-core:0.12.0")
   implementation("io.github.famesjranko:musicmeta-android:0.12.0")
+  implementation("com.google.android.gms:play-services-nearby:19.3.0")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

@@ -1,6 +1,7 @@
 package com.aeswox.arcmusic
 
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
@@ -27,6 +29,11 @@ import dev.chrisbanes.haze.haze
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.lazy.items
+import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
+import com.aeswox.arcmusic.db.entities.Playlist
 
 @Composable
 fun SettingsScreen(
@@ -35,10 +42,12 @@ fun SettingsScreen(
     glowIntensity: Float,
     themeMode: ThemeMode,
     lightThemeForNowPlaying: Boolean,
+    lyricsDisplayStyle: LyricsDisplayStyle,
     lastFmApiKey: String?,
     fanartTvApiKey: String?,
     onThemeModeChange: (ThemeMode) -> Unit,
     onLightThemeForNowPlayingChange: (Boolean) -> Unit,
+    onLyricsDisplayStyleChange: (LyricsDisplayStyle) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
     coilDiskCacheLimitMb: Int,
@@ -50,12 +59,34 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onScanMediaStore: () -> Unit = {},
     onTestEac3: () -> Unit = {},
+    onImportM3u: (android.net.Uri) -> Unit = {},
+    onExportM3u: (android.net.Uri, String) -> Unit = { _, _ -> },
+    playlists: List<Playlist> = emptyList(),
     bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier = Modifier
 ) {
     val hazeState = remember { HazeState() }
     var showApiKeyDialog by remember { mutableStateOf(false) }
     var apiKeyInput by remember { mutableStateOf("") }
+    
+    var showExportPlaylistDialog by remember { mutableStateOf(false) }
+    var playlistToExport by remember { mutableStateOf<String?>(null) }
+    
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            onImportM3u(uri)
+        }
+    }
+    
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("audio/mpegurl")
+    ) { uri ->
+        if (uri != null && playlistToExport != null) {
+            onExportM3u(uri, playlistToExport!!)
+        }
+    }
     
     if (showApiKeyDialog) {
         AlertDialog(
@@ -108,9 +139,39 @@ fun SettingsScreen(
         )
     }
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
+    if (showExportPlaylistDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportPlaylistDialog = false },
+            title = { Text("Select Playlist to Export") },
+            text = {
+                if (playlists.isEmpty()) {
+                    Text("No playlists available")
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                        items(playlists) { playlist ->
+                            TextButton(
+                                onClick = {
+                                    playlistToExport = playlist.id
+                                    exportLauncher.launch("${playlist.name}.m3u")
+                                    showExportPlaylistDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(playlist.name, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showExportPlaylistDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Box(modifier = modifier.fillMaxSize().background(Color.Transparent)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -176,6 +237,32 @@ fun SettingsScreen(
                             },
                             showArrow = false
                         )
+                        SettingsItem(
+                            icon = Icons.Outlined.MusicNote,
+                            text = "Lyrics style",
+                            showArrow = false,
+                            trailingContent = {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    LyricsStyleChip(
+                                        label = "Fade",
+                                        selected = lyricsDisplayStyle == LyricsDisplayStyle.FADE,
+                                        onClick = { onLyricsDisplayStyleChange(LyricsDisplayStyle.FADE) }
+                                    )
+                                    LyricsStyleChip(
+                                        label = "Blur",
+                                        selected = lyricsDisplayStyle == LyricsDisplayStyle.DISTANCE_BLUR,
+                                        onClick = { onLyricsDisplayStyleChange(LyricsDisplayStyle.DISTANCE_BLUR) }
+                                    )
+                                }
+                            }
+                        )
                         SettingsItem(icon = Icons.Outlined.Apps, text = "App icon", enabled = false)
                     }
                 }
@@ -217,6 +304,18 @@ fun SettingsScreen(
                             text = "Media Management",
                             onClick = onNavigateToMediaManagement,
                             showArrow = true
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.Download,
+                            text = "Import M3U Playlist",
+                            onClick = { importLauncher.launch(arrayOf("*/*")) },
+                            showArrow = false
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.Upload,
+                            text = "Export M3U Playlist",
+                            onClick = { showExportPlaylistDialog = true },
+                            showArrow = false
                         )
                     }
                 }
@@ -295,6 +394,55 @@ fun SettingsScreen(
                             onClick = onTestEac3,
                             showArrow = false
                         )
+                    }
+                }
+
+                item {
+                    SettingsGroup(title = "ABOUT") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color.Black)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.mipmap.ic_launcher_background),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Image(
+                                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                                    contentDescription = "Arc Music Logo",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Arc Music",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Version 1.0 (Build 1)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "High-Fidelity Audio Player",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -394,5 +542,44 @@ fun SettingsItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+/**
+ * A small animated chip used in the Lyrics Style row of Settings.
+ * Highlights with the theme's primary colour when selected.
+ */
+@Composable
+private fun LyricsStyleChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+                      else         MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0f),
+        animationSpec = androidx.compose.animation.core.tween(200),
+        label = "chipBg"
+    )
+    val textColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+                      else         MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = androidx.compose.animation.core.tween(200),
+        label = "chipText"
+    )
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bgColor)
+            .jellyClick { onClick() }
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = textColor,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }

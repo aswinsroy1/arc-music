@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import com.aeswox.arcmusic.db.MusicRepository
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
@@ -858,22 +859,165 @@ class MusicViewModel @Inject constructor(
         }
     }
 
+    fun sharePlaylist(context: android.content.Context, playlistName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val tracks = repository.getTracksForPlaylist(playlistName).first()
+                if (tracks.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Playlist is empty", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                val cacheDir = java.io.File(context.cacheDir, "shared_m3u")
+                cacheDir.mkdirs()
+                val m3uFile = java.io.File(cacheDir, "${playlistName}.m3u")
+                java.io.FileOutputStream(m3uFile).use { fos ->
+                    val writer = java.io.OutputStreamWriter(fos)
+                    writer.write("#EXTM3U\n")
+                    tracks.forEach { track ->
+                        val durationSeconds = track.durationMs / 1000
+                        writer.write("#EXTINF:$durationSeconds,${track.artist} - ${track.title}\n")
+                        writer.write("${track.filePath}\n")
+                    }
+                    writer.flush()
+                }
+
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    m3uFile
+                )
+
+                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "audio/mpegurl"
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+                withContext(Dispatchers.Main) {
+                    val chooser = android.content.Intent.createChooser(shareIntent, "Share Playlist")
+                    chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(chooser)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Failed to share playlist: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun updatePlaylist(playlistName: String, newName: String, newDescription: String?, newCoverArtUri: String?, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            val playlist = repository.getPlaylistByName(playlistName) ?: return@launch
+            var finalCoverArtUri = playlist.coverArtUri
+
+            if (newCoverArtUri != null && newCoverArtUri.startsWith("content://")) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        val destinationFile = java.io.File(context.filesDir, "playlist_covers/${playlist.id}.jpg")
+                        destinationFile.parentFile?.mkdirs()
+                        context.contentResolver.openInputStream(android.net.Uri.parse(newCoverArtUri))?.use { input ->
+                            val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+                            if (bitmap != null) {
+                                val maxDimension = 1000
+                                val scaledBitmap = if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
+                                    val scale = Math.min(maxDimension.toFloat() / bitmap.width, maxDimension.toFloat() / bitmap.height)
+                                    val newWidth = (bitmap.width * scale).toInt()
+                                    val newHeight = (bitmap.height * scale).toInt()
+                                    android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+                                } else {
+                                    bitmap
+                                }
+                                java.io.FileOutputStream(destinationFile).use { output ->
+                                    scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, output)
+                                }
+                                if (scaledBitmap != bitmap) {
+                                    scaledBitmap.recycle()
+                                }
+                                bitmap.recycle()
+                            }
+                        }
+                        finalCoverArtUri = "file://${destinationFile.absolutePath}"
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            } else if (newCoverArtUri == null && playlist.coverArtUri != null) {
+                // Delete old image
+                withContext(Dispatchers.IO) {
+                    try {
+                        val uriStr = playlist.coverArtUri
+                        if (uriStr != null && uriStr.startsWith("file://")) {
+                            val uri = java.net.URI(uriStr)
+                            val file = java.io.File(uri)
+                            if (file.exists()) {
+                                file.delete()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                finalCoverArtUri = null
+            }
+
+            val updatedPlaylist = playlist.copy(
+                name = newName,
+                description = newDescription,
+                coverArtUri = finalCoverArtUri
+            )
+            repository.updatePlaylist(updatedPlaylist)
+            
+            withContext(Dispatchers.Main) {
+                onComplete()
+            }
+        }
+    }
+
     fun createPlaylist(name: String, description: String?, coverArtUri: String?, trackIds: List<String>) {
         viewModelScope.launch {
             var finalCoverArtUri = coverArtUri
             if (coverArtUri != null && coverArtUri.startsWith("content://")) {
-                try {
-                    val playlistId = java.util.UUID.randomUUID().toString()
-                    val destinationFile = java.io.File(context.filesDir, "playlist_covers/${playlistId}.jpg")
-                    destinationFile.parentFile?.mkdirs()
-                    context.contentResolver.openInputStream(android.net.Uri.parse(coverArtUri))?.use { input ->
-                        java.io.FileOutputStream(destinationFile).use { output ->
-                            input.copyTo(output)
+                withContext(Dispatchers.IO) {
+                    try {
+                        val playlistId = java.util.UUID.randomUUID().toString()
+                        val destinationFile = java.io.File(context.filesDir, "playlist_covers/${playlistId}.jpg")
+                        destinationFile.parentFile?.mkdirs()
+                        context.contentResolver.openInputStream(android.net.Uri.parse(coverArtUri))?.use { input ->
+                            val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+                            if (bitmap != null) {
+                                val maxDimension = 1000
+                                val scaledBitmap = if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
+                                    val scale = Math.min(maxDimension.toFloat() / bitmap.width, maxDimension.toFloat() / bitmap.height)
+                                    val newWidth = (bitmap.width * scale).toInt()
+                                    val newHeight = (bitmap.height * scale).toInt()
+                                    android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+                                } else {
+                                    bitmap
+                                }
+                                java.io.FileOutputStream(destinationFile).use { output ->
+                                    scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, output)
+                                }
+                                if (scaledBitmap != bitmap) {
+                                    scaledBitmap.recycle()
+                                }
+                                bitmap.recycle()
+                            } else {
+                                // Fallback if decoding fails
+                                context.contentResolver.openInputStream(android.net.Uri.parse(coverArtUri))?.use { fallbackInput ->
+                                    java.io.FileOutputStream(destinationFile).use { output ->
+                                        fallbackInput.copyTo(output)
+                                    }
+                                }
+                            }
                         }
+                        finalCoverArtUri = destinationFile.toURI().toString() // Room will save this string
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
-                    finalCoverArtUri = destinationFile.toURI().toString() // Room will save this string
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
             }
             repository.createPlaylist(name, description, finalCoverArtUri, trackIds)
@@ -1457,6 +1601,13 @@ class MusicViewModel @Inject constructor(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 250
     )
 
+    /** Which lyrics rendering style the user has selected. Defaults to [LyricsDisplayStyle.FADE]. */
+    val lyricsDisplayStyle: StateFlow<LyricsDisplayStyle> = settingsRepository.lyricsDisplayStyle.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        LyricsDisplayStyle.FADE
+    )
+
     val minSongDurationSec = settingsRepository.minSongDurationSec.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 0
     )
@@ -1479,6 +1630,10 @@ class MusicViewModel @Inject constructor(
 
     fun setCoilDiskCacheLimitMb(value: Int) {
         viewModelScope.launch { settingsRepository.setCoilDiskCacheLimitMb(value) }
+    }
+
+    fun setLyricsDisplayStyle(style: LyricsDisplayStyle) {
+        viewModelScope.launch { settingsRepository.setLyricsDisplayStyle(style) }
     }
 
     fun addExcludedFolder(path: String) {
@@ -1844,6 +1999,124 @@ class MusicViewModel @Inject constructor(
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun importM3uPlaylist(context: android.content.Context, uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                if (inputStream == null) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Could not open file", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                val lines = inputStream.bufferedReader().readLines()
+                inputStream.close()
+                
+                val paths = lines.map { it.trim() }
+                    .filter { it.isNotEmpty() && !it.startsWith("#") }
+                
+                if (paths.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "M3U file is empty or invalid", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                val allTracks = repository.getAllTracks().first()
+                val trackIds = mutableListOf<String>()
+                
+                for (path in paths) {
+                    val fileName = java.io.File(path).name
+                    // First try exact match or endswith, falling back to just filename match
+                    val matchedTrack = allTracks.find { it.filePath == path } 
+                        ?: allTracks.find { it.filePath.endsWith(path) }
+                        ?: allTracks.find { java.io.File(it.filePath).name == fileName }
+                        
+                    if (matchedTrack != null) {
+                        trackIds.add(matchedTrack.id)
+                    }
+                }
+                
+                if (trackIds.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "No tracks matched from the M3U file", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                // Get a name for the playlist
+                var playlistName = "Imported Playlist"
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1) {
+                            val name = cursor.getString(nameIndex)
+                            if (name.endsWith(".m3u", ignoreCase = true) || name.endsWith(".m3u8", ignoreCase = true)) {
+                                playlistName = name.substringBeforeLast(".")
+                            } else {
+                                playlistName = name
+                            }
+                        }
+                    }
+                }
+                
+                repository.createPlaylist(playlistName, "Imported from M3U", null, trackIds)
+                
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Imported ${trackIds.size} tracks to '$playlistName'", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error importing M3U: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun exportM3uPlaylist(context: android.content.Context, uri: android.net.Uri, playlistId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val tracks = repository.getTracksForPlaylistById(playlistId).first()
+                if (tracks.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Playlist is empty", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                val outputStream = context.contentResolver.openOutputStream(uri)
+                if (outputStream == null) {
+                    withContext(Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Could not create file", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                val writer = outputStream.bufferedWriter()
+                writer.write("#EXTM3U\n")
+                
+                for (track in tracks) {
+                    val durationSec = track.durationMs / 1000
+                    writer.write("#EXTINF:${durationSec},${track.artist} - ${track.title}\n")
+                    writer.write("${track.filePath}\n")
+                }
+                
+                writer.flush()
+                writer.close()
+                outputStream.close()
+                
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Playlist exported successfully", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "Error exporting M3U: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         }

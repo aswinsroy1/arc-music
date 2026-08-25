@@ -54,6 +54,7 @@ fun ArtistDetailsScreen(
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToAllTracks: (String) -> Unit = {},
     onNavigateToAllAlbums: (String) -> Unit = {},
+    onNavigateToShare: (String, String) -> Unit = { _, _ -> },
     viewModel: MusicViewModel = hiltViewModel()
 ) {
     val artist by viewModel.getArtistById(artistId).collectAsState(initial = null)
@@ -162,7 +163,10 @@ fun ArtistDetailsScreen(
                     ArcDropdownMenuItem(
                         text = "Share",
                         icon = Icons.Outlined.Share,
-                        onClick = { showOptionsSheet = false }
+                        onClick = { 
+                            showOptionsSheet = false
+                            onNavigateToShare("artist", artistId)
+                        }
                     )
                     ArcDropdownMenuItem(
                         text = "Delete",

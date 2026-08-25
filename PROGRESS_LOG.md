@@ -357,3 +357,24 @@ Implement a smooth morphing animation between Play and Pause states in the Now P
 
 
 - Added duplicate-filename detection in ImportMediaUseCase for Nearby Share track reception. payloadCallback was already not present in NearbySharingManager.kt, so no dead code deletion was required.
+
+## Date: 2026-08-25
+
+### Goal
+Implement a new LyricsDisplayStyle preference (FADE vs DISTANCE_BLUR) with cumulative word-fill highlighting without text blur.
+
+### Changed Files
+- **LyricsDisplayStyle.kt**: Created enum for FADE and DISTANCE_BLUR.
+- **SettingsRepository.kt**: Added persistence for lyrics display style.
+- **MusicViewModel.kt**: Added StateFlow and setter for the lyrics style.
+- **SettingsScreen.kt**: Added the picker UI to the APPEARANCE section.
+- **MainActivity.kt**: Passed the new setting down to the SettingsScreen.
+- **NowPlayingScreen.kt**: Implemented the FADE display logic with cumulative word fill and zero text blur, switching based on the setting.
+
+### Key Decisions
+- FADE is the new default for unconfigured users.
+- Word-fill calculation checks wordTime <= currentPos rather than the active word index, giving the cumulative left-to-right highlight requested.
+- Inactive lines in FADE mode rely entirely on opacity dimming, bypassing the expensive blur render passes.
+
+### Build
+- Compiled successfully.

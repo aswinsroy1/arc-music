@@ -2,6 +2,10 @@ package com.aeswox.arcmusic.data.network
 
 import android.util.Log
 import com.aeswox.arcmusic.MissingContentItem
+import com.landofoz.musicmeta.ApiKeyConfig
+import com.landofoz.musicmeta.EnrichmentEngine
+import com.landofoz.musicmeta.EnrichmentType
+import com.landofoz.musicmeta.artistProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
@@ -40,16 +44,29 @@ class ArtworkRepository @Inject constructor(
 
     suspend fun fetchBestArtistImage(artistName: String, trackTitle: String? = null): String? = withContext(Dispatchers.IO) {
         // 1. Try Deezer (by track + artist for precision, mimicking PixelPlayer + Disambiguation)
+        //    Only used when we know the currently-playing track — gives best disambiguation.
         if (trackTitle != null) {
             val deezerTrackImg = deezerRepository.fetchArtistImageByTrack(artistName, trackTitle)
             if (deezerTrackImg != null) return@withContext deezerTrackImg
         }
 
-        // 2. Try Deezer (by artist name directly, highly reliable fallback)
+        // 2. Try musicmeta ARTIST_PHOTO — merges Deezer, Wikidata, Wikipedia, Fanart.tv, Last.fm.
+        //    Keys are read live from SettingsRepository so changes in Settings are picked up immediately.
+        //    Missing keys are passed as null; musicmeta silently skips those providers.
+        val musicmetaImg = fetchArtistImageViaMusicMeta(artistName)
+        if (musicmetaImg != null) return@withContext musicmetaImg
+
+        // --- Safety-net fallbacks (existing steps, unchanged, kept in original order) ---
+
+        // 3. Try MusicBrainz MBID → Fanart.tv / TheAudioDB (precision MBID-based lookup)
+        val mbidImg = fetchArtistImageViaMusicBrainz(artistName)
+        if (mbidImg != null) return@withContext mbidImg
+
+        // 4. Try Deezer (by artist name directly)
         val deezerImg = deezerRepository.fetchArtistImage(artistName)
         if (deezerImg != null) return@withContext deezerImg
 
-        // 3. Try TheAudioDB
+        // 5. Try TheAudioDB (plain name search)
         try {
             val tadbResponse = theAudioDbService.searchArtist(artist = artistName)
             val tadbImg = tadbResponse.artists?.firstOrNull()?.strArtistThumb
@@ -58,14 +75,14 @@ class ArtworkRepository @Inject constructor(
             Log.e("ArtworkRepository", "TheAudioDB error for $artistName", e)
         }
 
-        // 4. Try Last.fm (often returns default star image, but we filter it out)
+        // 6. Try Last.fm (often returns default star image, but we filter it out)
         try {
             val apiKey = settingsRepository.lastFmApiKey.firstOrNull()
             if (!apiKey.isNullOrBlank()) {
                 val lfmResponse = lastFmService.getArtistInfo(artist = artistName, apiKey = apiKey)
                 // Get the largest image ("extralarge" or "mega")
                 val lfmImg = lfmResponse.artist?.image?.lastOrNull { it.text?.isNotBlank() == true }?.text
-                if (!lfmImg.isNullOrBlank() && !lfmImg.contains("2a96cbd8b46e442fc41c2b86b821562f")) { 
+                if (!lfmImg.isNullOrBlank() && !lfmImg.contains("2a96cbd8b46e442fc41c2b86b821562f")) {
                     // Ignore default Last.fm star image
                     return@withContext lfmImg
                 }
@@ -73,8 +90,49 @@ class ArtworkRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("ArtworkRepository", "Last.fm error for $artistName", e)
         }
-        
+
         null
+    }
+
+    /**
+     * Fetches an artist photo using the musicmeta library, which merges results from up to 5 sources:
+     * Deezer, Wikidata, Wikipedia, Fanart.tv (if key set), and Last.fm (if key set).
+     *
+     * Keys are read live from SettingsRepository on every call — the same stored values that the
+     * existing Fanart.tv and Last.fm fallback steps read — so Settings changes are reflected
+     * immediately on the next artwork fetch without any app restart.
+     *
+     * A missing key is passed as null (not empty string). musicmeta's withDefaultProviders()
+     * skips key-requiring providers entirely when no key is supplied, so this is always safe.
+     */
+    private suspend fun fetchArtistImageViaMusicMeta(artistName: String): String? {
+        return try {
+            val lastFmKey = settingsRepository.lastFmApiKey.firstOrNull()?.takeIf { it.isNotBlank() }
+            val fanartKey = settingsRepository.fanartTvApiKey.firstOrNull()?.takeIf { it.isNotBlank() }
+            Log.d("ArtworkRepository", "musicmeta: lastFm=${lastFmKey != null}, fanart=${fanartKey != null} for $artistName")
+            val engine = EnrichmentEngine.Builder()
+                .contact("arcmusic/1.0 (https://github.com/aeswox/arcmusic)")
+                .apiKeys(
+                    ApiKeyConfig(
+                        lastFmKey = lastFmKey,
+                        fanartTvProjectKey = fanartKey
+                        // discogsPersonalToken / listenBrainzToken: no Settings field yet — omitted
+                    )
+                )
+                .withDefaultProviders()
+                .build()
+            val profile = engine.artistProfile(artistName, types = setOf(EnrichmentType.ARTIST_PHOTO))
+            val url = profile.photo?.url?.takeIf { it.isNotBlank() }
+            if (url != null) {
+                Log.i("ArtworkRepository", "musicmeta resolved artist photo for $artistName: $url")
+            } else {
+                Log.d("ArtworkRepository", "musicmeta returned no photo for $artistName")
+            }
+            url
+        } catch (e: Exception) {
+            Log.w("ArtworkRepository", "musicmeta ARTIST_PHOTO failed for $artistName", e)
+            null
+        }
     }
     
     suspend fun searchAllArtistImages(artistName: String): List<String> = withContext(Dispatchers.IO) {

@@ -125,6 +125,7 @@ class MusicRepository(
 
     fun getPlaylist(playlistName: String): Flow<Playlist?> = playlistDao.getPlaylist(playlistName)
     fun getTracksForPlaylist(playlistName: String): Flow<List<Track>> = playlistDao.getTracksForPlaylist(playlistName)
+    fun getTracksForPlaylistById(playlistId: String): Flow<List<Track>> = playlistDao.getTracksForPlaylistById(playlistId)
 
 
     fun getFoldersContainingAudio(): List<String> {
@@ -135,11 +136,12 @@ class MusicRepository(
         minDurationMs: Long = 0L,
         minTracksPerAlbum: Int = 1,
         excludedFolders: List<String> = emptyList(),
+        targetFolder: String? = null,
         onProgress: (ScanPhase, Int, Int) -> Unit = { _, _, _ -> }
     ): ScanResult = withContext(Dispatchers.IO) {
         // PHASE 1: Fetch from MediaStore
         onProgress(ScanPhase.FETCHING_MEDIASTORE, 0, 0)
-        val allScanned = mediaStoreScanner.scanAudioFiles()
+        val allScanned = mediaStoreScanner.scanAudioFiles(targetFolder)
 
         // Apply exclusion and duration filters before anything else
         val scannedTracks = allScanned.filter { scanned ->
@@ -276,7 +278,7 @@ class MusicRepository(
         trackDao.deleteAllTracks()
         albumDao.deleteAllAlbums()
         artistDao.deleteAllArtists()
-        scanMediaStore(minDurationMs, minTracksPerAlbum, excludedFolders, onProgress)
+        scanMediaStore(minDurationMs, minTracksPerAlbum, excludedFolders, null, onProgress)
     }
     
     suspend fun logPlayStart(trackId: String) = withContext(Dispatchers.IO) {
@@ -588,6 +590,21 @@ class MusicRepository(
     fun getPlaylistsContainingTracks(trackIds: List<String>): Flow<List<String>> = playlistDao.getPlaylistsContainingTracks(trackIds)
 
     suspend fun deletePlaylists(playlistTitles: List<String>) = withContext(Dispatchers.IO) {
+        val playlists = playlistDao.getPlaylistsByNames(playlistTitles)
+        playlists.forEach { playlist ->
+            val uriStr = playlist.coverArtUri
+            if (uriStr != null && uriStr.startsWith("file://")) {
+                try {
+                    val uri = java.net.URI(uriStr)
+                    val file = java.io.File(uri)
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
         playlistDao.deletePlaylists(playlistTitles)
     }
 
@@ -610,6 +627,14 @@ class MusicRepository(
             )
         }
         playlistDao.insertPlaylistTracks(playlistTracks)
+    }
+
+    suspend fun getPlaylistByName(playlistName: String): Playlist? = withContext(Dispatchers.IO) {
+        playlistDao.getPlaylistByName(playlistName)
+    }
+
+    suspend fun updatePlaylist(playlist: Playlist) = withContext(Dispatchers.IO) {
+        playlistDao.updatePlaylist(playlist)
     }
 
     suspend fun addTracksToPlaylist(playlistId: String, trackIds: List<String>) = withContext(Dispatchers.IO) {

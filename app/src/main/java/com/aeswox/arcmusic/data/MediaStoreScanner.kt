@@ -11,7 +11,7 @@ import javax.inject.Inject
 class MediaStoreScanner @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    fun scanAudioFiles(): List<ScannedTrack> {
+    fun scanAudioFiles(targetFolder: String? = null): List<ScannedTrack> {
         val tracks = mutableListOf<ScannedTrack>()
         val contentResolver = context.contentResolver
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
@@ -35,13 +35,18 @@ class MediaStoreScanner @Inject constructor(
             MediaStore.Audio.Media.IS_MUSIC
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        var selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selectionArgs = mutableListOf<String>()
+        if (targetFolder != null) {
+            selection += " AND ${MediaStore.Audio.Media.DATA} LIKE ?"
+            selectionArgs.add("$targetFolder%")
+        }
 
         context.contentResolver.query(
             uri,
             projection,
             selection,
-            null,
+            if (selectionArgs.isEmpty()) null else selectionArgs.toTypedArray(),
             null
         )?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -60,6 +65,7 @@ class MediaStoreScanner @Inject constructor(
             val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
             val bitrateColumn = cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE)
 
+            val seenPaths = mutableSetOf<String>()
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn).toString()
                 val title = cursor.getString(titleColumn) ?: "Unknown Title"
@@ -85,6 +91,11 @@ class MediaStoreScanner @Inject constructor(
                 
                 var durationMs = cursor.getLong(durationColumn)
                 val filePath = cursor.getString(dataColumn) ?: ""
+                
+                if (filePath.isBlank() || !java.io.File(filePath).exists() || !seenPaths.add(filePath)) {
+                    continue
+                }
+                
                 val sizeBytes = cursor.getLong(sizeColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn) * 1000L // MediaStore stores in seconds usually, wait, DATE_ADDED is in seconds!
                 val dateModified = cursor.getLong(dateModifiedColumn) * 1000L

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <radialGradient id="glowA" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5C86A8" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#5C86A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8A5468" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#8A5468" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.8"/>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed AMOLED base — no rounding here, the launcher's mask shape handles that -->
+  <rect width="108" height="108" fill="#000000"/>
+
+  <!-- Same ambient glow wash used inside the app itself -->
+  <circle cx="31.6" cy="25.3" r="31.6" fill="url(#glowA)" filter="url(#softBlur)"/>
+  <circle cx="80.1" cy="38.0" r="29.5" fill="url(#glowB)" filter="url(#softBlur)"/>
+</svg>

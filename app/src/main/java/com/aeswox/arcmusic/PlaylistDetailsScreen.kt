@@ -2,6 +2,7 @@ package com.aeswox.arcmusic
 
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -35,12 +36,18 @@ import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 fun PlaylistDetailsScreen(
     playlistId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToShare: (String, String) -> Unit = { _, _ -> },
     viewModel: MusicViewModel = hiltViewModel()
 ) {
     val playlist by viewModel.getPlaylist(playlistId).collectAsState(initial = null)
     val tracks by viewModel.getTracksForPlaylist(playlistId).collectAsState(initial = emptyList())
     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     if (playlist == null) {
         PlaylistDetailsSkeleton(onNavigateBack = onNavigateBack)
@@ -94,12 +101,102 @@ fun PlaylistDetailsScreen(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AppIconButton(
-                            icon = Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            onClick = { },
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        Box {
+                            AppIconButton(
+                                icon = Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                onClick = { showMenu = true },
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier
+                                    .width(220.dp)
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                                    .padding(8.dp),
+                                shape = RoundedCornerShape(32.dp),
+                                shadowElevation = 16.dp
+                            ) {
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            "Edit playlist",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        ) 
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showEditDialog = true
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(24.dp)),
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            "Share playlist",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        ) 
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.IosShare,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToShare("playlist", playlistId)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(24.dp)),
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            "Delete playlist",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        ) 
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DeleteOutline,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteConfirmDialog = true
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(24.dp)),
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.error
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -298,6 +395,198 @@ fun PlaylistDetailsScreen(
                         .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f))
                 )
+            }
+        }
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Playlist") },
+            text = { Text("Are you sure you want to delete '${playlist?.name}'? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmDialog = false
+                    viewModel.deletePlaylists(listOf(playlistId))
+                    onNavigateBack()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    }
+
+    if (showEditDialog && playlist != null) {
+        EditPlaylistDialog(
+            playlist = playlist!!,
+            onDismiss = { showEditDialog = false },
+            onSave = { newName, newDescription, newCoverUri ->
+                viewModel.updatePlaylist(playlistId, newName, newDescription, newCoverUri) {
+                    showEditDialog = false
+                    if (newName != playlistId) {
+                        onNavigateBack()
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun EditPlaylistDialog(
+    playlist: Playlist,
+    onDismiss: () -> Unit,
+    onSave: (name: String, description: String?, coverUri: String?) -> Unit
+) {
+    var name by remember { mutableStateOf(playlist.name) }
+    var description by remember { mutableStateOf(playlist.description ?: "") }
+    var coverUri by remember { mutableStateOf(playlist.coverArtUri) }
+
+    val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            if (uri != null) {
+                coverUri = uri.toString()
+            }
+        }
+    )
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(28.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(24.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Edit Playlist",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(160.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .clickable {
+                            photoPickerLauncher.launch(
+                                androidx.activity.result.PickVisualMediaRequest(
+                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (coverUri != null) {
+                        AsyncImage(
+                            model = coverUri,
+                            contentDescription = "Cover preview",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.5f))
+                                .clickable { coverUri = null },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove cover",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.AddPhotoAlternate,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Choose Image",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description (Optional)") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onSave(name, description.takeIf { it.isNotBlank() }, coverUri) },
+                        enabled = name.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text("Save", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
             }
         }
     }

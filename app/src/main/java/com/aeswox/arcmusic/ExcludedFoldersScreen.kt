@@ -56,7 +56,7 @@ fun ExcludedFoldersScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
                 )
             )
         },

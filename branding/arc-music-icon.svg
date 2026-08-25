@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9DB6D9"/>
+      <stop offset="55%" stop-color="#5C86A8"/>
+      <stop offset="100%" stop-color="#8A5468"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5C86A8" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#5C86A8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8A5468" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#8A5468" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- AMOLED base, rounded-square app icon frame -->
+  <rect width="512" height="512" rx="112" fill="#000000"/>
+
+  <!-- Ambient glow wash, same recipe as in-app ambient background -->
+  <circle cx="150" cy="120" r="150" fill="url(#glowA)" filter="url(#softBlur)"/>
+  <circle cx="380" cy="180" r="140" fill="url(#glowB)" filter="url(#softBlur)"/>
+
+  <!-- Signature mark: an open arc (270°) — reads as "Arc," a dial, and a groove/waveform curve at once -->
+  <g transform="translate(256 256)">
+    <circle
+      r="128"
+      fill="none"
+      stroke="url(#arcGradient)"
+      stroke-width="34"
+      stroke-linecap="round"
+      stroke-dasharray="603 804"
+      transform="rotate(-45)"
+    />
+    <!-- Center dot: the "play" implication, sitting where the arc's motion points -->
+    <circle cx="90" cy="-90" r="16" fill="#F2F2ED"/>
+  </g>
+</svg>

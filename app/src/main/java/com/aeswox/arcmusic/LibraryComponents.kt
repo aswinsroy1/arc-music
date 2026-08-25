@@ -38,13 +38,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.scale
 import coil.compose.AsyncImage
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.draw.scale
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.compose.ui.unit.Dp, onNavigateToAlbumDetails: (String) -> Unit = {}, onNavigateToPlaylistDetails: (String) -> Unit = {}, onNavigateToArtistDetails: (String) -> Unit = {}, onSelectionModeChange: (Boolean) -> Unit = {}, onCreatePlaylistClick: () -> Unit = {}) {
+fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.compose.ui.unit.Dp, onNavigateToAlbumDetails: (String) -> Unit = {}, onNavigateToPlaylistDetails: (String) -> Unit = {}, onNavigateToArtistDetails: (String) -> Unit = {}, onNavigateToShare: (String, String) -> Unit = { _, _ -> }, onSelectionModeChange: (Boolean) -> Unit = {}, onCreatePlaylistClick: () -> Unit = {}) {
     val viewModel: MusicViewModel = hiltViewModel()
     val libraryTracks by viewModel.libraryTracks.collectAsState()
     val libraryAlbums by viewModel.libraryAlbums.collectAsState()
@@ -106,8 +111,22 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
         ) {
             repeat(tabs.size) { iteration ->
                 val isCurrent = pagerState.currentPage == iteration
-                val color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                val size = if (isCurrent) 6.dp else 4.dp
+                
+                val color by animateColorAsState(
+                    targetValue = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "dotColor"
+                )
+                
+                val size by animateDpAsState(
+                    targetValue = if (isCurrent) 6.dp else 4.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    label = "dotSize"
+                )
+                
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 3.dp)
@@ -170,14 +189,14 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
                 onAddToFavorites = { 
                     when (currentTab) {
                         "Albums" -> {
-                            val albumIds = libraryAlbums.filter { selectedItems.contains(it.title) }.map { it.id }
+                            val albumIds = selectedItems.toList()
                             if (albumIds.isNotEmpty()) {
                                 val isAllFavorited = libraryAlbums.filter { albumIds.contains(it.id) }.all { it.isFavorite }
                                 viewModel.toggleAlbumFavorite(albumIds, !isAllFavorited)
                             }
                         }
                         "Artists" -> {
-                            val artistIds = libraryArtists.filter { selectedItems.contains(it.name) }.map { it.id }
+                            val artistIds = selectedItems.toList()
                             if (artistIds.isNotEmpty()) {
                                 val isAllFavorited = libraryArtists.filter { artistIds.contains(it.id) }.all { it.isFavorite }
                                 viewModel.toggleArtistFavorite(artistIds, !isAllFavorited)
@@ -185,17 +204,17 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
                         }
                         "Favorites" -> {
                             // If in favorites tab, pressing "remove" should just turn off favorite for selected things.
-                            val trackIds = favoriteTracks.filter { selectedItems.contains(it.title) }.map { it.id }
+                            val trackIds = favoriteTracks.filter { selectedItems.contains(it.id) }.map { it.id }
                             if (trackIds.isNotEmpty()) viewModel.toggleFavorite(trackIds, false)
                             
-                            val albumIds = favoriteAlbums.filter { selectedItems.contains(it.title) }.map { it.id }
+                            val albumIds = favoriteAlbums.filter { selectedItems.contains(it.id) }.map { it.id }
                             if (albumIds.isNotEmpty()) viewModel.toggleAlbumFavorite(albumIds, false)
                             
-                            val artistIds = favoriteArtists.filter { selectedItems.contains(it.name) }.map { it.id }
+                            val artistIds = favoriteArtists.filter { selectedItems.contains(it.id) }.map { it.id }
                             if (artistIds.isNotEmpty()) viewModel.toggleArtistFavorite(artistIds, false)
                         }
                         else -> {
-                            val trackIds = libraryTracks.filter { selectedItems.contains(it.title) }.map { it.id }
+                            val trackIds = selectedItems.toList()
                             if (trackIds.isNotEmpty()) {
                                 val isAllFavorited = libraryTracks.filter { trackIds.contains(it.id) }.all { it.isFavorite }
                                 viewModel.toggleFavorite(trackIds, !isAllFavorited)
@@ -204,7 +223,14 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
                     }
                     selectedItems.clear() 
                 },
-                onShare = { selectedItems.clear() },
+                onShare = { 
+                    val trackIds = selectedItems.joinToString(",")
+                    if (trackIds.isNotEmpty()) {
+                        onNavigateToShare("tracks", trackIds)
+                    }
+                    selectedItems.clear()
+                    onSelectionModeChange(false)
+                },
                 onDelete = { deleteTrigger++ }
             )
         }
@@ -400,11 +426,35 @@ fun LibraryHeader(
                 )
             }
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            androidx.compose.animation.AnimatedContent(
+                targetState = title,
+                transitionSpec = {
+                    val enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(220)) +
+                        androidx.compose.animation.slideInVertically(
+                            initialOffsetY = { -it / 2 },
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy, 
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        )
+                    val exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(200)) +
+                        androidx.compose.animation.slideOutVertically(
+                            targetOffsetY = { it / 2 },
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy, 
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        )
+                    enter.togetherWith(exit)
+                },
+                label = "LibraryTitleAnimation"
+            ) { targetTitle ->
+                Text(
+                    text = targetTitle,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Box {
@@ -462,25 +512,25 @@ fun LibraryMainSection(
     val viewModel: MusicViewModel = hiltViewModel()
     
     val playlistEntities by viewModel.libraryPlaylists.collectAsState()
-    val playlists = remember(playlistEntities) { playlistEntities.map { LibraryUiItem(it.name, "Playlist", it.coverArtUri) }.toMutableStateList() }
+    val playlists = remember(playlistEntities) { playlistEntities.map { LibraryUiItem(it.id, it.name, "Playlist", it.coverArtUri) }.toMutableStateList() }
     val albumEntities by viewModel.libraryAlbums.collectAsState()
-    val albums = remember(albumEntities) { albumEntities.map { LibraryUiItem(it.title, it.artist ?: "Unknown Artist", it.artworkUri) }.toMutableStateList() }
+    val albums = remember(albumEntities) { albumEntities.map { LibraryUiItem(it.id, it.title, it.artist ?: "Unknown Artist", it.artworkUri) }.toMutableStateList() }
     val artistEntities by viewModel.libraryArtists.collectAsState()
-    val artists = remember(artistEntities) { artistEntities.map { LibraryUiItem(it.name, "Artist", it.photoUri) }.toMutableStateList() }
+    val artists = remember(artistEntities) { artistEntities.map { LibraryUiItem(it.id, it.name, "Artist", it.photoUri) }.toMutableStateList() }
     val trackEntities by viewModel.libraryTracks.collectAsState()
-    val tracks = remember(trackEntities) { trackEntities.map { LibraryUiItem(it.title, it.artist ?: "Unknown", it.artworkUri, it) }.toMutableStateList() }
+    val tracks = remember(trackEntities) { trackEntities.map { LibraryUiItem(it.id, it.title, it.artist ?: "Unknown", it.artworkUri, it) }.toMutableStateList() }
     val favoriteTrackEntities by viewModel.favoriteTracks.collectAsState()
-    val favoriteTracks = remember(favoriteTrackEntities) { favoriteTrackEntities.map { LibraryUiItem(it.title, it.artist ?: "Unknown", it.artworkUri, it) }.toMutableStateList() }
+    val favoriteTracks = remember(favoriteTrackEntities) { favoriteTrackEntities.map { LibraryUiItem(it.id, it.title, it.artist ?: "Unknown", it.artworkUri, it) }.toMutableStateList() }
     val favoriteAlbumEntities by viewModel.favoriteAlbums.collectAsState()
-    val favoriteAlbums = remember(favoriteAlbumEntities) { favoriteAlbumEntities.map { LibraryUiItem(it.title, it.artist ?: "Unknown Artist", it.artworkUri) }.toMutableStateList() }
+    val favoriteAlbums = remember(favoriteAlbumEntities) { favoriteAlbumEntities.map { LibraryUiItem(it.id, it.title, it.artist ?: "Unknown Artist", it.artworkUri) }.toMutableStateList() }
     val favoriteArtistEntities by viewModel.favoriteArtists.collectAsState()
-    val favoriteArtists = remember(favoriteArtistEntities) { favoriteArtistEntities.map { LibraryUiItem(it.name, "Artist", it.photoUri) }.toMutableStateList() }
+    val favoriteArtists = remember(favoriteArtistEntities) { favoriteArtistEntities.map { LibraryUiItem(it.id, it.name, "Artist", it.photoUri) }.toMutableStateList() }
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameText by remember { mutableStateOf("") }
     
     androidx.compose.runtime.LaunchedEffect(renameTrigger) {
         if (renameTrigger > 0 && selectedItems.size == 1) {
-            renameText = selectedItems.first()
+            renameText = playlists.find { it.id == selectedItems.first() }?.title ?: ""
             showRenameDialog = true
         }
     }
@@ -534,12 +584,12 @@ fun LibraryMainSection(
                         }
                         Button(
                             onClick = {
-                                val originalName = selectedItems.firstOrNull()
-                                if (originalName != null && renameText.isNotBlank()) {
-                                    val index = playlists.indexOfFirst { it.title == originalName }
+                                val selectedId = selectedItems.firstOrNull()
+                                if (selectedId != null && renameText.isNotBlank()) {
+                                    val index = playlists.indexOfFirst { it.id == selectedId }
                                     if (index != -1) {
                                         playlists[index] = playlists[index].copy(title = renameText)
-                                        onRenameComplete(renameText)
+                                        onRenameComplete(renameText) // Keeping this as renameText is fine since it's just the new name
                                     }
                                 }
                                 showRenameDialog = false
@@ -601,7 +651,12 @@ fun LibraryMainSection(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    val itemName = selectedItems.firstOrNull() ?: ""
+                    val itemName = when(tabName) {
+                        "Playlists" -> playlists.find { it.id == selectedItems.firstOrNull() }?.title
+                        "Albums" -> albums.find { it.id == selectedItems.firstOrNull() }?.title
+                        "Artists" -> artists.find { it.id == selectedItems.firstOrNull() }?.title
+                        else -> tracks.find { it.id == selectedItems.firstOrNull() }?.title
+                    } ?: ""
                     Text(
                         text = if (selectedItems.size == 1) 
                             "Are you sure you want to delete \"${itemName}\"? This action cannot be undone." 
@@ -627,7 +682,7 @@ fun LibraryMainSection(
                         Button(
                             onClick = {
                                 if (tabName == "Tracks") {
-                                    val tracksToDelete = tracks.filter { selectedItems.contains(it.title) }.mapNotNull { it.track?.id }
+                                    val tracksToDelete = selectedItems.toList()
                                     if (tracksToDelete.isNotEmpty() && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                                         try {
                                             val uris = tracksToDelete.map { android.content.ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, it.toLong()) }
@@ -646,21 +701,24 @@ fun LibraryMainSection(
                                                 viewModel.deleteTracks(tracksToDelete)
                                             } catch(e: Exception) { e.printStackTrace() }
                                         }
-                                        tracks.removeAll { selectedItems.contains(it.title) }
+                                        tracks.removeAll { selectedItems.contains(it.id) }
                                         onClearSelection()
                                         showDeleteDialog = false
                                     }
                                 } else {
                                     val itemsList = selectedItems.toList()
                                     if (tabName == "Playlists") {
-                                        viewModel.deletePlaylists(itemsList)
-                                        playlists.removeAll { itemsList.contains(it.title) }
+                                        val titles = playlists.filter { itemsList.contains(it.id) }.map { it.title }
+                                        viewModel.deletePlaylists(titles)
+                                        playlists.removeAll { itemsList.contains(it.id) }
                                     } else if (tabName == "Albums") {
-                                        viewModel.deleteAlbums(itemsList)
-                                        albums.removeAll { itemsList.contains(it.title) }
+                                        val titles = albums.filter { itemsList.contains(it.id) }.map { it.title }
+                                        viewModel.deleteAlbums(titles)
+                                        albums.removeAll { itemsList.contains(it.id) }
                                     } else if (tabName == "Artists") {
-                                        viewModel.deleteArtists(itemsList)
-                                        artists.removeAll { itemsList.contains(it.title) }
+                                        val titles = artists.filter { itemsList.contains(it.id) }.map { it.title }
+                                        viewModel.deleteArtists(titles)
+                                        artists.removeAll { itemsList.contains(it.id) }
                                     }
                                     onClearSelection()
                                     showDeleteDialog = false
@@ -782,7 +840,7 @@ fun LibraryMainSection(
         androidx.compose.foundation.lazy.LazyColumn(
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 24.dp, bottom = bottomPadding + 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.physicsBounceOverscroll().fillMaxSize()
         ) {
             item {
                 if (isSelectionMode) {
@@ -877,6 +935,7 @@ fun LibraryMainSection(
                 if (playlists.isEmpty()) {
                     item { PlaylistsEmptyState(modifier = Modifier.fillMaxWidth(), onCreatePlaylistClick = onCreatePlaylistClick) }
                 } else {
+                    val fallbackImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuDK2gSPmhFiKqcqPLlCJlIp7lxpTt2scS9SuOmzxmZKXa1UQIjSKITZh8tGxaLLsMWtK_rqugpIF6kWjdqifIFpbIHQ51KFkHHGCwprGn7T1jWwAFiUiOgft22mJtHc311emev_Y9qChhO44k-VwJC7dvX80Zs-JHFurqrp7BRfflgHO2uz-vspGyR9BoWhQUaXuELDgddlmK__JFlAjdrkjKUgyxH0SVRHhhE0iqWq7lQMTieDIl6s1Oh1frE5nhxruwt9dXwi3SRK"
                     if (isGridView) {
                         val chunked = sortedPlaylists.chunked(2)
                         items(chunked.size) { i ->
@@ -885,9 +944,9 @@ fun LibraryMainSection(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                AlbumResultItem(title = rowItems[0].title, year = rowItems[0].subtitle, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].title), onLongClick = { onToggleSelection(rowItems[0].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].title) else onNavigateToPlaylistDetails(rowItems[0].title) })
+                                AlbumResultItem(title = rowItems[0].title, year = rowItems[0].subtitle, imageUrl = rowItems[0].imageUrl ?: fallbackImage, modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].id), onLongClick = { onToggleSelection(rowItems[0].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].id) else onNavigateToPlaylistDetails(rowItems[0].title) })
                                 if (rowItems.size > 1) {
-                                    AlbumResultItem(title = rowItems[1].title, year = rowItems[1].subtitle, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].title), onLongClick = { onToggleSelection(rowItems[1].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].title) else onNavigateToPlaylistDetails(rowItems[1].title) })
+                                    AlbumResultItem(title = rowItems[1].title, year = rowItems[1].subtitle, imageUrl = rowItems[1].imageUrl ?: fallbackImage, modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].id), onLongClick = { onToggleSelection(rowItems[1].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].id) else onNavigateToPlaylistDetails(rowItems[1].title) })
                                 } else {
                                     Spacer(modifier = Modifier.weight(1f))
                                 }
@@ -899,12 +958,11 @@ fun LibraryMainSection(
                             PlaylistResultItem(
                                 title = p.title, 
                                 subtitle = p.subtitle, 
-                                imageUrl = p.imageUrl ?: "", 
-                                modifier = Modifier.fillMaxWidth(),
+                                imageUrl = p.imageUrl ?: fallbackImage, 
                                 isSelectionMode = isSelectionMode,
-                                isSelected = selectedItems.contains(p.title),
-                                onLongClick = { onToggleSelection(p.title) },
-                                onClick = { if (isSelectionMode) onToggleSelection(p.title) else onNavigateToPlaylistDetails(p.title) }
+                                isSelected = selectedItems.contains(p.id),
+                                onLongClick = { onToggleSelection(p.id) },
+                                onClick = { if (isSelectionMode) onToggleSelection(p.id) else onNavigateToPlaylistDetails(p.title) }
                             )
                         }
                     }
@@ -918,9 +976,9 @@ fun LibraryMainSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            AlbumResultItem(title = rowItems[0].title, year = rowItems[0].subtitle, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].title), onLongClick = { onToggleSelection(rowItems[0].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].title) else onNavigateToAlbumDetails(rowItems[0].title) })
+                            AlbumResultItem(title = rowItems[0].title, year = rowItems[0].subtitle, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].id), onLongClick = { onToggleSelection(rowItems[0].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].id) else onNavigateToAlbumDetails(rowItems[0].title) })
                             if (rowItems.size > 1) {
-                                AlbumResultItem(title = rowItems[1].title, year = rowItems[1].subtitle, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].title), onLongClick = { onToggleSelection(rowItems[1].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].title) else onNavigateToAlbumDetails(rowItems[1].title) })
+                                AlbumResultItem(title = rowItems[1].title, year = rowItems[1].subtitle, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].id), onLongClick = { onToggleSelection(rowItems[1].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].id) else onNavigateToAlbumDetails(rowItems[1].title) })
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
@@ -935,9 +993,9 @@ fun LibraryMainSection(
                             imageUrl = a.imageUrl ?: "", 
                             modifier = Modifier.fillMaxWidth(),
                             isSelectionMode = isSelectionMode,
-                            isSelected = selectedItems.contains(a.title),
-                            onLongClick = { onToggleSelection(a.title) },
-                            onClick = { if (isSelectionMode) onToggleSelection(a.title) else onNavigateToAlbumDetails(a.title) }
+                            isSelected = selectedItems.contains(a.id),
+                            onLongClick = { onToggleSelection(a.id) },
+                            onClick = { if (isSelectionMode) onToggleSelection(a.id) else onNavigateToAlbumDetails(a.title) }
                         )
                     }
                 }
@@ -950,9 +1008,9 @@ fun LibraryMainSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            ArtistResultItem(name = rowItems[0].title, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].title), onLongClick = { onToggleSelection(rowItems[0].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].title) else onNavigateToArtistDetails(rowItems[0].title) })
+                            ArtistResultItem(name = rowItems[0].title, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].id), onLongClick = { onToggleSelection(rowItems[0].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].id) else onNavigateToArtistDetails(rowItems[0].title) })
                             if (rowItems.size > 1) {
-                                ArtistResultItem(name = rowItems[1].title, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].title), onLongClick = { onToggleSelection(rowItems[1].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].title) else onNavigateToArtistDetails(rowItems[1].title) })
+                                ArtistResultItem(name = rowItems[1].title, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].id), onLongClick = { onToggleSelection(rowItems[1].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].id) else onNavigateToArtistDetails(rowItems[1].title) })
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
@@ -967,9 +1025,9 @@ fun LibraryMainSection(
                             imageUrl = a.imageUrl ?: "", 
                             modifier = Modifier.fillMaxWidth(),
                             isSelectionMode = isSelectionMode,
-                            isSelected = selectedItems.contains(a.title),
-                            onLongClick = { onToggleSelection(a.title) },
-                            onClick = { if (isSelectionMode) onToggleSelection(a.title) else onNavigateToArtistDetails(a.title) }
+                            isSelected = selectedItems.contains(a.id),
+                            onLongClick = { onToggleSelection(a.id) },
+                            onClick = { if (isSelectionMode) onToggleSelection(a.id) else onNavigateToArtistDetails(a.title) }
                         )
                     }
                 }
@@ -998,9 +1056,9 @@ fun LibraryMainSection(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    ArtistResultItem(name = rowItems[0].title, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].title), onLongClick = { onToggleSelection(rowItems[0].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].title) else onNavigateToArtistDetails(rowItems[0].title) })
+                                    ArtistResultItem(name = rowItems[0].title, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].id), onLongClick = { onToggleSelection(rowItems[0].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].id) else onNavigateToArtistDetails(rowItems[0].title) })
                                     if (rowItems.size > 1) {
-                                        ArtistResultItem(name = rowItems[1].title, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].title), onLongClick = { onToggleSelection(rowItems[1].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].title) else onNavigateToArtistDetails(rowItems[1].title) })
+                                        ArtistResultItem(name = rowItems[1].title, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].id), onLongClick = { onToggleSelection(rowItems[1].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].id) else onNavigateToArtistDetails(rowItems[1].title) })
                                     } else {
                                         Spacer(modifier = Modifier.weight(1f))
                                     }
@@ -1015,9 +1073,9 @@ fun LibraryMainSection(
                                     imageUrl = a.imageUrl ?: "", 
                                     modifier = Modifier.fillMaxWidth(),
                                     isSelectionMode = isSelectionMode,
-                                    isSelected = selectedItems.contains(a.title),
-                                    onLongClick = { onToggleSelection(a.title) },
-                                    onClick = { if (isSelectionMode) onToggleSelection(a.title) else onNavigateToArtistDetails(a.title) }
+                                    isSelected = selectedItems.contains(a.id),
+                                    onLongClick = { onToggleSelection(a.id) },
+                                    onClick = { if (isSelectionMode) onToggleSelection(a.id) else onNavigateToArtistDetails(a.title) }
                                 )
                             }
                         }
@@ -1040,16 +1098,16 @@ fun LibraryMainSection(
                                 duration = t.track?.let { formatDuration(it.durationMs) } ?: "0:00", 
                                 imageUrl = t.imageUrl ?: "",
                                 isSelectionMode = isSelectionMode,
-                                isSelected = selectedItems.contains(t.title),
+                                isSelected = selectedItems.contains(t.id),
                                 isAtmos = t.track?.let { 
                                     val codec = it.codec?.lowercase() ?: ""
                                     val path = it.filePath?.lowercase() ?: ""
                                     codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3")
                                 } ?: false,
-                                onLongClick = { onToggleSelection(t.title) },
+                                onLongClick = { onToggleSelection(t.id) },
                                 onClick = { 
                                     if (isSelectionMode) {
-                                        onToggleSelection(t.title)
+                                        onToggleSelection(t.id)
                                     } else {
                                         t.track?.let { viewModel.setCurrentlyPlaying(it, favoriteTrackEntities) }
                                     }
@@ -1075,9 +1133,9 @@ fun LibraryMainSection(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    AlbumResultItem(title = rowItems[0].title, year = rowItems[0].subtitle, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].title), onLongClick = { onToggleSelection(rowItems[0].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].title) else onNavigateToAlbumDetails(rowItems[0].title) })
+                                    AlbumResultItem(title = rowItems[0].title, year = rowItems[0].subtitle, imageUrl = rowItems[0].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].id), onLongClick = { onToggleSelection(rowItems[0].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].id) else onNavigateToAlbumDetails(rowItems[0].title) })
                                     if (rowItems.size > 1) {
-                                        AlbumResultItem(title = rowItems[1].title, year = rowItems[1].subtitle, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].title), onLongClick = { onToggleSelection(rowItems[1].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].title) else onNavigateToAlbumDetails(rowItems[1].title) })
+                                        AlbumResultItem(title = rowItems[1].title, year = rowItems[1].subtitle, imageUrl = rowItems[1].imageUrl ?: "", modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].id), onLongClick = { onToggleSelection(rowItems[1].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].id) else onNavigateToAlbumDetails(rowItems[1].title) })
                                     } else {
                                         Spacer(modifier = Modifier.weight(1f))
                                     }
@@ -1092,9 +1150,9 @@ fun LibraryMainSection(
                                     imageUrl = a.imageUrl ?: "", 
                                     modifier = Modifier.fillMaxWidth(),
                                     isSelectionMode = isSelectionMode,
-                                    isSelected = selectedItems.contains(a.title),
-                                    onLongClick = { onToggleSelection(a.title) },
-                                    onClick = { if (isSelectionMode) onToggleSelection(a.title) else onNavigateToAlbumDetails(a.title) }
+                                    isSelected = selectedItems.contains(a.id),
+                                    onLongClick = { onToggleSelection(a.id) },
+                                    onClick = { if (isSelectionMode) onToggleSelection(a.id) else onNavigateToAlbumDetails(a.title) }
                                 )
                             }
                         }
@@ -1109,9 +1167,9 @@ fun LibraryMainSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            LibraryGridItem(item = rowItems[0], modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].title), onLongClick = { onToggleSelection(rowItems[0].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].title) else rowItems[0].track?.let { viewModel.setCurrentlyPlaying(it, trackEntities) } })
+                            LibraryGridItem(item = rowItems[0], modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[0].id), onLongClick = { onToggleSelection(rowItems[0].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[0].id) else rowItems[0].track?.let { viewModel.setCurrentlyPlaying(it, trackEntities) } })
                             if (rowItems.size > 1) {
-                                LibraryGridItem(item = rowItems[1], modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].title), onLongClick = { onToggleSelection(rowItems[1].title) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].title) else rowItems[1].track?.let { viewModel.setCurrentlyPlaying(it, trackEntities) } })
+                                LibraryGridItem(item = rowItems[1], modifier = Modifier.weight(1f), isSelectionMode = isSelectionMode, isSelected = selectedItems.contains(rowItems[1].id), onLongClick = { onToggleSelection(rowItems[1].id) }, onClick = { if (isSelectionMode) onToggleSelection(rowItems[1].id) else rowItems[1].track?.let { viewModel.setCurrentlyPlaying(it, trackEntities) } })
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
@@ -1126,16 +1184,16 @@ fun LibraryMainSection(
                             duration = t.track?.let { formatDuration(it.durationMs) } ?: "0:00", 
                             imageUrl = t.imageUrl ?: "",
                             isSelectionMode = isSelectionMode,
-                            isSelected = selectedItems.contains(t.title),
+                            isSelected = selectedItems.contains(t.id),
                             isAtmos = t.track?.let { 
                                 val codec = it.codec?.lowercase() ?: ""
                                 val path = it.filePath?.lowercase() ?: ""
                                 codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3")
                             } ?: false,
-                            onLongClick = { onToggleSelection(t.title) },
+                            onLongClick = { onToggleSelection(t.id) },
                             onClick = { 
                                 if (isSelectionMode) {
-                                    onToggleSelection(t.title)
+                                    onToggleSelection(t.id)
                                 } else {
                                     t.track?.let { viewModel.setCurrentlyPlaying(it, trackEntities) }
                                 }
@@ -1148,7 +1206,7 @@ fun LibraryMainSection(
     }
 }
 
-data class LibraryUiItem(val title: String, val subtitle: String, val imageUrl: String?, val track: com.aeswox.arcmusic.db.entities.Track? = null)
+data class LibraryUiItem(val id: String, val title: String, val subtitle: String, val imageUrl: String?, val track: com.aeswox.arcmusic.db.entities.Track? = null)
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)

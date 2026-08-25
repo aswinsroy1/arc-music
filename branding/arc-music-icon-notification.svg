@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <!--
+    Place at: app/src/main/res/drawable/ic_notification.xml (convert via Vector Asset Studio)
+    Reference from NotificationCompat.Builder.setSmallIcon(R.drawable.ic_notification)
+
+    Android notification icons are rendered as a flat white silhouette on a transparent/tinted
+    background — the system ignores any color info and uses only the alpha channel. So this is
+    pure white (#FFFFFF), no gradient, with a bolder stroke and simplified shape versus the
+    foreground/adaptive layers, since fine detail disappears at 24dp in the status bar.
+  -->
+  <g transform="translate(54 54)">
+    <circle
+      r="30"
+      fill="none"
+      stroke="#FFFFFF"
+      stroke-width="11"
+      stroke-linecap="round"
+      stroke-dasharray="141 189"
+      transform="rotate(-45)"
+    />
+    <circle cx="21.2" cy="-21.2" r="6.5" fill="#FFFFFF"/>
+  </g>
+</svg>

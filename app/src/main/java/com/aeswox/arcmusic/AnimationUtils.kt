@@ -11,6 +11,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -192,4 +194,39 @@ fun AnimatedBadge(
     Box(modifier = modifier.scale(scale.value)) {
         content()
     }
+}
+
+/**
+ * A vertically-fading scrim gradient rendered behind the bottom chrome
+ * (navigation bar + miniplayer). Height and alpha are animated externally —
+ * caller drives them via [animateDpAsState] / [animateFloatAsState] so the
+ * gradient grows/shrinks smoothly as UI elements appear and disappear.
+ *
+ * Color stops match the Rhythm reference implementation:
+ *   transparent → 28% bg → 76% bg → 100% bg
+ */
+@Composable
+fun BottomChromeGradient(
+    height: Dp,
+    alpha: Float = 1f,
+    modifier: Modifier = Modifier
+) {
+    if (height <= 0.dp) return
+    val bgColor = MaterialTheme.colorScheme.background
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .graphicsLayer { this.alpha = alpha }
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Transparent,
+                        0.25f to bgColor.copy(alpha = 0.28f),
+                        0.62f to bgColor.copy(alpha = 0.76f),
+                        1f to bgColor.copy(alpha = 1f)
+                    )
+                )
+            )
+    )
 }

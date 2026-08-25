@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Google Fonts provider certificates.
+    Required by androidx.compose.ui:ui-text-google-fonts to authenticate the
+    "com.google.android.gms.fonts" font provider at runtime.
+    Source: https://developers.google.com/fonts/docs/android
+-->
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+
+    <!-- Development certificate (debug builds / sideloaded GMS) -->
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJANWFuGx90071MA0GCSqGSIb3DQEBBAUAMIGUMQswCQYD
+            VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZyYW5j
+            aXNjbzETMBEGA1UEChMKR29vZ2xlIEluYzEVMBMGA1UECxMMU2V0dXAgVGVhbXMx
+            IjAgBgNVBAMTGXVwbG9hZC1rZXlzLmFuZHJvaWQuY29tMB4XDTE1MDkwOTIzNTQw
+            MloXDTI1MDkwNjIzNTQwMlowgZQxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxp
+            Zm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRMwEQYDVQQKEwpHb29nbGUg
+            SW5jMRUwEwYDVQQLEwxTZXR1cCBUZWFtczEiMCAGA1UEAxMZdXBsb2FkLWtleXMu
+            YW5kcm9pZC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC2RBj8
+            SMTf3XGm97CBLMbifI6x3FRDfSknSiMZBKLdkI6aLpMFSonv7jS7cYlIFzCvpq36
+            dv4yPGahXR2B9gQ1MvO04kd1/lBkm4Y9AkXlaTwlVWZq1WFbJsT2s2XLH08OIhxX
+            tDMuWXqCrJVeqfbYDGWbEqHm4TobRw0bLGhIcLLqjhg7TtFYVEXnW4p5lKFDvnBv
+            Ql4N3BdwQh5Lg2TzLDiEJxHq8Ys5cQNdMJvJvLxkL8n5wG9mMjBl/X7TZ7L5i5J
+            7n5YoTv3W2oFJnIlX6cqTlOi0wVGhd0CUC8IQk0nPy0k7kzGP0D6H6nDiLi5lFHq
+            TAgMBAAGjgdAwgc0wHQYDVR0OBBYEFMd9jMIhF1Uu3C/VgkIqIbdH9MiYMIGdBgNV
+            HSMEgZUwgZKAFMd9jMIhF1Uu3C/VgkIqIbdH9MiYoYGYpIGVMIGSMQswCQYDVQQG
+            EwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNj
+            bzETMBEGA1UEChMKR29vZ2xlIEluYzEVMBMGA1UECxMMU2V0dXAgVGVhbXMxIjAg
+            BgNVBAMTGXVwbG9hZC1rZXlzLmFuZHJvaWQuY29tggkA1YW4bH3TjXUwDAYDVR0T
+            BAUwAwEB/zANBgkqhkiG9w0BAQQFAAOCAQEAtVtV7hMF2dqOdPKnJEnqbCDvR7IJ
+            RFz7rR5TBqYsn6nM6HG3a1aEV3FZBvJ9n9Ue4x0r6k5VDzgQ6kbQSmJbFj4yVhR
+            oW3OuKuUCAm2TWLQ2RN5/8m7E6ZYhJWLCWA=
+        </item>
+    </string-array>
+
+    <!-- Production certificate (official Play Store GMS) -->
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNV
+            BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBW
+            aWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDEQMA4G
+            A1UEAxMHQW5kcm9pZDAeFw0wODA4MjEyMzEzMzRaFw0zNjAxMDcyMzEzMzRaMHQx
+            CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3Vu
+            dGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9p
+            ZDEQMA4GA1UEAxMHQW5kcm9pZDCCASAwDQYJKoZIhvcNAQEBBQADggENADCCAQgC
+            ggEBAKtWLgDYO6IIrgqWbxJOKdoR8qtW0I9Y4sypEwPpt1TTcvZApxsdyxMJAWXF
+            qTAZgjfViURsmQvl+W1MGO9aKW2H59fy3Y0PEBXzxPRxlsrBN7PoJpJFPCIc7wZQ
+            ZKFXAMGhq3KQdnbKLi7Vt7otqn3pOjt5n5JpA3DwAAAVMnFbYUzCnYi/X4OYhFv
+            Pkk1oTh1hgGHT4UAMH8Z4ydHV0IQDEhfMR0x0xKGjFBrMYM1AujIrMi/oZFKLMr
+            6h3W5xJIoihVwSqvE6ViMn8agO+HKbU8UiHlQn5aaVGWlYTA=
+        </item>
+    </string-array>
+</resources>
