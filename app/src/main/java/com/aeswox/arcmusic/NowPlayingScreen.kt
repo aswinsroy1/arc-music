@@ -1514,10 +1514,11 @@ fun FadeLyricLine(
     syncedLine: SyncedLine?,
     plainWords: List<String>,
     activeLineIndexProvider: () -> Int,
-    activeWordIndexProvider: () -> Int,
+    currentPositionProvider: () -> Long,
     textColor: Color
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
+    val currentPosition = if (isActive) currentPositionProvider() else 0L
     val distance by remember { derivedStateOf { kotlin.math.abs(lineIndex - activeLineIndexProvider()) } }
 
     // Opacity-only dimming — no blur anywhere in this branch.
@@ -1551,22 +1552,23 @@ fun FadeLyricLine(
     ) {
         val words = syncedLine?.words
         if (!words.isNullOrEmpty()) {
-            // Word-timed path: cumulative fill — wordIndex <= activeWordIndex means bright.
-            words.forEachIndexed { wordIndex, syncedWord ->
-                val isBright by remember {
-                    derivedStateOf {
-                        isActive && wordIndex <= activeWordIndexProvider()
+            // Word-timed path: continuous interpolated fill driven by exact timestamp.
+            words.forEach { syncedWord ->
+                val wordAlpha = when {
+                    !isActive -> 1f   // Inactive lines handled purely by lineAlpha fade
+                    currentPosition >= syncedWord.time -> 1f // Already sung -> full brightness
+                    else -> {
+                        // Smoothly light up over the 250ms before the word's exact start time
+                        val timeUntilWord = syncedWord.time - currentPosition
+                        if (timeUntilWord < 250) {
+                            val progress = 1f - (timeUntilWord / 250f)
+                            0.4f + (progress * 0.6f)
+                        } else {
+                            0.4f // Unsung words stay dim on the active line
+                        }
                     }
                 }
-                val wordAlpha by animateFloatAsState(
-                    targetValue = when {
-                        !isActive -> 1f   // inactive line renders at line-level alpha, all words uniform
-                        isBright  -> 1f   // sung — full brightness
-                        else      -> 0.35f // not yet reached — dim
-                    },
-                    animationSpec = tween(durationMillis = 150),
-                    label = "fadeWordAlpha"
-                )
+                
                 Text(
                     text = syncedWord.word,
                     color = textColor.copy(alpha = wordAlpha),
@@ -1605,15 +1607,12 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
     val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
 
     val syncedLines = lyricsData?.synced
-
     val plainLines = lyricsData?.plain
 
-
+    val currentPositionState = viewModel.currentPlaybackPosition.collectAsState()
 
     val linesToRender = remember(syncedLines, plainLines) {
-
         syncedLines?.map { it.line } ?: plainLines ?: listOf("No lyrics available")
-
     }
 
     
@@ -1817,7 +1816,7 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                         syncedLine = syncedLines?.getOrNull(lineIndex),
                         plainWords = words,
                         activeLineIndexProvider = activeLineIndexProvider,
-                        activeWordIndexProvider = activeWordIndexProvider,
+                        currentPositionProvider = { currentPositionState.value },
                         textColor = textColor
                     )
                 } else {
