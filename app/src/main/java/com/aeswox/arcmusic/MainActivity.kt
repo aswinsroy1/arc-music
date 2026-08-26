@@ -149,15 +149,15 @@ class MainActivity : ComponentActivity() {
             val viewModel: MusicViewModel = hiltViewModel()
             val themeMode by viewModel.themeMode.collectAsState()
             val isLibraryLoaded by viewModel.isLibraryLoaded.collectAsState()
+            val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
             
-            androidx.compose.runtime.LaunchedEffect(isLibraryLoaded) {
-                if (isLibraryLoaded) {
+            androidx.compose.runtime.LaunchedEffect(isLibraryLoaded, hasCompletedOnboarding) {
+                if (hasCompletedOnboarding != null && (isLibraryLoaded || hasCompletedOnboarding == false)) {
                     // Small delay to ensure the UI is fully drawn before the splash screen hides
                     kotlinx.coroutines.delay(100)
                     keepSplashScreen = false
                 }
             }
-            
             val isDarkTheme = when (themeMode) {
                 ThemeMode.System -> isSystemInDarkTheme()
                 ThemeMode.Light -> false
@@ -203,8 +203,11 @@ class MainActivity : ComponentActivity() {
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
 
                     val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
+                    if (hasCompletedOnboarding == null) {
+                        return@Scaffold
+                    }
                     val startDest = remember(hasCompletedOnboarding) {
-                        if (hasCompletedOnboarding) "home" else "onboarding"
+                        if (hasCompletedOnboarding == true) "home" else "onboarding"
                     }
 
                     val isPlayerExpanded by viewModel.isPlayerExpanded.collectAsState()

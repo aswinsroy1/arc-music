@@ -259,8 +259,9 @@ class MusicViewModel @Inject constructor(
     private val _isFetchingMetadata = MutableStateFlow(false)
     val isFetchingMetadata: StateFlow<Boolean> = _isFetchingMetadata.asStateFlow()
 
-    val hasCompletedOnboarding: StateFlow<Boolean> = settingsRepository.hasCompletedOnboarding
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val hasCompletedOnboarding: StateFlow<Boolean?> = settingsRepository.hasCompletedOnboarding
+        .map { it as Boolean? }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
 
 

@@ -2,11 +2,12 @@ package com.aeswox.arcmusic.ui.screens
 
 import android.Manifest
 import android.os.Build
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.aeswox.arcmusic.MusicViewModel
 import com.aeswox.arcmusic.R
 import com.aeswox.arcmusic.ThemeMode
+import com.aeswox.arcmusic.ui.animations.NavTransitions
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -43,30 +45,24 @@ import kotlinx.coroutines.launch
 @Composable
 fun OnboardingScreen(
     viewModel: MusicViewModel,
+    modifier: Modifier = Modifier,
     onFinish: () -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { 5 })
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-
+    var currentPage by remember { mutableStateOf(0) }
+    
     val themeMode by viewModel.themeMode.collectAsState()
     val availableFolders by viewModel.availableAudioFolders.collectAsState()
-    val excludedFolders by viewModel.excludedFolders.collectAsState()
-    
-    // We maintain a local set of checked folders. When hitting 'scan', we figure out which ones to exclude.
     var checkedFolders by remember { mutableStateOf<Set<String>>(emptySet()) }
     
-    LaunchedEffect(Unit) {
-        viewModel.loadAvailableAudioFolders()
-    }
-    
-    LaunchedEffect(availableFolders, excludedFolders) {
-        // By default, check all available folders that are not explicitly excluded
-        val initialChecked = availableFolders.filter { !excludedFolders.contains(it) }.toSet()
-        checkedFolders = initialChecked
+    // Automatically select all folders initially when they load
+    LaunchedEffect(availableFolders) {
+        if (availableFolders.isNotEmpty() && checkedFolders.isEmpty()) {
+            checkedFolders = availableFolders.toSet()
+        }
     }
 
     Scaffold(
+        modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             // Dot indicator
@@ -78,7 +74,7 @@ fun OnboardingScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 repeat(5) { index ->
-                    val isSelected = pagerState.currentPage == index
+                    val isSelected = currentPage == index
                     val width by animateFloatAsState(targetValue = if (isSelected) 24f else 8f, label = "dotWidth")
                     Box(
                         modifier = Modifier
@@ -95,24 +91,33 @@ fun OnboardingScreen(
             }
         }
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
+        AnimatedContent(
+            targetState = currentPage,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    NavTransitions.DetailEnter togetherWith NavTransitions.DetailPopExit
+                } else {
+                    NavTransitions.DetailPopEnter togetherWith NavTransitions.DetailExit
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            userScrollEnabled = false // Only advance via buttons
+                .padding(innerPadding)
         ) { page ->
             when (page) {
                 0 -> WelcomePage(
-                    onNext = { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
+                    onNext = { currentPage = 1 }
                 )
                 1 -> ThemeSelectionPage(
                     currentTheme = themeMode,
                     onThemeSelect = { viewModel.setThemeMode(it) },
-                    onNext = { coroutineScope.launch { pagerState.animateScrollToPage(2) } }
+                    onNext = { currentPage = 2 }
                 )
                 2 -> PermissionsPage(
-                    onNext = { coroutineScope.launch { pagerState.animateScrollToPage(3) } }
+                    onNext = { 
+                        viewModel.loadAvailableAudioFolders()
+                        currentPage = 3 
+                    }
                 )
                 3 -> FolderSelectionPage(
                     availableFolders = availableFolders,
@@ -135,7 +140,7 @@ fun OnboardingScreen(
                         val newExcluded = availableFolders.filter { !checkedFolders.contains(it) }
                         viewModel.setExcludedFolders(newExcluded)
                         viewModel.scanMediaStore()
-                        coroutineScope.launch { pagerState.animateScrollToPage(4) }
+                        currentPage = 4
                     }
                 )
                 4 -> LibraryScanningPage(
