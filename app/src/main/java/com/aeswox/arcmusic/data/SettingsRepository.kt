@@ -29,6 +29,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             "/WhatsApp/Media/Sent"
         )
     }
+    private val HAS_COMPLETED_ONBOARDING_KEY = booleanPreferencesKey("has_completed_onboarding")
     private val LAST_FM_KEY   = stringPreferencesKey("last_fm_api_key")
     private val FANART_TV_KEY = stringPreferencesKey("fanart_tv_api_key")
     private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
@@ -56,6 +57,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val DAMPING_RATIO_KEY = floatPreferencesKey("physics_damping_ratio")
     private val AMPLITUDE_KEY = floatPreferencesKey("physics_amplitude")
     private val GRAVITY_KEY = floatPreferencesKey("physics_gravity")
+
+    val hasCompletedOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HAS_COMPLETED_ONBOARDING_KEY] ?: false
+    }
 
     val lastFmApiKey: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[LAST_FM_KEY]
@@ -148,6 +153,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     
     val physicsGravity: Flow<Float> = context.dataStore.data.map { preferences ->
         preferences[GRAVITY_KEY] ?: 9.81f
+    }
+
+    suspend fun setHasCompletedOnboarding(completed: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HAS_COMPLETED_ONBOARDING_KEY] = completed
+        }
     }
 
     suspend fun setLastFmApiKey(key: String) {

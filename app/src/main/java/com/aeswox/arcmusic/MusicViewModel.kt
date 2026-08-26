@@ -259,6 +259,11 @@ class MusicViewModel @Inject constructor(
     private val _isFetchingMetadata = MutableStateFlow(false)
     val isFetchingMetadata: StateFlow<Boolean> = _isFetchingMetadata.asStateFlow()
 
+    val hasCompletedOnboarding: StateFlow<Boolean> = settingsRepository.hasCompletedOnboarding
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+
+
     private val _availableAudioFolders = MutableStateFlow<List<String>>(emptyList())
     val availableAudioFolders: StateFlow<List<String>> = _availableAudioFolders.asStateFlow()
 
@@ -267,6 +272,20 @@ class MusicViewModel @Inject constructor(
             _availableAudioFolders.value = repository.getFoldersContainingAudio()
         }
     }
+
+    fun setHasCompletedOnboarding(completed: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHasCompletedOnboarding(completed)
+        }
+    }
+
+    fun setExcludedFolders(folders: List<String>) {
+        viewModelScope.launch {
+            settingsRepository.setExcludedFolders(folders)
+        }
+    }
+
+
 
     
     private val _searchQuery = MutableStateFlow("")

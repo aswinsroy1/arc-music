@@ -202,6 +202,11 @@ class MainActivity : ComponentActivity() {
                     val artworkUrl = if (isMiniPlayerVisible) currentlyPlaying?.artworkUri ?: currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" } else null
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
 
+                    val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
+                    val startDest = remember(hasCompletedOnboarding) {
+                        if (hasCompletedOnboarding) "home" else "onboarding"
+                    }
+
                     val isPlayerExpanded by viewModel.isPlayerExpanded.collectAsState()
                     val isPlaying by viewModel.isPlaying.collectAsState()
                     val hazeState = remember { HazeState() }
@@ -215,7 +220,7 @@ class MainActivity : ComponentActivity() {
                     var selectedGenre by rememberSaveable { mutableStateOf<String?>(null) }
                     
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+                    val currentRoute = navBackStackEntry?.destination?.route ?: startDest
                     val isNavBarVisible = currentRoute == "home" && !isLibrarySelectionMode && currentTab in 0..2 && selectedGenre == null
                     
                     LaunchedEffect(isNavBarVisible) {
@@ -245,7 +250,7 @@ class MainActivity : ComponentActivity() {
 
                     // Animate the mini-player's height contribution to content padding so
                     // lists don't jump when the player appears / disappears.
-                    val rawMiniPlayerHeightContrib = if (isMiniPlayerVisible && currentlyPlaying != null) 80.dp else 0.dp
+                    val rawMiniPlayerHeightContrib = if (isMiniPlayerVisible && currentlyPlaying != null && currentRoute != "onboarding") 80.dp else 0.dp
                     val animMiniPlayerHeightContrib by animateDpAsState(
                         targetValue = rawMiniPlayerHeightContrib,
                         animationSpec = spring(
@@ -265,7 +270,7 @@ class MainActivity : ComponentActivity() {
                                 
                                 com.aeswox.arcmusic.ui.components.PlayerBottomSheet(
                                     isExpanded = isPlayerExpanded,
-                                    isVisible = isMiniPlayerVisible && currentlyPlaying != null,
+                                    isVisible = isMiniPlayerVisible && currentlyPlaying != null && currentRoute != "onboarding",
                                     onExpand = { viewModel.setPlayerExpanded(true) },
                                     onCollapse = { viewModel.setPlayerExpanded(false) },
                                     onMiniPlayerDismiss = { 
@@ -275,7 +280,7 @@ class MainActivity : ComponentActivity() {
                                     miniPlayerHeight = 80.dp,
                                     bottomOffset = bottomOffset,
                                     miniPlayerContent = {
-                                        if (isMiniPlayerVisible && currentlyPlaying != null) {
+                                        if (isMiniPlayerVisible && currentlyPlaying != null && currentRoute != "onboarding") {
                                             MiniPlayer(
                                                 title = currentlyPlaying!!.title,
                                                 artist = currentlyPlaying!!.artist,
@@ -338,7 +343,7 @@ class MainActivity : ComponentActivity() {
                                             AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
                                             NavHost(
                                                 navController = navController,
-                                                startDestination = "home",
+                                                startDestination = startDest,
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .then(
@@ -370,6 +375,16 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     )
                                             ) {
+                                                composable("onboarding") {
+                                                    com.aeswox.arcmusic.ui.screens.OnboardingScreen(
+                                                        viewModel = viewModel,
+                                                        onFinish = {
+                                                            navController.navigate("home") {
+                                                                popUpTo("onboarding") { inclusive = true }
+                                                            }
+                                                        }
+                                                    )
+                                                }
                                                 composable(
                                                     route = "home",
                                                     enterTransition = { NavTransitions.HomeEnter },
