@@ -27,8 +27,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APKs
-        run: ./gradlew assembleRelease
+      - name: Build Debug APKs
+        run: ./gradlew assembleDebug
 
       - name: Create Release and Upload APKs
         uses: softprops/action-gh-release@v2
@@ -37,4 +37,4 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: "Build #${{ github.run_number }}"
           body: "Automated build of the latest changes. Download the APKs below."
-          files: app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/debug/*.apk
