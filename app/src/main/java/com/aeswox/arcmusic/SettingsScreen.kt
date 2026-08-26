@@ -56,12 +56,16 @@ fun SettingsScreen(
     onNavigateToJigglePhysics: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
     onNavigateToMediaManagement: () -> Unit,
+    onNavigateToLyricStyleSettings: () -> Unit,
+    onNavigateToCanvasSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     onScanMediaStore: () -> Unit = {},
     onTestEac3: () -> Unit = {},
     onImportM3u: (android.net.Uri) -> Unit = {},
     onExportM3u: (android.net.Uri, String) -> Unit = { _, _ -> },
     playlists: List<Playlist> = emptyList(),
+    canvasEnabled: Boolean = true,
+    onCanvasEnabledChange: (Boolean) -> Unit = {},
     bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier = Modifier
 ) {
@@ -240,7 +244,8 @@ fun SettingsScreen(
                         SettingsItem(
                             icon = Icons.Outlined.MusicNote,
                             text = "Lyrics style",
-                            showArrow = false,
+                            onClick = onNavigateToLyricStyleSettings,
+                            showArrow = true,
                             trailingContent = {
                                 Row(
                                     modifier = Modifier
@@ -262,6 +267,13 @@ fun SettingsScreen(
                                     )
                                 }
                             }
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.PlayCircle,
+                            text = "Canvas",
+                            trailingText = "Animated artwork",
+                            onClick = onNavigateToCanvasSettings,
+                            showArrow = true
                         )
                         SettingsItem(icon = Icons.Outlined.Apps, text = "App icon", enabled = false)
                     }

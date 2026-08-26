@@ -723,6 +723,8 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToJigglePhysics = { navController.navigate("jiggle_physics") },
                                     onNavigateToEqualizer = { navController.navigate("equalizer") },
                                     onNavigateToMediaManagement = { navController.navigate("media_management") },
+                                    onNavigateToLyricStyleSettings = { navController.navigate("lyrics_style_settings") },
+                                    onNavigateToCanvasSettings = { navController.navigate("canvas_settings") },
                                     onNavigateBack = { navController.popBackStack() },
                                     onScanMediaStore = {
                                         if (settingsPermissionsState.allPermissionsGranted) {
@@ -734,7 +736,9 @@ class MainActivity : ComponentActivity() {
                                     onTestEac3 = { viewModel.testEac3Playback(context) },
                                     onImportM3u = { uri -> viewModel.importM3uPlaylist(context, uri) },
                                     onExportM3u = { uri, playlistId -> viewModel.exportM3uPlaylist(context, uri, playlistId) },
-                                    playlists = viewModel.libraryPlaylists.collectAsState().value
+                                    playlists = viewModel.libraryPlaylists.collectAsState().value,
+                                    canvasEnabled = viewModel.canvasEnabled.collectAsState().value,
+                                    onCanvasEnabledChange = { viewModel.setCanvasEnabled(it) }
                                 )
                             }
                         }
@@ -794,6 +798,41 @@ class MainActivity : ComponentActivity() {
                                     onTintTransparencyChange = { viewModel.setTintTransparency(it) },
                                     onNoiseFactorChange = { viewModel.setNoiseFactor(it) },
                                     onGlowIntensityChange = { viewModel.setGlowIntensity(it) },
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable(
+                            route = "lyrics_style_settings",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
+                                val lyricsShowControls by viewModel.lyricsShowControls.collectAsState()
+                                val lyricsFadeSteepness by viewModel.lyricsFadeSteepness.collectAsState()
+                                val lyricsFadeScaleCeiling by viewModel.lyricsFadeScaleCeiling.collectAsState()
+                                val lyricsFadeDistanceSizing by viewModel.lyricsFadeDistanceSizing.collectAsState()
+                                val lyricsBlurRadius by viewModel.lyricsBlurRadius.collectAsState()
+                                val lyricsBlurDimming by viewModel.lyricsBlurDimming.collectAsState()
+
+                                LyricStyleScreen(
+                                    lyricsDisplayStyle = lyricsDisplayStyle,
+                                    onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
+                                    lyricsShowControls = lyricsShowControls,
+                                    onLyricsShowControlsChange = { viewModel.setLyricsShowControls(it) },
+                                    lyricsFadeSteepness = lyricsFadeSteepness,
+                                    onLyricsFadeSteepnessChange = { viewModel.setLyricsFadeSteepness(it) },
+                                    lyricsFadeScaleCeiling = lyricsFadeScaleCeiling,
+                                    onLyricsFadeScaleCeilingChange = { viewModel.setLyricsFadeScaleCeiling(it) },
+                                    lyricsFadeDistanceSizing = lyricsFadeDistanceSizing,
+                                    onLyricsFadeDistanceSizingChange = { viewModel.setLyricsFadeDistanceSizing(it) },
+                                    lyricsBlurRadius = lyricsBlurRadius,
+                                    onLyricsBlurRadiusChange = { viewModel.setLyricsBlurRadius(it) },
+                                    lyricsBlurDimming = lyricsBlurDimming,
+                                    onLyricsBlurDimmingChange = { viewModel.setLyricsBlurDimming(it) },
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
@@ -861,6 +900,43 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         } // ExcludedFoldersScreen Box
+
+                        composable(
+                            route = "canvas_settings",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            val canvasEnabled by viewModel.canvasEnabled.collectAsState()
+                            val canvasCacheLimitMb by viewModel.canvasCacheLimitMb.collectAsState()
+                            
+                            // We trigger a re-check of cache size when the screen opens
+                            var currentCacheSizeMb by remember { mutableStateOf(0L) }
+                            LaunchedEffect(Unit) {
+                                val bytes = viewModel.canvasCacheManager.getCacheSizeBytes()
+                                currentCacheSizeMb = bytes / (1024 * 1024)
+                            }
+                            
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                CanvasSettingsScreen(
+                                    canvasEnabled = canvasEnabled,
+                                    onCanvasEnabledChange = { viewModel.setCanvasEnabled(it) },
+                                    cacheLimitMb = canvasCacheLimitMb,
+                                    onCacheLimitMbChange = { viewModel.setCanvasCacheLimitMb(it) },
+                                    currentCacheSizeMb = currentCacheSizeMb,
+                                    onClearCache = {
+                                        viewModel.canvasCacheManager.clearCache()
+                                        currentCacheSizeMb = 0L
+                                    },
+                                    onFetchCanvases = {
+                                        val intent = android.content.Intent(this@MainActivity, com.aeswox.arcmusic.service.CanvasFetchService::class.java)
+                                        startService(intent)
+                                    },
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
                     } // NavHost
                                         } // Box (applyHazeAndBackdrop)
                                         

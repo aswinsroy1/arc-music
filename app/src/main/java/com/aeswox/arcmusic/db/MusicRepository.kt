@@ -748,6 +748,7 @@ class MusicRepository(
         trackDao.updateLyricsStatus(trackId, hasLyrics, syncedAt)
     }
     suspend fun updateTrackArtwork(trackId: String, artworkUri: String?) = trackDao.updateTrackArtwork(trackId, artworkUri)
+    suspend fun updateCanvasUrl(trackId: String, canvasUrl: String?, syncedAt: Long) = trackDao.updateCanvasUrl(trackId, canvasUrl, syncedAt)
     suspend fun updateTrackMetadata(trackId: String, title: String?, artist: String?, album: String?, genre: String?, year: Int?, trackNumber: Int?) = withContext(Dispatchers.IO) {
         trackDao.updateTrackMetadata(trackId, title, artist, album, genre, year, trackNumber)
     }

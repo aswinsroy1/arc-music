@@ -353,6 +353,20 @@ fun NowPlayingScreen(
 
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
+    val canvasUrl by viewModel.canvasUrl.collectAsState()
+    val canvasEnabled by viewModel.canvasEnabled.collectAsState()
+    val canvasLoading by viewModel.canvasLoading.collectAsState()
+    val canvasNotFound by viewModel.canvasNotFound.collectAsState()
+    val isPlaying by viewModel.isPlaying.collectAsState()
+
+    // Trigger canvas fetch whenever the playing track changes
+    LaunchedEffect(songToPlay?.id) {
+        val title = songToPlay?.title ?: return@LaunchedEffect
+        val artist = songToPlay?.artist ?: return@LaunchedEffect
+        val album = songToPlay?.album
+        viewModel.fetchCanvasForTrack(title, artist, album)
+    }
+
     @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
     val sharedScope = LocalSharedTransitionScope.current
     @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
@@ -478,59 +492,92 @@ fun NowPlayingScreen(
 
 
 
-            // Sharp image in the top half, fading out at the bottom
+            // Sharp image in the top half, fading out at the bottom — with optional canvas overlay
 
-            AsyncImage(
-
-                model = imageUrl,
-
-                contentDescription = "Album Art",
-
-                contentScale = ContentScale.Crop,
-
+            Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .aspectRatio(0.9f)
                     .clip(RoundedCornerShape(32.dp))
                     .clickable { showLyrics = true }
-                    .graphicsLayer { 
-
+                    .graphicsLayer {
                         alpha = sharpImageAlpha
-
-                        compositingStrategy = CompositingStrategy.Offscreen 
-
+                        compositingStrategy = CompositingStrategy.Offscreen
                     }
-
                     .drawWithContent {
-
                         drawContent()
-
                         drawRect(
-
                             brush = Brush.verticalGradient(
-
                                 0.0f to Color.Transparent,
-
                                 0.15f to Color.Black,
-
                                 0.4f to Color.Black,
-
                                 1.0f to Color.Transparent,
-
                                 startY = 0f,
-
                                 endY = size.height
-
                             ),
-
                             blendMode = BlendMode.DstIn
-
                         )
-
                     }
+            ) {
+                // Static album art — always visible as base/fallback
+                AsyncImage(
 
-            )
+                    model = imageUrl,
+
+                    contentDescription = "Album Art",
+
+                    contentScale = ContentScale.Crop,
+
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Canvas artwork player — crossfades in over the static art
+                val activeCanvasUrl = canvasUrl
+                if (canvasEnabled && activeCanvasUrl != null) {
+                    com.aeswox.arcmusic.ui.components.CanvasArtworkPlayer(
+                        url = activeCanvasUrl,
+                        isPlaying = isPlaying,
+                        cacheDataSourceFactory = viewModel.canvasCacheManager.getCacheDataSourceFactory(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .scale(1.05f)
+                    )
+                }
+
+                // Badges
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = canvasEnabled && (canvasLoading || canvasNotFound),
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (canvasLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else if (canvasNotFound) {
+                            Icon(
+                                imageVector = Icons.Outlined.VideocamOff,
+                                contentDescription = "Canvas Unavailable",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+            }
 
             
 
@@ -1517,7 +1564,10 @@ fun FadeLyricLine(
     activeLineIndexProvider: () -> Int,
     currentPositionProvider: () -> Long,
     listState: androidx.compose.foundation.lazy.LazyListState,
-    textColor: Color
+    textColor: Color,
+    fadeSteepness: Float = 1.2f,
+    fadeScaleCeiling: Float = 0.85f,
+    distanceSizing: Boolean = true
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
@@ -1538,20 +1588,25 @@ fun FadeLyricLine(
                     // Therefore, the item is perfectly at the focal point when its offset is 0.
                     val distance = kotlin.math.abs(itemInfo.offset).toFloat()
                     
-                    val maxDistance = viewportHeight * 0.4f
+                    val maxDistance = viewportHeight * 0.5f
                     val progress = (distance / maxDistance).coerceIn(0f, 1f)
                     
-                    val targetScale = if (progress < 0.2f) {
-                        1f - (progress * 1.25f) // scales down to 0.75
+                    val maxScaleForState = if (isActive) 1f else fadeScaleCeiling
+                    val maxAlphaForState = if (isActive) 1f else 0.7f
+                    
+                    val targetScale = if (distanceSizing) {
+                        when {
+                            progress < 0.1f -> 1f - (progress * 1.5f)
+                            else -> fadeScaleCeiling - ((progress - 0.1f) * 0.4f)
+                        }.coerceIn(0.4f, maxScaleForState)
                     } else {
-                        0.75f
+                        1f
                     }
                     
                     val targetAlpha = when {
-                        progress < 0.1f -> 1f - (progress * 4f)
-                        progress < 0.3f -> 0.6f - ((progress - 0.1f) * 1.5f)
-                        else -> 0.3f - ((progress - 0.3f) * 0.5f)
-                    }.coerceIn(0.0f, 1f)
+                        progress < 0.2f -> 1f - (progress * 1.5f)
+                        else -> 0.7f - ((progress - 0.2f) * fadeSteepness) // Fades to 0 right before the controls
+                    }.coerceIn(0.0f, maxAlphaForState)
                     
                     scaleX = targetScale
                     scaleY = targetScale
@@ -1619,9 +1674,47 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
     val lyricsData by viewModel.lyricsUiState.collectAsState()
 
     val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
+    val lyricsShowControls by viewModel.lyricsShowControls.collectAsState()
+    val lyricsFadeSteepness by viewModel.lyricsFadeSteepness.collectAsState()
+    val lyricsFadeScaleCeiling by viewModel.lyricsFadeScaleCeiling.collectAsState()
+    val lyricsFadeDistanceSizing by viewModel.lyricsFadeDistanceSizing.collectAsState()
+    val lyricsBlurRadius by viewModel.lyricsBlurRadius.collectAsState()
+    val lyricsBlurDimming by viewModel.lyricsBlurDimming.collectAsState()
 
-    val syncedLines = lyricsData?.synced
+    val rawSyncedLines = lyricsData?.synced
     val plainLines = lyricsData?.plain
+
+    val duration by viewModel.duration.collectAsState()
+
+    val syncedLines = remember(rawSyncedLines, duration) {
+        if (rawSyncedLines.isNullOrEmpty()) return@remember null
+        
+        val enriched = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
+        val gapThreshold = 10000 // 10 seconds
+        
+        if (rawSyncedLines.first().time > gapThreshold) {
+            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "● ● ●"))
+        }
+        
+        for (i in 0 until rawSyncedLines.size - 1) {
+            enriched.add(rawSyncedLines[i])
+            val currentLineTime = rawSyncedLines[i].time
+            val nextLineTime = rawSyncedLines[i+1].time
+            if (nextLineTime - currentLineTime > gapThreshold) {
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = currentLineTime + 5000, line = "● ● ●"))
+            }
+        }
+        
+        if (rawSyncedLines.isNotEmpty()) {
+            enriched.add(rawSyncedLines.last())
+            val lastTime = rawSyncedLines.last().time
+            if (duration > 0 && (duration - lastTime) > gapThreshold) {
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = lastTime + 5000, line = "● ● ●"))
+            }
+        }
+        
+        enriched.toList()
+    }
 
     val currentPositionState = viewModel.currentPlaybackPosition.collectAsState()
 
@@ -1643,12 +1736,17 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
 
             if (!syncedLines.isNullOrEmpty()) {
 
-                val newLineIndex = syncedLines.indexOfLast { it.time <= pos }.coerceAtLeast(0)
+                val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
+                val newLineIndex = if (lastMatchIndex >= 0) {
+                    val matchTime = syncedLines[lastMatchIndex].time
+                    // If multiple lines have the exact same timestamp, pick the first one so we don't skip lines
+                    syncedLines.indexOfFirst { it.time == matchTime }
+                } else {
+                    0
+                }
 
                 if (activeLineIndex != newLineIndex) {
-
                     activeLineIndex = newLineIndex
-
                 }
 
                 
@@ -1819,11 +1917,13 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
         )
 
         val listSpacing = if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) 42.dp else 28.dp
+        
+        val bottomPadding = if (lyricsShowControls) 320.dp else 160.dp
 
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 160.dp, horizontal = 28.dp),
+            contentPadding = PaddingValues(top = 160.dp, bottom = bottomPadding, start = 28.dp, end = 28.dp),
             verticalArrangement = Arrangement.spacedBy(listSpacing)
         ) {
             itemsIndexed(linesToRender) { lineIndex, line ->
@@ -1843,7 +1943,10 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                         activeLineIndexProvider = activeLineIndexProvider,
                         currentPositionProvider = { currentPositionState.value },
                         listState = listState,
-                        textColor = textColor
+                        textColor = textColor,
+                        fadeSteepness = lyricsFadeSteepness,
+                        fadeScaleCeiling = lyricsFadeScaleCeiling,
+                        distanceSizing = lyricsFadeDistanceSizing
                     )
                 } else {
                     LyricLine(
@@ -1852,11 +1955,133 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                         lineIndex = lineIndex,
                         activeLineIndexProvider = activeLineIndexProvider,
                         activeWordIndexProvider = activeWordIndexProvider,
-                        textColor = textColor
+                        textColor = textColor,
+                        blurRadiusMax = lyricsBlurRadius,
+                        blurDimming = lyricsBlurDimming
                     )
                 }
             }
         }
+        
+        // Persistent bottom controls for lyrics screen
+        androidx.compose.animation.AnimatedVisibility(
+            visible = lyricsShowControls,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.6f),
+                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.95f),
+                            (if (isDarkTheme) Color.Black else accentColor)
+                        )
+                    )
+                )
+                .padding(top = 64.dp, bottom = 32.dp, start = 24.dp, end = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Title and Actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = songToPlay?.title ?: "Unknown",
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 28.sp
+                            ),
+                            color = textColor,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = songToPlay?.artist ?: "Unknown",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = textColor.copy(alpha = 0.7f),
+                            maxLines = 1
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(textColor.copy(alpha = 0.15f))
+                                .clickable {
+                                    songToPlay?.let { track ->
+                                        viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (songToPlay?.isFavorite == true) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (songToPlay?.isFavorite == true) Color.White else textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                ScrubberAndTimer(viewModel = viewModel, textColor = textColor, textAlpha = 0.7f, songToPlay = songToPlay, showBadges = false)
+                
+                Spacer(modifier = Modifier.height(48.dp))
+                
+                // Controls
+                val isPlaying by viewModel.isPlaying.collectAsState()
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { viewModel.skipToPrevious() }, modifier = Modifier.size(64.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.FastRewind, 
+                            contentDescription = "Previous",
+                            tint = textColor,
+                            modifier = Modifier.size(52.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clickable { viewModel.togglePlayPause() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
+                            isPlaying = isPlaying,
+                            tint = textColor,
+                            modifier = Modifier.size(50.dp)
+                        )
+                    }
+                    IconButton(onClick = { viewModel.skipToNext() }, modifier = Modifier.size(64.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.FastForward, 
+                            contentDescription = "Next",
+                            tint = textColor,
+                            modifier = Modifier.size(52.dp)
+                        )
+                    }
+                }
+            }
+        }
+        } // End of AnimatedVisibility
     }
 }
 @Composable
@@ -1939,7 +2164,9 @@ fun LyricLine(
     lineIndex: Int,
     activeLineIndexProvider: () -> Int,
     activeWordIndexProvider: () -> Int,
-    textColor: Color
+    textColor: Color,
+    blurRadiusMax: Float = 10f,
+    blurDimming: Float = 0.28f
 ) {
     val distance by remember {
         derivedStateOf {
@@ -1953,8 +2180,8 @@ fun LyricLine(
     val targetAlpha = when {
         isActive -> 1f
         isNear   -> 0.55f
-        isFar    -> 0.12f
-        else     -> 0.28f
+        isFar    -> (blurDimming * 0.42f)
+        else     -> blurDimming
     }
     val targetPadding = when {
         isActive -> 28.dp
@@ -1978,7 +2205,7 @@ fun LyricLine(
 
     // Blur non-active lines; active line is never blurred.
     val targetBlur = if (distance > 0) {
-        (distance * 2.5f).coerceAtMost(10f).dp
+        (distance * (blurRadiusMax * 0.25f)).coerceAtMost(blurRadiusMax).dp
     } else 0.dp
     val blurRadius by animateDpAsState(
         targetValue = targetBlur,
@@ -2026,7 +2253,8 @@ fun ScrubberAndTimer(
     viewModel: MusicViewModel,
     textColor: Color,
     textAlpha: Float,
-    songToPlay: Track?
+    songToPlay: Track?,
+    showBadges: Boolean = true
 ) {
     val currentPosition by viewModel.currentPosition.collectAsState()
     val duration by viewModel.duration.collectAsState()
@@ -2093,30 +2321,32 @@ fun ScrubberAndTimer(
             color = textColor.copy(alpha = textAlpha)
         )
         // Format Badges
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val codec = songToPlay?.codec?.lowercase() ?: ""
-            val path = songToPlay?.filePath?.lowercase() ?: ""
-            val isAtmos = codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3") || (path.endsWith(".m4a") && codec.contains("ec-3"))
-            
-            if (isAtmos) {
-                androidx.compose.foundation.Image(
-                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
-                    contentDescription = "Dolby Atmos",
-                    modifier = Modifier.height(14.dp),
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(textColor)
-                )
-            } else {
-                val isLosslessCodec = codec.contains("flac") || codec.contains("alac") || codec.contains("ape") || codec.contains("dsd") || path.endsWith(".flac") || path.endsWith(".wav") || codec.contains("wav")
-                if (isLosslessCodec) {
-                    val bitDepth = songToPlay?.bitDepth ?: 16
-                    val sampleRateKhz = (songToPlay?.sampleRate ?: 0) / 1000f
-                    if (bitDepth >= 24 || sampleRateKhz >= 48f) {
-                        HiResLogo(color = textColor)
-                    } else if (bitDepth >= 16) {
-                        LosslessLogo(color = textColor)
+        if (showBadges) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val codec = songToPlay?.codec?.lowercase() ?: ""
+                val path = songToPlay?.filePath?.lowercase() ?: ""
+                val isAtmos = codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3") || (path.endsWith(".m4a") && codec.contains("ec-3"))
+                
+                if (isAtmos) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
+                        contentDescription = "Dolby Atmos",
+                        modifier = Modifier.height(14.dp),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(textColor)
+                    )
+                } else {
+                    val isLosslessCodec = codec.contains("flac") || codec.contains("alac") || codec.contains("ape") || codec.contains("dsd") || path.endsWith(".flac") || path.endsWith(".wav") || codec.contains("wav")
+                    if (isLosslessCodec) {
+                        val bitDepth = songToPlay?.bitDepth ?: 16
+                        val sampleRateKhz = (songToPlay?.sampleRate ?: 0) / 1000f
+                        if (bitDepth >= 24 || sampleRateKhz >= 48f) {
+                            HiResLogo(color = textColor)
+                        } else if (bitDepth >= 16) {
+                            LosslessLogo(color = textColor)
+                        }
                     }
                 }
             }

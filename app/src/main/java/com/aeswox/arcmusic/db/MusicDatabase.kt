@@ -27,7 +27,7 @@ import com.aeswox.arcmusic.db.daos.*
         CachedNewSong::class,
         CachedTrending::class
     ], 
-    version = 20, 
+    version = 21, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -45,7 +45,15 @@ abstract class MusicDatabase : RoomDatabase() {
     abstract fun trendingDao(): TrendingDao
 
     companion object {
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tracks ADD COLUMN canvasUrl TEXT")
+                db.execSQL("ALTER TABLE tracks ADD COLUMN canvasSyncedAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
+
         private var INSTANCE: MusicDatabase? = null
 
         val MIGRATION_4_5 = object : Migration(4, 5) {
@@ -215,7 +223,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                     MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                     MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                    MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20
+                    MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21
                 )
                 .fallbackToDestructiveMigration()
                 .build()

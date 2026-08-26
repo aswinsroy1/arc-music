@@ -81,6 +81,9 @@ interface TrackDao {
     @Query("UPDATE tracks SET artworkUri = :artworkUri WHERE id = :trackId")
     suspend fun updateTrackArtwork(trackId: String, artworkUri: String?)
 
+    @Query("UPDATE tracks SET canvasUrl = :canvasUrl, canvasSyncedAt = :syncedAt WHERE id = :trackId")
+    suspend fun updateCanvasUrl(trackId: String, canvasUrl: String?, syncedAt: Long)
+
     @Query("UPDATE tracks SET title = :title, artist = :artist, album = :album, genre = :genre, year = :year, trackNumber = :trackNumber WHERE id = :trackId")
     suspend fun updateTrackMetadata(trackId: String, title: String?, artist: String?, album: String?, genre: String?, year: Int?, trackNumber: Int?)
 

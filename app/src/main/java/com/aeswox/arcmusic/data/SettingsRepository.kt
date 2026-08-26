@@ -11,6 +11,7 @@ import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,6 +42,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
     private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
     private val LYRICS_DISPLAY_STYLE_KEY = stringPreferencesKey("lyrics_display_style")
+    private val LYRICS_SHOW_CONTROLS_KEY = booleanPreferencesKey("lyrics_show_controls")
+    private val LYRICS_FADE_STEEPNESS_KEY = floatPreferencesKey("lyrics_fade_steepness")
+    private val LYRICS_FADE_SCALE_CEILING_KEY = floatPreferencesKey("lyrics_fade_scale_ceiling")
+    private val LYRICS_FADE_DISTANCE_SIZING_KEY = booleanPreferencesKey("lyrics_fade_distance_sizing")
+    private val LYRICS_BLUR_RADIUS_KEY = floatPreferencesKey("lyrics_blur_radius")
+    private val LYRICS_BLUR_DIMMING_KEY = floatPreferencesKey("lyrics_blur_dimming")
+    private val CANVAS_ENABLED_KEY = booleanPreferencesKey("canvas_enabled")
+    private val CANVAS_CACHE_LIMIT_MB_KEY = intPreferencesKey("canvas_cache_limit_mb")
 
     private val MASS_KEY = floatPreferencesKey("physics_mass")
     private val STIFFNESS_KEY = floatPreferencesKey("physics_stiffness")
@@ -75,6 +84,38 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             "distance_blur" -> LyricsDisplayStyle.DISTANCE_BLUR
             else            -> LyricsDisplayStyle.FADE
         }
+    }
+
+    val lyricsShowControls: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[LYRICS_SHOW_CONTROLS_KEY] ?: true
+    }
+    
+    val lyricsFadeSteepness: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[LYRICS_FADE_STEEPNESS_KEY] ?: 1.2f
+    }
+    
+    val lyricsFadeScaleCeiling: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[LYRICS_FADE_SCALE_CEILING_KEY] ?: 0.85f
+    }
+    
+    val lyricsFadeDistanceSizing: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[LYRICS_FADE_DISTANCE_SIZING_KEY] ?: true
+    }
+    
+    val lyricsBlurRadius: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[LYRICS_BLUR_RADIUS_KEY] ?: 10f
+    }
+
+    val lyricsBlurDimming: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[LYRICS_BLUR_DIMMING_KEY] ?: 0.28f
+    }
+
+    val canvasEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[CANVAS_ENABLED_KEY] ?: true
+    }
+
+    val canvasCacheLimitMb: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[CANVAS_CACHE_LIMIT_MB_KEY] ?: 250
     }
 
     val tintTransparency: Flow<Float> = context.dataStore.data.map { preferences ->
@@ -218,6 +259,42 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 LyricsDisplayStyle.FADE          -> "fade"
                 LyricsDisplayStyle.DISTANCE_BLUR -> "distance_blur"
             }
+        }
+    }
+
+    suspend fun setLyricsShowControls(show: Boolean) {
+        context.dataStore.edit { preferences -> preferences[LYRICS_SHOW_CONTROLS_KEY] = show }
+    }
+
+    suspend fun setLyricsFadeSteepness(steepness: Float) {
+        context.dataStore.edit { preferences -> preferences[LYRICS_FADE_STEEPNESS_KEY] = steepness }
+    }
+
+    suspend fun setLyricsFadeScaleCeiling(ceiling: Float) {
+        context.dataStore.edit { preferences -> preferences[LYRICS_FADE_SCALE_CEILING_KEY] = ceiling }
+    }
+
+    suspend fun setLyricsFadeDistanceSizing(enabled: Boolean) {
+        context.dataStore.edit { preferences -> preferences[LYRICS_FADE_DISTANCE_SIZING_KEY] = enabled }
+    }
+
+    suspend fun setLyricsBlurRadius(radius: Float) {
+        context.dataStore.edit { preferences -> preferences[LYRICS_BLUR_RADIUS_KEY] = radius }
+    }
+
+    suspend fun setLyricsBlurDimming(dimming: Float) {
+        context.dataStore.edit { preferences -> preferences[LYRICS_BLUR_DIMMING_KEY] = dimming }
+    }
+
+    suspend fun setCanvasEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[CANVAS_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun setCanvasCacheLimitMb(limit: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[CANVAS_CACHE_LIMIT_MB_KEY] = limit
         }
     }
 }

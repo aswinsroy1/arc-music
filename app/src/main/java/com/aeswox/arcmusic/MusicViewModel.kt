@@ -198,7 +198,9 @@ class MusicViewModel @Inject constructor(
     private val itunesService: com.aeswox.arcmusic.data.network.ItunesService,
     private val odesliService: com.aeswox.arcmusic.data.network.OdesliService,
     private val musicBrainzService: com.aeswox.arcmusic.data.network.MusicBrainzService,
-    private val mediaScannerManager: com.aeswox.arcmusic.db.MediaScannerManager
+    private val mediaScannerManager: com.aeswox.arcmusic.db.MediaScannerManager,
+    private val canvasProvider: com.aeswox.arcmusic.network.AppleMusicCanvasProvider,
+    val canvasCacheManager: com.aeswox.arcmusic.network.CanvasCacheManager
 ) : ViewModel() {
 
     val randomPicks: StateFlow<List<Track>>
@@ -1608,6 +1610,25 @@ class MusicViewModel @Inject constructor(
         LyricsDisplayStyle.FADE
     )
 
+    val lyricsShowControls: StateFlow<Boolean> = settingsRepository.lyricsShowControls.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+    val lyricsFadeSteepness: StateFlow<Float> = settingsRepository.lyricsFadeSteepness.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 1.2f
+    )
+    val lyricsFadeScaleCeiling: StateFlow<Float> = settingsRepository.lyricsFadeScaleCeiling.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 0.85f
+    )
+    val lyricsFadeDistanceSizing: StateFlow<Boolean> = settingsRepository.lyricsFadeDistanceSizing.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+    val lyricsBlurRadius: StateFlow<Float> = settingsRepository.lyricsBlurRadius.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 10f
+    )
+    val lyricsBlurDimming: StateFlow<Float> = settingsRepository.lyricsBlurDimming.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 0.28f
+    )
+
     val minSongDurationSec = settingsRepository.minSongDurationSec.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 0
     )
@@ -1634,6 +1655,89 @@ class MusicViewModel @Inject constructor(
 
     fun setLyricsDisplayStyle(style: LyricsDisplayStyle) {
         viewModelScope.launch { settingsRepository.setLyricsDisplayStyle(style) }
+    }
+
+    fun setLyricsShowControls(show: Boolean) {
+        viewModelScope.launch { settingsRepository.setLyricsShowControls(show) }
+    }
+
+    fun setLyricsFadeSteepness(steepness: Float) {
+        viewModelScope.launch { settingsRepository.setLyricsFadeSteepness(steepness) }
+    }
+
+    fun setLyricsFadeScaleCeiling(ceiling: Float) {
+        viewModelScope.launch { settingsRepository.setLyricsFadeScaleCeiling(ceiling) }
+    }
+
+    fun setLyricsFadeDistanceSizing(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setLyricsFadeDistanceSizing(enabled) }
+    }
+
+    fun setLyricsBlurRadius(radius: Float) {
+        viewModelScope.launch { settingsRepository.setLyricsBlurRadius(radius) }
+    }
+
+    fun setLyricsBlurDimming(dimming: Float) {
+        viewModelScope.launch { settingsRepository.setLyricsBlurDimming(dimming) }
+    }
+
+    // ── Canvas ────────────────────────────────────────────────────────────────
+
+    val canvasEnabled: StateFlow<Boolean> = settingsRepository.canvasEnabled.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+
+    val canvasCacheLimitMb: StateFlow<Int> = settingsRepository.canvasCacheLimitMb.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 250
+    )
+
+    private val _canvasUrl = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val canvasUrl: StateFlow<String?> = _canvasUrl
+
+    private val _canvasLoading = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val canvasLoading: StateFlow<Boolean> = _canvasLoading
+
+    private val _canvasNotFound = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val canvasNotFound: StateFlow<Boolean> = _canvasNotFound
+
+    private var canvasFetchJob: kotlinx.coroutines.Job? = null
+
+    /** Triggers a canvas fetch for the given track. Call whenever the playing track changes. */
+    fun fetchCanvasForTrack(title: String, artist: String, album: String?) {
+        android.util.Log.d("CanvasFetch", "fetchCanvasForTrack called for: $title - $artist")
+        canvasFetchJob?.cancel()
+        _canvasUrl.value = null
+        _canvasNotFound.value = false
+        if (!canvasEnabled.value) return
+        canvasFetchJob = viewModelScope.launch {
+            android.util.Log.d("CanvasFetch", "Job started, fetching url...")
+            _canvasLoading.value = true
+            try {
+                val url = canvasProvider.getCanvasUrl(title, artist, album)
+                android.util.Log.d("CanvasFetch", "Fetched url: $url")
+                _canvasUrl.value = url
+            } catch (e: Exception) {
+                android.util.Log.e("CanvasFetch", "Error fetching url", e)
+            } finally {
+                android.util.Log.d("CanvasFetch", "Setting canvasLoading to false")
+                _canvasLoading.value = false
+                
+                if (_canvasUrl.value == null) {
+                    _canvasNotFound.value = true
+                    kotlinx.coroutines.delay(5000)
+                    _canvasNotFound.value = false
+                }
+            }
+        }
+    }
+
+    fun setCanvasEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setCanvasEnabled(enabled) }
+        if (!enabled) { _canvasUrl.value = null; canvasFetchJob?.cancel() }
+    }
+
+    fun setCanvasCacheLimitMb(limit: Int) {
+        viewModelScope.launch { settingsRepository.setCanvasCacheLimitMb(limit) }
     }
 
     fun addExcludedFolder(path: String) {
