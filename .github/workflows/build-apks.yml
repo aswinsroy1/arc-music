@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create a GitHub Release
 
     steps:
       - name: Checkout Repository
@@ -28,8 +30,11 @@ jobs:
       - name: Build Release APKs
         run: ./gradlew assembleRelease
 
-      - name: Upload APKs as Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create Release and Upload APKs
+        uses: softprops/action-gh-release@v2
+        if: github.event_name != 'pull_request'
         with:
-          name: arc-music-apks
-          path: app/build/outputs/apk/release/*.apk
+          tag_name: build-${{ github.run_number }}
+          name: "Build #${{ github.run_number }}"
+          body: "Automated build of the latest changes. Download the APKs below."
+          files: app/build/outputs/apk/release/*.apk
