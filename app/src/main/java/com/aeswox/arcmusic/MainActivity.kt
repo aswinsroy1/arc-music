@@ -235,7 +235,7 @@ class MainActivity : ComponentActivity() {
                     
                     // Raw (target) offset — driven by nav-bar visibility, library selection mode and measured height
                     val rawBottomOffset = if (isNavBarVisible || isLibrarySelectionMode) {
-                        if (globalNavBarHeight > 0.dp) globalNavBarHeight + 20.dp + innerPadding.calculateBottomPadding() else 128.dp + innerPadding.calculateBottomPadding()
+                        if (globalNavBarHeight > 0.dp) globalNavBarHeight + 20.dp + innerPadding.calculateBottomPadding() else 100.dp + innerPadding.calculateBottomPadding()
                     } else {
                         24.dp + innerPadding.calculateBottomPadding()
                     }
