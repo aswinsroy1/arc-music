@@ -47,56 +47,49 @@ class MetadataEnrichmentService : Service() {
         Log.d("MetadataEnrichment", "Found ${tracksToEnrich.size} tracks to enrich")
 
         for (track in tracksToEnrich) {
-            val lowerPath = track.filePath.lowercase()
-            val needsDeepScan = lowerPath.endsWith(".flac") || lowerPath.endsWith(".wav") || 
-                                lowerPath.endsWith(".alac") || lowerPath.endsWith(".m4a") || 
-                                lowerPath.endsWith(".eac3") || lowerPath.endsWith(".ac3")
-
             var durationMs = track.durationMs
             var sampleRate: Int? = null
             var bitDepth: Int? = null
             var codec: String? = null
             var estimatedBitrate = track.bitrate ?: 0
 
-            if (needsDeepScan) {
-                val extractor = MediaExtractor()
-                try {
-                    extractor.setDataSource(track.filePath)
-                    for (i in 0 until extractor.trackCount) {
-                        val format = extractor.getTrackFormat(i)
-                        val trackMime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                        if (trackMime.startsWith("audio/")) {
-                            codec = trackMime
+            val extractor = MediaExtractor()
+            try {
+                extractor.setDataSource(track.filePath)
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val trackMime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                    if (trackMime.startsWith("audio/")) {
+                        codec = trackMime
 
-                            if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                                sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                            }
-
-                            if (format.containsKey("bits-per-sample")) {
-                                bitDepth = format.getInteger("bits-per-sample")
-                            } else if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                                val encoding = format.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                                bitDepth = when (encoding) {
-                                    AudioFormat.ENCODING_PCM_8BIT -> 8
-                                    AudioFormat.ENCODING_PCM_16BIT -> 16
-                                    AudioFormat.ENCODING_PCM_24BIT_PACKED,
-                                    AudioFormat.ENCODING_PCM_FLOAT -> 24
-                                    AudioFormat.ENCODING_PCM_32BIT -> 32
-                                    else -> null
-                                }
-                            }
-
-                            if (durationMs == 0L && format.containsKey(MediaFormat.KEY_DURATION)) {
-                                durationMs = format.getLong(MediaFormat.KEY_DURATION) / 1000L
-                            }
-                            break
+                        if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                            sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                         }
+
+                        if (format.containsKey("bits-per-sample")) {
+                            bitDepth = format.getInteger("bits-per-sample")
+                        } else if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                            val encoding = format.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                            bitDepth = when (encoding) {
+                                AudioFormat.ENCODING_PCM_8BIT -> 8
+                                AudioFormat.ENCODING_PCM_16BIT -> 16
+                                AudioFormat.ENCODING_PCM_24BIT_PACKED,
+                                AudioFormat.ENCODING_PCM_FLOAT -> 24
+                                AudioFormat.ENCODING_PCM_32BIT -> 32
+                                else -> null
+                            }
+                        }
+
+                        if (durationMs == 0L && format.containsKey(MediaFormat.KEY_DURATION)) {
+                            durationMs = format.getLong(MediaFormat.KEY_DURATION) / 1000L
+                        }
+                        break
                     }
-                } catch (e: Exception) {
-                    // Ignore extraction issues
-                } finally {
-                    extractor.release()
                 }
+            } catch (e: Exception) {
+                // Ignore extraction issues
+            } finally {
+                extractor.release()
             }
 
             if (durationMs == 0L) {
