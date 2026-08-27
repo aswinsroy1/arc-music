@@ -562,8 +562,8 @@ fun LibraryScanningPage(
         ) {
             CircularProgressIndicator(
                 progress = { 
-                    if (scanProgress.total > 0) 
-                        scanProgress.current.toFloat() / scanProgress.total.toFloat() 
+                    if (scanProgress.isCompleted) 1f 
+                    else if (scanProgress.total > 0) scanProgress.current.toFloat() / scanProgress.total.toFloat() 
                     else 0f 
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -574,12 +574,25 @@ fun LibraryScanningPage(
             )
             
             Text(
-                text = if (scanProgress.total > 0) {
+                text = if (scanProgress.isCompleted) "100%" 
+                else if (scanProgress.total > 0) {
                     val pct = (scanProgress.current.toFloat() / scanProgress.total * 100).toInt()
                     "$pct%"
                 } else "0%",
                 style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        TextButton(
+            onClick = onFinish,
+            modifier = Modifier.fillMaxWidth(0.8f)
+        ) {
+            Text(
+                text = "Proceed while scanning in background",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
