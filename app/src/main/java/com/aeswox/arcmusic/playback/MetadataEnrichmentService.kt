@@ -43,8 +43,10 @@ class MetadataEnrichmentService : Service() {
     }
 
     private suspend fun enrichMetadata() {
-        val tracksToEnrich = repository.getTracksMissingDeepMetadata()
-        Log.d("MetadataEnrichment", "Found ${tracksToEnrich.size} tracks to enrich")
+        while (true) {
+            val tracksToEnrich = repository.getTracksMissingDeepMetadata()
+            if (tracksToEnrich.isEmpty()) break
+            Log.d("MetadataEnrichment", "Found ${tracksToEnrich.size} tracks to enrich in this batch")
 
         for (track in tracksToEnrich) {
             var durationMs = track.durationMs
@@ -120,8 +122,12 @@ class MetadataEnrichmentService : Service() {
             if (codec == null) {
                 codec = track.codec ?: "unknown"
             }
+            if (sampleRate == null) sampleRate = 0
+            if (bitDepth == null) bitDepth = 0
+            if (durationMs == 0L) durationMs = 1L // fallback to prevent looping
 
             repository.updateTrackDeepMetadata(track.id, durationMs, sampleRate, bitDepth, estimatedBitrate, codec)
+        }
         }
         
         Log.d("MetadataEnrichment", "Enrichment complete")
