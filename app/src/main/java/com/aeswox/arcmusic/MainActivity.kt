@@ -233,9 +233,9 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     
-                    // Raw (target) offset — driven by nav-bar visibility, library selection mode and measured height
+                    // Raw (target) offset — driven by nav-bar visibility and library selection mode
                     val rawBottomOffset = if (isNavBarVisible || isLibrarySelectionMode) {
-                        if (globalNavBarHeight > 0.dp) globalNavBarHeight + 20.dp + innerPadding.calculateBottomPadding() else 100.dp + innerPadding.calculateBottomPadding()
+                        100.dp + innerPadding.calculateBottomPadding()
                     } else {
                         24.dp + innerPadding.calculateBottomPadding()
                     }
@@ -963,7 +963,7 @@ class MainActivity : ComponentActivity() {
                                         // so it grows/shrinks as the nav bar and miniplayer come and go.
                                         val miniPlayerVisible = isMiniPlayerVisible && currentlyPlaying != null
                                         val miniPlayerH = 80.dp
-                                        val navBarH = if (globalNavBarHeight > 0.dp) globalNavBarHeight else 80.dp
+                                        val navBarH = 80.dp
                                         val rawGradientHeight = when {
                                             isNavBarVisible && miniPlayerVisible -> navBarH + 16.dp + miniPlayerH + 32.dp
                                             isNavBarVisible -> navBarH + 32.dp
@@ -1023,11 +1023,7 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             Column(
                                                 modifier = Modifier
-                                                    .padding(start = 24.dp, end = 24.dp, bottom = 12.dp + innerPadding.calculateBottomPadding())
-                                                    .onSizeChanged { size ->
-                                                        val height = with(density) { size.height.toDp() }
-                                                        viewModel.setNavBarHeight(height)
-                                                    },
+                                                    .padding(start = 24.dp, end = 24.dp, bottom = 12.dp + innerPadding.calculateBottomPadding()),
                                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                                             ) {
                                                 com.aeswox.arcmusic.BottomNavigation(
