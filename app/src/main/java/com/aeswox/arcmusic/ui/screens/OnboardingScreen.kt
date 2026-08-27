@@ -595,13 +595,22 @@ fun LibraryScanningPage(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        TextButton(
+        Button(
             onClick = onFinish,
-            modifier = Modifier.fillMaxWidth(0.8f)
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(56.dp)
+                .jellyClick(onClick = onFinish),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         ) {
             Text(
-                text = "Proceed while scanning in background",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                "Run in Background",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
