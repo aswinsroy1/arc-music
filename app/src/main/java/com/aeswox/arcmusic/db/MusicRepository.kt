@@ -149,8 +149,8 @@ class MusicRepository(
 
         // Apply exclusion and duration filters before anything else
         val scannedTracks = allScanned.filter { scanned ->
-            // Duration filter (0 means no minimum)
-            val durationOk = minDurationMs <= 0L || scanned.durationMs >= minDurationMs
+            // Duration filter (0 means no minimum). If duration is 0, it might be an un-parsed Atmos track, so let it pass.
+            val durationOk = minDurationMs <= 0L || scanned.durationMs >= minDurationMs || scanned.durationMs == 0L
             // Excluded folders filter
             val notExcluded = excludedFolders.none { excluded ->
                 scanned.filePath.contains(excluded, ignoreCase = true)
