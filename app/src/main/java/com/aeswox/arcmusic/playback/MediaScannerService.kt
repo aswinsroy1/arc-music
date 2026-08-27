@@ -111,6 +111,9 @@ class MediaScannerService : Service() {
                 mediaScannerManager.updateResult(null)
                 mediaScannerManager.updateProgress(isRunning = false, isCompleted = false)
             } finally {
+                // Trigger deep scan in the background
+                startService(Intent(this@MediaScannerService, MetadataEnrichmentService::class.java))
+                
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -153,6 +156,9 @@ class MediaScannerService : Service() {
                 mediaScannerManager.updateResult(null)
                 mediaScannerManager.updateProgress(isRunning = false, isCompleted = false)
             } finally {
+                // Trigger deep scan in the background
+                startService(Intent(this@MediaScannerService, MetadataEnrichmentService::class.java))
+                
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }

@@ -63,6 +63,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE durationMs = 0 OR durationMs IS NULL")
     fun getCorruptedTracks(): Flow<List<Track>>
 
+    @Query("SELECT * FROM tracks WHERE sampleRate IS NULL AND codec IS NULL")
+    suspend fun getTracksMissingDeepMetadata(): List<Track>
+
     @Query("SELECT * FROM tracks WHERE hasLyrics = 0")
     fun getTracksMissingLyrics(): Flow<List<Track>>
 
@@ -86,6 +89,9 @@ interface TrackDao {
 
     @Query("UPDATE tracks SET title = :title, artist = :artist, album = :album, genre = :genre, year = :year, trackNumber = :trackNumber WHERE id = :trackId")
     suspend fun updateTrackMetadata(trackId: String, title: String?, artist: String?, album: String?, genre: String?, year: Int?, trackNumber: Int?)
+
+    @Query("UPDATE tracks SET durationMs = :durationMs, sampleRate = :sampleRate, bitDepth = :bitDepth, bitrate = :bitrate, codec = :codec WHERE id = :trackId")
+    suspend fun updateTrackDeepMetadata(trackId: String, durationMs: Long, sampleRate: Int?, bitDepth: Int?, bitrate: Int?, codec: String?)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTracks(tracks: List<Track>)

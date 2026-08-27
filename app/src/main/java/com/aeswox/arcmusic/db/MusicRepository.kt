@@ -68,6 +68,10 @@ class MusicRepository(
     private val CACHE_STALE_MS = 7L * 24 * 60 * 60 * 1000
     fun getAllTracks(): Flow<List<Track>> = trackDao.getAllTracks()
     suspend fun getTrackById(id: String): Track? = trackDao.getTrackById(id)
+    suspend fun getTracksMissingDeepMetadata(): List<Track> = trackDao.getTracksMissingDeepMetadata()
+    suspend fun updateTrackDeepMetadata(trackId: String, durationMs: Long, sampleRate: Int?, bitDepth: Int?, bitrate: Int?, codec: String?) {
+        trackDao.updateTrackDeepMetadata(trackId, durationMs, sampleRate, bitDepth, bitrate, codec)
+    }
     fun getAllAlbums(): Flow<List<Album>> = albumDao.getAllAlbums()
     fun getAllArtists(): Flow<List<Artist>> = artistDao.getAllArtists()
     fun getRecentlyPlayedTracks(limit: Int): Flow<List<Track>> = trackDao.getRecentlyPlayedTracks(limit)

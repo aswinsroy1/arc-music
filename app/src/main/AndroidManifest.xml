@@ -59,6 +59,10 @@
             android:exported="false" />
 
         <service
+            android:name=".playback.MetadataEnrichmentService"
+            android:exported="false" />
+
+        <service
             android:name=".sharing.NearbyTransferService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
