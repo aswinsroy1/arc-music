@@ -236,12 +236,14 @@ fun ThemeSelectionPage(
         ThemeOptionCard(
             title = "Light",
             isSelected = currentTheme == ThemeMode.Light,
+            isDarkOption = false,
             onClick = { onThemeSelect(ThemeMode.Light) }
         )
         Spacer(modifier = Modifier.height(16.dp))
         ThemeOptionCard(
             title = "Dark",
             isSelected = currentTheme == ThemeMode.Dark,
+            isDarkOption = true,
             onClick = { onThemeSelect(ThemeMode.Dark) }
         )
         
@@ -265,10 +267,11 @@ fun ThemeSelectionPage(
 fun ThemeOptionCard(
     title: String,
     isSelected: Boolean,
+    isDarkOption: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-    val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val backgroundColor = if (isDarkOption) Color(0xFF1E1E24) else Color(0xFFF3F3F5)
+    val textColor = if (isDarkOption) Color.White else Color.Black
     val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
 
     Surface(
