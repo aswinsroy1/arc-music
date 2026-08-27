@@ -258,11 +258,12 @@ class MusicRepository(
             }
         }
 
-        // PHASE 4: Fetch missing artwork
-        onProgress(ScanPhase.FETCHING_ARTWORK, 0, 0)
-        try {
-            fetchMissingArtwork()
-        } catch (e: Exception) { /* non-fatal */ }
+        // PHASE 4: Fetch missing artwork in the background
+        backgroundScope.launch {
+            try {
+                fetchMissingArtwork()
+            } catch (e: Exception) { /* non-fatal */ }
+        }
 
         onProgress(ScanPhase.COMPLETING, filteredTotal, filteredTotal)
         ScanResult(tracks.size, albums.size, artists.size)
