@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -292,8 +294,12 @@ fun ThemeOptionCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Dummy circle for icon placeholder
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)))
+                Icon(
+                    imageVector = if (isDarkOption) Icons.Filled.DarkMode else Icons.Filled.LightMode,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = textColor
+                )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = title,
