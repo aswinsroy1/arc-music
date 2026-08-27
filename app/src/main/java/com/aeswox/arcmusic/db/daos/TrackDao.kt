@@ -63,7 +63,7 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE durationMs = 0 OR durationMs IS NULL")
     fun getCorruptedTracks(): Flow<List<Track>>
 
-    @Query("SELECT * FROM tracks WHERE sampleRate IS NULL AND codec IS NULL")
+    @Query("SELECT * FROM tracks WHERE sampleRate IS NULL OR bitDepth IS NULL OR durationMs = 0 LIMIT 500")
     suspend fun getTracksMissingDeepMetadata(): List<Track>
 
     @Query("SELECT * FROM tracks WHERE hasLyrics = 0")
