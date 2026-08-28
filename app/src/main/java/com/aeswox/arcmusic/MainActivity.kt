@@ -2655,12 +2655,6 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: St
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = duration,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.width(16.dp))
         Box(
             modifier = Modifier.width(36.dp),
             contentAlignment = Alignment.Center
@@ -2669,12 +2663,18 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: St
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = qualityBadgeResId),
                     contentDescription = "Audio Quality Badge",
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
         }
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = duration,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
