@@ -168,7 +168,7 @@ fun WelcomePage(onNext: () -> Unit) {
     ) {
         Text(
             text = "Welcome to\nArc Music",
-            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground
         )
