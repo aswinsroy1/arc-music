@@ -1667,7 +1667,12 @@ fun FadeLyricLine(
 @Composable
 fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
     val viewModel: MusicViewModel = hiltViewModel()
-    val songToPlay by viewModel.currentlyPlaying.collectAsState()
+    val currentlyPlayingEntity by viewModel.currentlyPlaying.collectAsState()
+    val randomPicks by viewModel.randomPicks.collectAsState()
+    val libraryTracks by viewModel.libraryTracks.collectAsState()
+    
+    val rawSongToPlay = currentlyPlayingEntity ?: randomPicks.firstOrNull()
+    val songToPlay = libraryTracks.find { it.id == rawSongToPlay?.id } ?: rawSongToPlay
 
     val imageUrl = songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
