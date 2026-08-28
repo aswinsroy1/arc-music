@@ -70,12 +70,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         preferences[FANART_TV_KEY]
     }
 
-    /** Persisted theme preference. Emits [ThemeMode.Light] by default (first-run). */
+    /** Persisted theme preference. Emits [ThemeMode.System] by default (first-run). */
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
         when (preferences[THEME_MODE_KEY]) {
             "dark"   -> ThemeMode.Dark
             "system" -> ThemeMode.System
-            else     -> ThemeMode.Light
+            else     -> ThemeMode.System
         }
     }
 
