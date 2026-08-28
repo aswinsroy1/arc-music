@@ -1240,13 +1240,20 @@ fun LibraryGridItem(item: LibraryUiItem, modifier: Modifier = Modifier, isSelect
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (item.track?.isExplicit == true) {
+                Spacer(modifier = Modifier.width(4.dp))
+                com.aeswox.arcmusic.ExplicitBadge()
+            }
+        }
         Text(
             text = item.subtitle,
             style = MaterialTheme.typography.bodyMedium,

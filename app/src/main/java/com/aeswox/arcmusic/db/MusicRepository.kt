@@ -207,7 +207,7 @@ class MusicRepository(
                 artworkUri = existing?.artworkUri ?: it.artworkUri,
                 hasLyrics = existing?.hasLyrics ?: false,
                 lyricsSyncedAt = existing?.lyricsSyncedAt ?: 0L,
-                isExplicit = existing?.isExplicit ?: it.isExplicit
+                isExplicit = (existing?.isExplicit == true) || it.isExplicit
             )
         }
 
