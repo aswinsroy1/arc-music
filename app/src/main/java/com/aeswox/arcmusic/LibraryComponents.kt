@@ -1661,3 +1661,25 @@ fun PlaylistsEmptyState(modifier: Modifier = Modifier, onCreatePlaylistClick: ()
         )
     }
 }
+
+@Composable
+fun ExplicitBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                shape = RoundedCornerShape(3.dp)
+            )
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "E",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 9.sp
+            ),
+            color = MaterialTheme.colorScheme.surface
+        )
+    }
+}
