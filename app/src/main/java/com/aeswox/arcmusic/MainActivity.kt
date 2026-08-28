@@ -1,4 +1,4 @@
-package com.aeswox.arcmusic
+﻿package com.aeswox.arcmusic
 
 import com.aeswox.arcmusic.sharing.ReceiveScreen
 import com.aeswox.arcmusic.sharing.ShareScreen
@@ -235,7 +235,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     
-                    // Raw (target) offset — driven by nav-bar visibility and library selection mode
+                    // Raw (target) offset â€” driven by nav-bar visibility and library selection mode
                     val rawBottomOffset = if (isNavBarVisible || isLibrarySelectionMode) {
                         100.dp + innerPadding.calculateBottomPadding()
                     } else {
@@ -960,7 +960,7 @@ class MainActivity : ComponentActivity() {
                     } // NavHost
                                         } // Box (applyHazeAndBackdrop)
                                         
-                                        // ── Gradient scrim behind bottom chrome ──────────────────────────────
+                                        // â”€â”€ Gradient scrim behind bottom chrome â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                         // Mirrors Rhythm's LocalNavigation approach: the scrim height is animated
                                         // so it grows/shrinks as the nav bar and miniplayer come and go.
                                         val miniPlayerVisible = isMiniPlayerVisible && currentlyPlaying != null
@@ -992,7 +992,7 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier.align(Alignment.BottomCenter)
                                         )
 
-                                        // ── Navigation bar (animated show/hide) ──────────────────────────────
+                                        // â”€â”€ Navigation bar (animated show/hide) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                         // ENTER: slide up from below + fade with a medium-bouncy spring (satisfying pop).
                                         // EXIT:  slide down + fade with a no-bounce spring (snappy disappear).
                                         AnimatedVisibility(
@@ -1494,7 +1494,7 @@ fun WordSyncedLyrics(textColor: Color = Color.White) {
     val syncedLines = lyricsData?.synced
     val plainLines  = lyricsData?.plain
     val lines = remember(syncedLines, plainLines) {
-        syncedLines?.map { it.line } ?: plainLines ?: listOf("♪")
+        syncedLines?.map { it.line } ?: plainLines ?: listOf("â™ª")
     }
 
     var activeLineIndex by remember { mutableIntStateOf(0) }
@@ -1520,7 +1520,7 @@ fun WordSyncedLyrics(textColor: Color = Color.White) {
         }
     }
 
-    val activeLine = lines.getOrElse(activeLineIndex) { "♪" }
+    val activeLine = lines.getOrElse(activeLineIndex) { "â™ª" }
     val activeWords = remember(activeLineIndex, syncedLines, activeLine) {
         if (!syncedLines.isNullOrEmpty() && !syncedLines[activeLineIndex].words.isNullOrEmpty()) {
             syncedLines[activeLineIndex].words!!.map { it.word }
@@ -1879,7 +1879,7 @@ fun ListeningStatsSection(
         weeklyHours > 0 && weeklyMins > 0 -> "${weeklyHours}.${weeklyMins / 6} hrs"
         weeklyHours > 0                   -> "${weeklyHours} hrs"
         weeklyMinutes > 0                 -> "${weeklyMinutes} min"
-        else                              -> "—"
+        else                              -> "â€”"
     }
 
     Column(
@@ -1900,7 +1900,7 @@ fun ListeningStatsSection(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
 
-                // ── Row 1: Top Artist | Favorite Genre ──────────────────────────
+                // â”€â”€ Row 1: Top Artist | Favorite Genre â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -1982,7 +1982,7 @@ fun ListeningStatsSection(
                             }
                         } else {
                             Text(
-                                text = "—",
+                                text = "â€”",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1992,7 +1992,7 @@ fun ListeningStatsSection(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // ── Row 2: Weekly Listening | Mini bar chart ─────────────────────
+                // â”€â”€ Row 2: Weekly Listening | Mini bar chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -2446,7 +2446,7 @@ fun TopResultSection(track: com.aeswox.arcmusic.db.entities.Track, modifier: Mod
                 .clip(RoundedCornerShape(36.dp))
                 .jellyClick { onClick() }
         ) {
-            val fallbackImage = "https://lh3.googleusercontent.com/aida/AP1WRLv2WecEYcFjvYBf-M3uEQ_any0wLnlOIbEuk_z6TQbKqKTSZoFVZNYQ-1t8glDuBotg9yeGnMK8FZEE-kgwiLAVRBXzvQimz6mY682dnzbndydZF2E-RtA81Z-B73vftEA1FvCkglrC0eRpulttSej5eBpotQsOJDlrWXWG2NcJDqKcgI2WBx09sqJfbw09cTRFbu54vdDLp3z42vq-SHV4IdKULZGUnC2hu9U6zJ1iQMIX1k012Bm-U6I"
+            val fallbackImage = R.drawable.ic_default_artwork
             AsyncImage(
                 model = track.artworkUri ?: fallbackImage,
                 contentDescription = track.title,
@@ -2561,7 +2561,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
         Spacer(modifier = Modifier.height(16.dp))
         GlassCard {
             Column(modifier = Modifier.padding(8.dp)) {
-                val fallbackImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuDssM_sY1Ws7j27eCFIebitvGUoY4mUDbFgTv7dfN1izfLLtj26xVAM7g3_BsPwJ1iWlo-A2KOxUK4unQDf5TsU8MU02QPyjLRsfDTNBORi16j91-T24IpynAAoNa67G9TZHqjAX_vYn_8nyp8IJ6Esgu3qsDlysGOOwvfF7akonsLsi9tqVmym_gOakEWdqT115gfsfVqe4_0XqZs5SyV2XEhyzJbZ7nurcuDH24b5Otnfibbyy2Nt1ZY4COqv_6q6x6H2zjxvI-Xa"
+                val fallbackImage = R.drawable.ic_default_artwork
                 tracks.forEach { track ->
                     val durationMs = track.durationMs
                     val minutes = durationMs / 1000 / 60
@@ -2583,7 +2583,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun SongResultItem(title: String, artist: String, duration: String, imageUrl: String, isActive: Boolean = false, isSelectionMode: Boolean = false, isSelected: Boolean = false, qualityBadgeResId: Int? = null, isExplicit: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
+fun SongResultItem(title: String, artist: String, duration: String, imageUrl: Any?, isActive: Boolean = false, isSelectionMode: Boolean = false, isSelected: Boolean = false, qualityBadgeResId: Int? = null, isExplicit: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2698,8 +2698,8 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(albums) { album ->
-                val fallbackImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuCJx6j_t12Lixrr_kYaU8GRKRWceLe29sZI9YzJc0GLeyahwMHKbEC0ARLLWL-0RmYqBHjxwmZzgNqNyRZsCh8PjVOmyd_6FpltGB2ZT_2jSJjOT8ipdJzKfCUS1h3RWY2qsxJWOi3EOD8t0KBaOzpsuut79QihAF69rulfi88J3UM0uEC9UWv59NcUIbAA4flMoQKK67G82bGMK3o8oiFXpsKMS4SmVxG6s9JjrZ_ulmWltpRwT18rZusm2Ui_DldbXtXHUGkiFqXA"
-                val yearStr = if (album.year != null && album.year > 0) "${album.year} • " else ""
+                val fallbackImage = R.drawable.ic_default_artwork
+                val yearStr = if (album.year != null && album.year > 0) "${album.year} â€¢ " else ""
                 val subtitle = "$yearStr${album.trackCount} songs"
                 AlbumResultItem(album.title, subtitle, album.artworkUri ?: fallbackImage, onClick = { onNavigateToAlbumDetails(album.title) })
             }
@@ -2709,7 +2709,7 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun AlbumResultItem(title: String, year: String, imageUrl: String, modifier: Modifier = Modifier.width(140.dp), isSelectionMode: Boolean = false, isSelected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
+fun AlbumResultItem(title: String, year: String, imageUrl: Any?, modifier: Modifier = Modifier.width(140.dp), isSelectionMode: Boolean = false, isSelected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     Column(
         modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
@@ -2771,7 +2771,7 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             items(artists) { artist ->
-                val fallbackImage = "https://lh3.googleusercontent.com/aida/AP1WRLv2WecEYcFjvYBf-M3uEQ_any0wLnlOIbEuk_z6TQbKqKTSZoFVZNYQ-1t8glDuBotg9yeGnMK8FZEE-kgwiLAVRBXzvQimz6mY682dnzbndydZF2E-RtA81Z-B73vftEA1FvCkglrC0eRpulttSej5eBpotQsOJDlrWXWG2NcJDqKcgI2WBx09sqJfbw09cTRFbu54vdDLp3z42vq-SHV4IdKULZGUnC2hu9U6zJ1iQMIX1k012Bm-U6I"
+                val fallbackImage = R.drawable.ic_default_artwork
                 ArtistResultItem(artist.name, artist.photoUri ?: fallbackImage, artist.isFavorite, onClick = { onNavigateToArtistDetails(artist.name) })
             }
         }
@@ -2780,7 +2780,7 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun ArtistResultItem(name: String, imageUrl: String, isVerified: Boolean = false, modifier: Modifier = Modifier.width(100.dp), isSelectionMode: Boolean = false, isSelected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
+fun ArtistResultItem(name: String, imageUrl: Any?, isVerified: Boolean = false, modifier: Modifier = Modifier.width(100.dp), isSelectionMode: Boolean = false, isSelected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -2849,7 +2849,7 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(playlists) { playlist ->
-                val fallbackImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuAN2IRvdhR_bkbDMJ8TqVqG2y4rQ3L_f1eRHAi_gAsteuGmZIEL0FgQOJ7eagpNOd8RyZJEar704LgA2EaC_eTYUgCmOiMzxQpaVHQJ8M6flPFUIJ71YUtKiIKyo6UAJW1DAoztixz1AbUm17RLgT5jOGGPPEHgGrkOwf0WxcPSFfkL_vvYISYxu70oxAu8dCHUOY7vYG371MR9sBrRRiEMLJ30KgLLrV0hg9_zUe8qs294_IXoKmQpLvb3X8pgvDIEYaT6kFzuQnqG"
+                val fallbackImage = R.drawable.ic_default_artwork
                 PlaylistResultItem(title = playlist.name, subtitle = "Playlist", imageUrl = playlist.coverArtUri ?: fallbackImage, onClick = { onNavigateToPlaylistDetails(playlist.name) })
             }
         }
@@ -2858,7 +2858,7 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun PlaylistResultItem(title: String, subtitle: String, imageUrl: String, modifier: Modifier = Modifier.width(280.dp), isSelectionMode: Boolean = false, isSelected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
+fun PlaylistResultItem(title: String, subtitle: String, imageUrl: Any?, modifier: Modifier = Modifier.width(280.dp), isSelectionMode: Boolean = false, isSelected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
@@ -3088,3 +3088,4 @@ fun SearchSuggestionChip(label: String) {
         )
     }
 }
+

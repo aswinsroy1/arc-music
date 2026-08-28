@@ -1,4 +1,4 @@
-package com.aeswox.arcmusic
+﻿package com.aeswox.arcmusic
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -934,7 +934,7 @@ fun LibraryMainSection(
                 if (playlists.isEmpty()) {
                     item { PlaylistsEmptyState(modifier = Modifier.fillMaxWidth(), onCreatePlaylistClick = onCreatePlaylistClick) }
                 } else {
-                    val fallbackImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuDK2gSPmhFiKqcqPLlCJlIp7lxpTt2scS9SuOmzxmZKXa1UQIjSKITZh8tGxaLLsMWtK_rqugpIF6kWjdqifIFpbIHQ51KFkHHGCwprGn7T1jWwAFiUiOgft22mJtHc311emev_Y9qChhO44k-VwJC7dvX80Zs-JHFurqrp7BRfflgHO2uz-vspGyR9BoWhQUaXuELDgddlmK__JFlAjdrkjKUgyxH0SVRHhhE0iqWq7lQMTieDIl6s1Oh1frE5nhxruwt9dXwi3SRK"
+                    val fallbackImage = R.drawable.ic_default_artwork
                     if (isGridView) {
                         val chunked = sortedPlaylists.chunked(2)
                         items(chunked.size) { i ->
@@ -1692,3 +1692,4 @@ fun ExplicitBadge(modifier: Modifier = Modifier) {
         )
     }
 }
+
