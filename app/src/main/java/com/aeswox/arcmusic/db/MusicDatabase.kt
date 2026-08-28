@@ -212,13 +212,6 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_20_21 = object : Migration(20, 21) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE tracks ADD COLUMN canvasUrl TEXT")
-                db.execSQL("ALTER TABLE tracks ADD COLUMN canvasSyncedAt INTEGER NOT NULL DEFAULT 0")
-            }
-        }
-
         val MIGRATION_21_22 = object : Migration(21, 22) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE tracks ADD COLUMN isExplicit INTEGER NOT NULL DEFAULT 0")
