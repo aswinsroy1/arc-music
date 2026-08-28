@@ -2661,14 +2661,10 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: St
             contentAlignment = Alignment.Center
         ) {
             if (qualityBadgeResId != null) {
-                val scaleFactor = when (qualityBadgeResId) {
-                    com.aeswox.arcmusic.R.drawable.ic_dolby, com.aeswox.arcmusic.R.drawable.ic_high_res -> 0.8f
-                    else -> 0.9f
-                }
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = qualityBadgeResId),
                     contentDescription = "Audio Quality Badge",
-                    modifier = Modifier.fillMaxWidth(scaleFactor).alpha(0.7f),
+                    modifier = Modifier.fillMaxWidth(0.5f).alpha(0.7f),
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                 )
