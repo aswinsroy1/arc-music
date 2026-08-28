@@ -2109,6 +2109,18 @@ class MusicViewModel @Inject constructor(
             }
         }
     }
+
+    fun runDeepScanBackground() {
+        viewModelScope.launch {
+            try {
+                repository.runDeepScanBackground { progress, total ->
+                    // Optionally update a state flow with progress if UI needs it
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
     fun fetchMetadataForTrack(context: android.content.Context, track: Track) {
         viewModelScope.launch {
             try {

@@ -60,6 +60,7 @@ fun SettingsScreen(
     onNavigateToCanvasSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     onScanMediaStore: () -> Unit = {},
+    onRunDeepScan: () -> Unit = {},
     onTestEac3: () -> Unit = {},
     onImportM3u: (android.net.Uri) -> Unit = {},
     onExportM3u: (android.net.Uri, String) -> Unit = { _, _ -> },
@@ -398,6 +399,12 @@ fun SettingsScreen(
                             icon = Icons.Outlined.Storage,
                             text = "Scan MediaStore",
                             onClick = onScanMediaStore,
+                            showArrow = false
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.Troubleshoot,
+                            text = "Run Deep Tag & Dolby Scan",
+                            onClick = onRunDeepScan,
                             showArrow = false
                         )
                         SettingsItem(

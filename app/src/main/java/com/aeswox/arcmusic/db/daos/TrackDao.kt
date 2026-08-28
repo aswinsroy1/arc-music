@@ -95,6 +95,9 @@ interface TrackDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTracks(tracks: List<Track>)
+    
+    @androidx.room.Update
+    suspend fun updateTrack(track: Track)
 
     @Query("DELETE FROM tracks WHERE id IN (:trackIds)")
     suspend fun deleteTracks(trackIds: List<String>)

@@ -1112,6 +1112,48 @@ class MusicRepository(
             Result.failure(Exception(e.localizedMessage ?: "Unknown error occurred"))
         }
     }
+
+    suspend fun runDeepScanBackground(onProgress: (Int, Int) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
+        val tracks = trackDao.getAllTracks().first()
+        val total = tracks.size
+
+        tracks.forEachIndexed { index, track ->
+            val result = com.aeswox.arcmusic.data.DeepTagScanner.scanFile(track.filePath)
+            var changed = false
+            var updatedTrack = track
+
+            if (result.isExplicit && !track.isExplicit) {
+                updatedTrack = updatedTrack.copy(isExplicit = true)
+                changed = true
+            }
+
+            if (result.codec != null && result.codec != track.codec) {
+                updatedTrack = updatedTrack.copy(codec = result.codec)
+                changed = true
+            }
+
+            if (result.bitDepth != null && result.bitDepth != track.bitDepth) {
+                updatedTrack = updatedTrack.copy(bitDepth = result.bitDepth)
+                changed = true
+            }
+
+            if (result.sampleRate != null && result.sampleRate != track.sampleRate) {
+                updatedTrack = updatedTrack.copy(sampleRate = result.sampleRate)
+                changed = true
+            }
+            
+            // Note: Channel count could be added to DB in future if needed
+
+            if (changed) {
+                trackDao.updateTrack(updatedTrack)
+            }
+
+            if (index % 5 == 0) {
+                onProgress(index, total)
+            }
+        }
+        onProgress(total, total)
+    }
 }
 
 data class ScanResult(val trackCount: Int, val albumCount: Int, val artistCount: Int)

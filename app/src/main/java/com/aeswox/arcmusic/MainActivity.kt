@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic
+package com.aeswox.arcmusic
 
 import com.aeswox.arcmusic.sharing.ReceiveScreen
 import com.aeswox.arcmusic.sharing.ShareScreen
@@ -753,6 +753,7 @@ class MainActivity : ComponentActivity() {
                                             settingsPermissionsState.launchMultiplePermissionRequest()
                                         }
                                     },
+                                    onRunDeepScan = { viewModel.runDeepScanBackground() },
                                     onTestEac3 = { viewModel.testEac3Playback(context) },
                                     onImportM3u = { uri -> viewModel.importM3uPlaylist(context, uri) },
                                     onExportM3u = { uri, playlistId -> viewModel.exportM3uPlaylist(context, uri, playlistId) },
