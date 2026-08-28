@@ -2111,13 +2111,28 @@ class MusicViewModel @Inject constructor(
     }
 
     fun runDeepScanBackground() {
+        if (mediaScannerManager.scanProgress.value.isRunning) return
         viewModelScope.launch {
             try {
+                mediaScannerManager.updateProgress(
+                    isRunning = true,
+                    phase = com.aeswox.arcmusic.db.ScanPhase.PROCESSING_FILES,
+                    current = 0,
+                    total = 1,
+                    isCompleted = false
+                )
                 repository.runDeepScanBackground { progress, total ->
-                    // Optionally update a state flow with progress if UI needs it
+                    mediaScannerManager.updateProgress(
+                        current = progress,
+                        total = total
+                    )
                 }
+                mediaScannerManager.updateProgress(isCompleted = true, isRunning = false)
+                kotlinx.coroutines.delay(3000)
+                mediaScannerManager.clearProgress()
             } catch (e: Exception) {
                 e.printStackTrace()
+                mediaScannerManager.clearProgress()
             }
         }
     }

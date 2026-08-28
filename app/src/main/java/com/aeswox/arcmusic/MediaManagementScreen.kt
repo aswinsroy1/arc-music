@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.Troubleshoot
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -254,6 +255,54 @@ fun MediaManagementScreen(
                             )
                             Text(
                                 text = "Look for new files in folders",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Deep Scan Card
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f))
+                            .jellyClick(enabled = !scanProgress.isRunning) { viewModel.runDeepScanBackground() }
+                            .padding(horizontal = 16.dp, vertical = 16.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                        ) {
+                            if (scanProgress.isRunning &&
+                                scanProgress.phase == com.aeswox.arcmusic.db.ScanPhase.PROCESSING_FILES) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Outlined.Troubleshoot,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Deep Scan",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "Extract explicit tags and Dolby Atmos data",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

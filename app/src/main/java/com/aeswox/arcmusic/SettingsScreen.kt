@@ -402,12 +402,6 @@ fun SettingsScreen(
                             showArrow = false
                         )
                         SettingsItem(
-                            icon = Icons.Outlined.Troubleshoot,
-                            text = "Run Deep Tag & Dolby Scan",
-                            onClick = onRunDeepScan,
-                            showArrow = false
-                        )
-                        SettingsItem(
                             icon = Icons.Outlined.GraphicEq,
                             text = "Test EAC3 Playback",
                             onClick = onTestEac3,
