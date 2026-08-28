@@ -2,6 +2,7 @@ package com.aeswox.arcmusic
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
