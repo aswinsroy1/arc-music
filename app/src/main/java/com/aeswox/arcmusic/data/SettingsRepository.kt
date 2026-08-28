@@ -74,6 +74,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
         when (preferences[THEME_MODE_KEY]) {
             "dark"   -> ThemeMode.Dark
+            "light"  -> ThemeMode.Light
             "system" -> ThemeMode.System
             else     -> ThemeMode.System
         }

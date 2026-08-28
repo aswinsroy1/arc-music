@@ -1481,7 +1481,7 @@ class MusicViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
-        ThemeMode.Light
+        ThemeMode.System
     )
 
     val tintTransparency: StateFlow<Float> = settingsRepository.tintTransparency.stateIn(
