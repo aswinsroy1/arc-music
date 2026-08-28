@@ -6,6 +6,7 @@ import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import com.aeswox.arcmusic.ui.animations.NavTransitions
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.ui.draw.alpha
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeswox.arcmusic.sharing.ShareScreen
 
@@ -2663,7 +2664,7 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: St
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = qualityBadgeResId),
                     contentDescription = "Audio Quality Badge",
-                    modifier = Modifier.fillMaxWidth(0.9f),
+                    modifier = Modifier.fillMaxWidth(0.9f).alpha(0.7f),
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                 )
