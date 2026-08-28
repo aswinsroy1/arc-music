@@ -206,7 +206,8 @@ class MusicRepository(
                 remoteId = existing?.remoteId,
                 artworkUri = existing?.artworkUri ?: it.artworkUri,
                 hasLyrics = existing?.hasLyrics ?: false,
-                lyricsSyncedAt = existing?.lyricsSyncedAt ?: 0L
+                lyricsSyncedAt = existing?.lyricsSyncedAt ?: 0L,
+                isExplicit = existing?.isExplicit ?: it.isExplicit
             )
         }
 

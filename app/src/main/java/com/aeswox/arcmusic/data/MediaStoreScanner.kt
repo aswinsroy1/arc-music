@@ -133,7 +133,11 @@ class MediaStoreScanner @Inject constructor(
                         bitDepth = null,
                         dateAdded = dateAdded,
                         dateModified = dateModified,
-                        artworkUri = artworkUriStr
+                        artworkUri = artworkUriStr,
+                        isExplicit = title.contains("[E]", ignoreCase = true) || 
+                                     title.contains("(Explicit)", ignoreCase = true) || 
+                                     filePath.contains("[E]", ignoreCase = true) || 
+                                     filePath.contains("(Explicit)", ignoreCase = true)
                     )
                 )
             }
@@ -191,5 +195,6 @@ data class ScannedTrack(
     val bitDepth: Int?,
     val dateAdded: Long,
     val dateModified: Long,
-    val artworkUri: String?
+    val artworkUri: String?,
+    val isExplicit: Boolean = false
 )

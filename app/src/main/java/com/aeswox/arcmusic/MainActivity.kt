@@ -2572,6 +2572,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
                         duration = "$minutes:$seconds", 
                         imageUrl = track.artworkUri ?: fallbackImage,
                         qualityBadgeResId = null,
+                        isExplicit = track.isExplicit,
                         onClick = { onTrackClick(track) }
                     )
                 }
@@ -2582,7 +2583,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun SongResultItem(title: String, artist: String, duration: String, imageUrl: String, isActive: Boolean = false, isSelectionMode: Boolean = false, isSelected: Boolean = false, qualityBadgeResId: Int? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
+fun SongResultItem(title: String, artist: String, duration: String, imageUrl: String, isActive: Boolean = false, isSelectionMode: Boolean = false, isSelected: Boolean = false, qualityBadgeResId: Int? = null, isExplicit: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

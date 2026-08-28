@@ -1099,6 +1099,7 @@ fun LibraryMainSection(
                                 isSelectionMode = isSelectionMode,
                                 isSelected = selectedItems.contains("track_${t.id}"),
                                 qualityBadgeResId = t.track?.getQualityBadgeResId(),
+                                isExplicit = t.track?.isExplicit == true,
                                 onLongClick = { onToggleSelection("track_${t.id}") },
                                 onClick = { 
                                     if (isSelectionMode) {
@@ -1181,6 +1182,7 @@ fun LibraryMainSection(
                             isSelectionMode = isSelectionMode,
                             isSelected = selectedItems.contains("track_${t.id}"),
                             qualityBadgeResId = t.track?.getQualityBadgeResId(),
+                            isExplicit = t.track?.isExplicit == true,
                             onLongClick = { onToggleSelection("track_${t.id}") },
                             onClick = { 
                                 if (isSelectionMode) {
