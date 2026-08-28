@@ -36,3 +36,28 @@ data class Track(
     val canvasUrl: String? = null,
     val canvasSyncedAt: Long = 0L
 )
+
+
+fun Track.getQualityBadgeResId(): Int? {
+    val codecLower = this.codec?.lowercase() ?: ""
+    val pathLower = this.filePath?.lowercase() ?: ""
+    val isAtmos = codecLower.contains("atmos") || codecLower.contains("eac3") || codecLower.contains("ac3") || codecLower.contains("ec-3") || pathLower.endsWith(".eac3") || pathLower.endsWith(".ac3")
+    if (isAtmos) return com.aeswox.arcmusic.R.drawable.ic_dolby
+    
+    val isLossless = this.codec?.let { c -> 
+        listOf("flac", "alac", "wav", "ape", "dsd").any { c.contains(it, ignoreCase = true) } 
+    } == true
+    
+    val sample = this.sampleRate ?: 0
+    val bit = this.bitDepth ?: 0
+    val bitr = this.bitrate ?: 0
+    
+    if (isLossless) {
+        if (sample > 48000 || bit > 16) return com.aeswox.arcmusic.R.drawable.ic_high_res
+        if (sample >= 44100 && bit >= 16) return com.aeswox.arcmusic.R.drawable.ic_cd
+        return com.aeswox.arcmusic.R.drawable.ic_cd
+    } else {
+        if (bitr >= 320000) return com.aeswox.arcmusic.R.drawable.ic_hq
+    }
+    return null
+}

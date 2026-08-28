@@ -1097,11 +1097,7 @@ fun LibraryMainSection(
                                 imageUrl = t.imageUrl ?: "",
                                 isSelectionMode = isSelectionMode,
                                 isSelected = selectedItems.contains("track_${t.id}"),
-                                isAtmos = t.track?.let { 
-                                    val codec = it.codec?.lowercase() ?: ""
-                                    val path = it.filePath?.lowercase() ?: ""
-                                    codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3")
-                                } ?: false,
+                                qualityBadgeResId = t.track?.getQualityBadgeResId(),
                                 onLongClick = { onToggleSelection("track_${t.id}") },
                                 onClick = { 
                                     if (isSelectionMode) {
@@ -1183,11 +1179,7 @@ fun LibraryMainSection(
                             imageUrl = t.imageUrl ?: "",
                             isSelectionMode = isSelectionMode,
                             isSelected = selectedItems.contains("track_${t.id}"),
-                            isAtmos = t.track?.let { 
-                                val codec = it.codec?.lowercase() ?: ""
-                                val path = it.filePath?.lowercase() ?: ""
-                                codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3")
-                            } ?: false,
+                            qualityBadgeResId = t.track?.getQualityBadgeResId(),
                             onLongClick = { onToggleSelection("track_${t.id}") },
                             onClick = { 
                                 if (isSelectionMode) {

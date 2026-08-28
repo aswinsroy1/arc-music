@@ -2569,6 +2569,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
                         artist = track.artist, 
                         duration = "$minutes:$seconds", 
                         imageUrl = track.artworkUri ?: fallbackImage,
+                        qualityBadgeResId = null,
                         onClick = { onTrackClick(track) }
                     )
                 }
@@ -2579,7 +2580,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun SongResultItem(title: String, artist: String, duration: String, imageUrl: String, isActive: Boolean = false, isSelectionMode: Boolean = false, isSelected: Boolean = false, isAtmos: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
+fun SongResultItem(title: String, artist: String, duration: String, imageUrl: String, isActive: Boolean = false, isSelectionMode: Boolean = false, isSelected: Boolean = false, qualityBadgeResId: Int? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2663,10 +2664,10 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: St
             modifier = Modifier.width(36.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (isAtmos) {
+            if (qualityBadgeResId != null) {
                 androidx.compose.foundation.Image(
-                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
-                    contentDescription = "Dolby Atmos",
+                    painter = androidx.compose.ui.res.painterResource(id = qualityBadgeResId),
+                    contentDescription = "Audio Quality Badge",
                     modifier = Modifier.fillMaxWidth(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
