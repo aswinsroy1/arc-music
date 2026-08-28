@@ -213,6 +213,10 @@ fun ThemeSelectionPage(
     onThemeSelect: (ThemeMode) -> Unit,
     onNext: () -> Unit
 ) {
+    val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isLightSelected = currentTheme == ThemeMode.Light || (currentTheme == ThemeMode.System && !isSystemDark)
+    val isDarkSelected = currentTheme == ThemeMode.Dark || (currentTheme == ThemeMode.System && isSystemDark)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -237,14 +241,14 @@ fun ThemeSelectionPage(
         
         ThemeOptionCard(
             title = "Light",
-            isSelected = currentTheme == ThemeMode.Light,
+            isSelected = isLightSelected,
             isDarkOption = false,
             onClick = { onThemeSelect(ThemeMode.Light) }
         )
         Spacer(modifier = Modifier.height(16.dp))
         ThemeOptionCard(
             title = "Dark",
-            isSelected = currentTheme == ThemeMode.Dark,
+            isSelected = isDarkSelected,
             isDarkOption = true,
             onClick = { onThemeSelect(ThemeMode.Dark) }
         )
