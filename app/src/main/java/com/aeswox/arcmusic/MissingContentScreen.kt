@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,7 +52,12 @@ fun MissingContentScreen(
 ) {
     val uiState by viewModel.missingContentUiState.collectAsState()
     var currentTab by remember { mutableIntStateOf(0) } // 0 for Tracks, 1 for Albums, 2 for Singles
-    
+    val listStates = listOf(
+        rememberLazyListState(),
+        rememberLazyListState(),
+        rememberLazyListState()
+    )
+
     LaunchedEffect(Unit) {
         viewModel.loadMissingContent()
     }
@@ -170,6 +176,7 @@ fun MissingContentScreen(
                             }
                         } else {
                             LazyColumn(
+                                state = listStates[currentTab],
                                 modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
                                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 120.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)

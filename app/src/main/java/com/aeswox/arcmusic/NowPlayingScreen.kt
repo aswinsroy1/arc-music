@@ -1258,7 +1258,7 @@ fun NowPlayingScreen(
 
                             .fillMaxWidth()
 
-                            .clickable { 
+                            .jellyClick { 
 
                                 showOptionsSheet = false 
 
@@ -2015,17 +2015,16 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
+                        JellyIconButton(
+                            onClick = {
+                                songToPlay?.let { track ->
+                                    viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
+                                }
+                            },
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
                                 .background(textColor.copy(alpha = 0.15f))
-                                .clickable {
-                                    songToPlay?.let { track ->
-                                        viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = if (songToPlay?.isFavorite == true) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,

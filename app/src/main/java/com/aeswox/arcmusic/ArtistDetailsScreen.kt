@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -210,6 +211,7 @@ fun ArtistDetailsScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicViewModel) {
     Box(
@@ -241,6 +243,24 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                             )
                         )
                 )
+                
+                if (artist != null) {
+                    JellyIconButton(
+                        onClick = { viewModel.toggleArtistFavorite(listOf(artist.id), !artist.isFavorite) },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 24.dp, end = 24.dp)
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f))
+                    ) {
+                        Icon(
+                            imageVector = if (artist.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (artist.isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (artist.isFavorite) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -255,25 +275,10 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                     style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 48.sp,
-                    lineHeight = 54.sp
+                    lineHeight = 54.sp,
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
                 )
-                
-                if (artist != null) {
-                    Spacer(modifier = Modifier.width(16.dp))
-                    JellyIconButton(
-                        onClick = { viewModel.toggleArtistFavorite(listOf(artist.id), !artist.isFavorite) },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f))
-                    ) {
-                        Icon(
-                            imageVector = if (artist.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (artist.isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = if (artist.isFavorite) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
