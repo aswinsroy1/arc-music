@@ -1344,7 +1344,7 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
             androidx.compose.material3.Text(
                 text = title, 
                 style = androidx.compose.material3.MaterialTheme.typography.displaySmall.copy(
-                    fontSize = 72.sp,
+                    fontSize = 30.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 ), 
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
