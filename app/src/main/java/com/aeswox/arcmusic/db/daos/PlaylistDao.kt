@@ -11,13 +11,48 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PlaylistDao {
-    @Query("SELECT * FROM playlists")
+    @Query("""
+        SELECT id, name, dateCreated, description,
+               COALESCE(coverArtUri, (
+                   SELECT t.artworkUri 
+                   FROM tracks t 
+                   INNER JOIN playlist_tracks pt ON t.id = pt.trackId 
+                   WHERE pt.playlistId = playlists.id 
+                   ORDER BY pt.position ASC 
+                   LIMIT 1
+               )) AS coverArtUri
+        FROM playlists
+    """)
     fun getAllPlaylists(): Flow<List<Playlist>>
 
-    @Query("SELECT * FROM playlists WHERE name = :playlistName LIMIT 1")
+    @Query("""
+        SELECT id, name, dateCreated, description,
+               COALESCE(coverArtUri, (
+                   SELECT t.artworkUri 
+                   FROM tracks t 
+                   INNER JOIN playlist_tracks pt ON t.id = pt.trackId 
+                   WHERE pt.playlistId = playlists.id 
+                   ORDER BY pt.position ASC 
+                   LIMIT 1
+               )) AS coverArtUri
+        FROM playlists 
+        WHERE name = :playlistName LIMIT 1
+    """)
     fun getPlaylist(playlistName: String): Flow<Playlist?>
 
-    @Query("SELECT * FROM playlists WHERE name = :playlistName LIMIT 1")
+    @Query("""
+        SELECT id, name, dateCreated, description,
+               COALESCE(coverArtUri, (
+                   SELECT t.artworkUri 
+                   FROM tracks t 
+                   INNER JOIN playlist_tracks pt ON t.id = pt.trackId 
+                   WHERE pt.playlistId = playlists.id 
+                   ORDER BY pt.position ASC 
+                   LIMIT 1
+               )) AS coverArtUri
+        FROM playlists 
+        WHERE name = :playlistName LIMIT 1
+    """)
     suspend fun getPlaylistByName(playlistName: String): Playlist?
 
     @Query("""
@@ -46,13 +81,38 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylistTracks(playlistTracks: List<PlaylistTrack>)
 
-    @Query("SELECT * FROM playlists WHERE name IN (:playlistNames)")
+    @Query("""
+        SELECT id, name, dateCreated, description,
+               COALESCE(coverArtUri, (
+                   SELECT t.artworkUri 
+                   FROM tracks t 
+                   INNER JOIN playlist_tracks pt ON t.id = pt.trackId 
+                   WHERE pt.playlistId = playlists.id 
+                   ORDER BY pt.position ASC 
+                   LIMIT 1
+               )) AS coverArtUri
+        FROM playlists 
+        WHERE name IN (:playlistNames)
+    """)
     suspend fun getPlaylistsByNames(playlistNames: List<String>): List<Playlist>
 
     @Query("DELETE FROM playlists WHERE name IN (:playlistNames)")
     suspend fun deletePlaylists(playlistNames: List<String>)
 
-    @Query("SELECT * FROM playlists WHERE name LIKE :query || '%' OR name LIKE '% ' || :query || '%' LIMIT 10")
+    @Query("""
+        SELECT id, name, dateCreated, description,
+               COALESCE(coverArtUri, (
+                   SELECT t.artworkUri 
+                   FROM tracks t 
+                   INNER JOIN playlist_tracks pt ON t.id = pt.trackId 
+                   WHERE pt.playlistId = playlists.id 
+                   ORDER BY pt.position ASC 
+                   LIMIT 1
+               )) AS coverArtUri
+        FROM playlists 
+        WHERE name LIKE :query || '%' OR name LIKE '% ' || :query || '%' 
+        LIMIT 10
+    """)
     fun searchPlaylists(query: String): Flow<List<Playlist>>
 
     @Query("SELECT DISTINCT playlistId FROM playlist_tracks WHERE trackId IN (:trackIds)")

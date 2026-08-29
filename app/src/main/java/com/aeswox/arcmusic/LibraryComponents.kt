@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic
+package com.aeswox.arcmusic
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -182,8 +182,27 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
     if (isSelectionMode) {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 24.dp), contentAlignment = Alignment.BottomCenter) {
             val currentTab = tabs.getOrNull(pagerState.currentPage) ?: ""
+            val isAllSelectedFavorited = remember(selectedItems.toList(), currentTab, libraryTracks, libraryAlbums, libraryArtists) {
+                when (currentTab) {
+                    "Albums" -> {
+                        val albumIds = selectedItems.mapNotNull { if (it.startsWith("album_")) it.removePrefix("album_") else null }
+                        albumIds.isNotEmpty() && libraryAlbums.filter { albumIds.contains(it.id) }.all { it.isFavorite }
+                    }
+                    "Artists" -> {
+                        val artistIds = selectedItems.mapNotNull { if (it.startsWith("artist_")) it.removePrefix("artist_") else null }
+                        artistIds.isNotEmpty() && libraryArtists.filter { artistIds.contains(it.id) }.all { it.isFavorite }
+                    }
+                    "Tracks" -> {
+                        val trackIds = selectedItems.mapNotNull { if (it.startsWith("track_")) it.removePrefix("track_") else null }
+                        trackIds.isNotEmpty() && libraryTracks.filter { trackIds.contains(it.id) }.all { it.isFavorite }
+                    }
+                    "Favorites" -> true
+                    else -> false
+                }
+            }
             SelectionBottomBar(
                 currentTab = currentTab,
+                isAllFavorited = isAllSelectedFavorited,
                 onAddToPlaylist = { showAddToPlaylistSheet = true },
                 onRename = { renameTrigger++ },
                 onPlayNext = { selectedItems.clear() },
@@ -1499,6 +1518,7 @@ fun SelectionTopBar(
 @Composable
 fun SelectionBottomBar(
     currentTab: String,
+    isAllFavorited: Boolean = false,
     onAddToPlaylist: () -> Unit,
     onRename: () -> Unit,
     onPlayNext: () -> Unit,
@@ -1518,8 +1538,8 @@ fun SelectionBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val favoriteIcon = if (currentTab == "Favorites") Icons.Default.Favorite else Icons.Default.FavoriteBorder
-        val favoriteLabel = if (currentTab == "Favorites") "REMOVE" else "FAVORITE"
+        val favoriteIcon = if (currentTab == "Favorites" || isAllFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder
+        val favoriteLabel = if (currentTab == "Favorites") "REMOVE" else if (isAllFavorited) "UNFAVORITE" else "FAVORITE"
         
         if (currentTab == "Playlists") {
             BottomBarActionItem(icon = Icons.Default.Edit, label = "RENAME", onClick = onRename)
