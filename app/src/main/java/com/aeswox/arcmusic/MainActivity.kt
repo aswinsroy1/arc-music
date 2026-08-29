@@ -90,6 +90,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.ui.animations.JigglePhysicsSettings
@@ -1340,14 +1341,14 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (title != null) {
-            Text(
+            androidx.compose.material3.Text(
                 text = title, 
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontSize = MaterialTheme.typography.displaySmall.fontSize * 2,
-                    fontWeight = FontWeight.Bold
+                style = androidx.compose.material3.MaterialTheme.typography.displaySmall.copy(
+                    fontSize = 72.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 ), 
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.combinedClickable(
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                modifier = androidx.compose.ui.Modifier.combinedClickable(
                     onClick = { /* Do nothing on normal click */ },
                     onLongClick = onTitleLongClick
                 )
