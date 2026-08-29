@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -472,7 +473,10 @@ fun SettingsHeader(modifier: Modifier = Modifier, title: String = "Settings", on
     ) {
         Text(
             text = title, 
-            style = MaterialTheme.typography.displayLarge, 
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold
+            ), 
             color = MaterialTheme.colorScheme.onSurface
         )
     }

@@ -1344,7 +1344,7 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
             androidx.compose.material3.Text(
                 text = title, 
                 style = androidx.compose.material3.MaterialTheme.typography.displaySmall.copy(
-                    fontSize = 30.sp,
+                    fontSize = 32.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 ), 
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
@@ -2181,7 +2181,10 @@ fun SearchHeader(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = "Search", 
-            style = MaterialTheme.typography.displayLarge, 
+            style = androidx.compose.material3.MaterialTheme.typography.displaySmall.copy(
+                fontSize = 32.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            ), 
             color = MaterialTheme.colorScheme.onSurface
         )
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -2554,7 +2557,10 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium,
+            style = androidx.compose.material3.MaterialTheme.typography.displaySmall.copy(
+                fontSize = 32.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            ), 
             color = MaterialTheme.colorScheme.onSurface
         )
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.jellyClick { }) {
