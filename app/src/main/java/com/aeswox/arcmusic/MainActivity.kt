@@ -1342,7 +1342,10 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
         if (title != null) {
             Text(
                 text = title, 
-                style = MaterialTheme.typography.displaySmall, 
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontSize = MaterialTheme.typography.displaySmall.fontSize * 2,
+                    fontWeight = FontWeight.Bold
+                ), 
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.combinedClickable(
                     onClick = { /* Do nothing on normal click */ },
