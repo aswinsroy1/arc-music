@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                     
                     val view = androidx.compose.ui.platform.LocalView.current
                     if (!view.isInEditMode) {
-                        val window = (view.context as android.app.Activity).window
+                        val window = this@MainActivity.window
                         val baseBgLuminance = MaterialTheme.colorScheme.background.luminance()
                         val glowLuminance = glowColor.luminance()
                         val effectiveLuminance = glowLuminance * glowIntensity + baseBgLuminance * (1f - glowIntensity)
