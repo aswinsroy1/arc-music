@@ -55,7 +55,9 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.ui.draw.blur
 import androidx.compose.material3.Button
 import androidx.compose.foundation.background
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import com.aeswox.arcmusic.backdrop.Backdrop
@@ -398,21 +400,21 @@ fun BottomNavigation(
     ) {
         NavBarItem(
             selected = currentTab == 0,
-            icon = Icons.Default.Home,
+            icon = Icons.Outlined.Home,
             contentDescription = "Home",
             interactionSource = tab0InteractionSource,
             onClick = { onTabSelected(0) }
         )
         NavBarItem(
             selected = currentTab == 1,
-            icon = Icons.Default.Search,
+            icon = Icons.Outlined.Search,
             contentDescription = "Search",
             interactionSource = tab1InteractionSource,
             onClick = { onTabSelected(1) }
         )
         NavBarItem(
             selected = currentTab == 2,
-            icon = Icons.Default.LibraryMusic,
+            icon = Icons.Outlined.LibraryMusic,
             contentDescription = "Library",
             interactionSource = tab2InteractionSource,
             onClick = { onTabSelected(2) }
@@ -503,7 +505,7 @@ private fun NavBarItem(
                 }
                 .size(width = 56.dp, height = 32.dp)
                 .background(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                     shape = androidx.compose.foundation.shape.CircleShape
                 )
         )

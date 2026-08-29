@@ -85,6 +85,7 @@ import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -203,6 +204,19 @@ class MainActivity : ComponentActivity() {
                     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
                     val artworkUrl = if (isMiniPlayerVisible) currentlyPlaying?.artworkUri ?: currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" } else null
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
+                    
+                    val view = androidx.compose.ui.platform.LocalView.current
+                    if (!view.isInEditMode) {
+                        val window = (view.context as android.app.Activity).window
+                        val baseBgLuminance = MaterialTheme.colorScheme.background.luminance()
+                        val glowLuminance = glowColor.luminance()
+                        val effectiveLuminance = glowLuminance * glowIntensity + baseBgLuminance * (1f - glowIntensity)
+                        val isLightBg = effectiveLuminance > 0.5f
+                        
+                        androidx.compose.runtime.SideEffect {
+                            androidx.core.view.WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isLightBg
+                        }
+                    }
 
                     val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
                     if (hasCompletedOnboarding == null) {
@@ -1328,7 +1342,7 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", onSettin
         if (title != null) {
             Text(
                 text = title, 
-                style = MaterialTheme.typography.displayLarge, 
+                style = MaterialTheme.typography.displaySmall, 
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.combinedClickable(
                     onClick = { /* Do nothing on normal click */ },

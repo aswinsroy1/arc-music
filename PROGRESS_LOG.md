@@ -378,3 +378,20 @@ Implement a new LyricsDisplayStyle preference (FADE vs DISTANCE_BLUR) with cumul
 
 ### Build
 - Compiled successfully.
+
+---
+
+## Date: 2026-08-29
+
+### Goal
+Apply UI visual polish to the status bar, bottom navigation, and home screen header.
+
+### Changed Files
+- **MainActivity.kt**: Injected dynamic status bar luminance calculations based on album art glow, adapting to light/dark text automatically. Reduced Home Screen header font size to `displaySmall`.
+- **ReusableComponents.kt**: Changed bottom navigation icons to Material Outlined and reduced the selected pill opacity to 40% for better visual balance.
+
+### Key Decisions
+- Extracted exact luminance from `glowColor` combined with `MaterialTheme.colorScheme.background` to safely set `isAppearanceLightStatusBars`.
+
+### Build
+- Compiled successfully.

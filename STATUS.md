@@ -70,3 +70,4 @@
 - Implemented smooth Play/Pause animated morphing using androidx.graphics.shapes and real Lucide icon paths in NowPlaying and MiniPlayer.
 - Fixed duplicate-filename handling for received tracks in Nearby Share by appending a disambiguator `(received)` to collisions before MediaStore insertion.
 - Implemented `LyricsDisplayStyle` preference (FADE or DISTANCE_BLUR) in Settings -> Appearance. FADE (the new default) uses cumulative word-fill highlighting without blur, while DISTANCE_BLUR retains the original distance-based blur and spotlight word highlight.
+- Visual Polish: Dynamically updated status bar contrast to ensure icons remain visible over bright album art glow colors. Standardized bottom nav icons to Material Outlined and softened the active tab pill opacity for better visual balance. Reduced Home screen "Arc Music" header size to `displaySmall` to minimize visual competition with the hero card.
