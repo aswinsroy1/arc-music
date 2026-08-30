@@ -207,6 +207,9 @@ class MusicViewModel @Inject constructor(
     val recentlyPlayed: StateFlow<List<Track>>
     val homescreenRecommendations: StateFlow<List<GrowthCard>>
     
+    val heroCardPlayingStateEnabled: StateFlow<Boolean> = settingsRepository.heroCardPlayingStateEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    
     val libraryAlbums: StateFlow<List<Album>>
     val libraryArtists: StateFlow<List<Artist>>
     val libraryTracks: StateFlow<List<Track>>
@@ -228,6 +231,12 @@ class MusicViewModel @Inject constructor(
     private val _healthState = MutableStateFlow(CollectionHealthState())
     val healthState: StateFlow<CollectionHealthState> = _healthState.asStateFlow()
     
+    fun setHeroCardPlayingStateEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHeroCardPlayingStateEnabled(enabled)
+        }
+    }
+
     private val _missingContentUiState = MutableStateFlow<MissingContentUiState>(MissingContentUiState.Loading)
     val missingContentUiState: StateFlow<MissingContentUiState> = _missingContentUiState.asStateFlow()
 

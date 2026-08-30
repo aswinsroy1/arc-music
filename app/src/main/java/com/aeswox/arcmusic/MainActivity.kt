@@ -6,6 +6,8 @@ import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import com.aeswox.arcmusic.ui.animations.NavTransitions
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeswox.arcmusic.sharing.ShareScreen
@@ -728,6 +730,7 @@ class MainActivity : ComponentActivity() {
                             val fanartTvApiKey by viewModel.fanartTvApiKey.collectAsState()
                             val coilDiskCacheLimitMb by viewModel.coilDiskCacheLimitMb.collectAsState()
                             val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
+                            val heroCardPlayingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
                             
                             val dynamicBottomPadding by remember(isMiniPlayerVisible, currentlyPlaying) {
                                 derivedStateOf {
@@ -744,11 +747,13 @@ class MainActivity : ComponentActivity() {
                                     glowIntensity = glowIntensity,
                                     themeMode = themeMode,
                                     lightThemeForNowPlaying = lightThemeForNowPlaying,
+                                    heroCardPlayingStateEnabled = heroCardPlayingStateEnabled,
                                     lyricsDisplayStyle = lyricsDisplayStyle,
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
+                                    onHeroCardPlayingStateEnabledChange = { viewModel.setHeroCardPlayingStateEnabled(it) },
                                     onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
@@ -1385,8 +1390,9 @@ fun HeroSection(
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
     val randomPicks by viewModel.randomPicks.collectAsState()
+    val playingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
 
-    if (isPlaying && currentSong != null) {
+    if (playingStateEnabled && isPlaying && currentSong != null) {
         var showLyrics by remember { mutableStateOf(false) }
 
         val blurRadius by animateDpAsState(if (showLyrics) 24.dp else 0.dp, label = "blurRadius")
@@ -1398,6 +1404,11 @@ fun HeroSection(
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(1.3f)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(36.dp),
+                    spotColor = Color.Black.copy(alpha = 0.2f)
+                )
                 .clip(RoundedCornerShape(36.dp))
                 .jellyClick { showLyrics = !showLyrics }
         ) {
@@ -1434,70 +1445,178 @@ fun HeroSection(
                 visible = !showLyrics,
                 enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)),
                 exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(500)),
-                modifier = Modifier.align(Alignment.BottomStart)
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Text(
-                        text = currentSong.title, 
-                        style = MaterialTheme.typography.headlineLarge, 
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = currentSong.artist, 
-                        style = MaterialTheme.typography.bodyLarge, 
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = currentSong.title, 
+                            style = MaterialTheme.typography.headlineLarge, 
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = currentSong.artist, 
+                            style = MaterialTheme.typography.bodyLarge, 
+                            color = Color.White.copy(alpha = 0.9f),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .clickable { viewModel.togglePlayPause() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
+                            isPlaying = isPlaying,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }
     } else {
-        val suggestedSong = randomPicks.firstOrNull()
-        if (suggestedSong == null) return
+        if (randomPicks.isEmpty()) return
         
-        Box(
+        val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+            pageCount = { randomPicks.size }
+        )
+        
+        LaunchedEffect(pagerState.settledPage) {
+            if (randomPicks.size > 1) {
+                delay(5000)
+                val nextPage = (pagerState.currentPage + 1) % randomPicks.size
+                pagerState.animateScrollToPage(
+                    page = nextPage,
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                    )
+                )
+            }
+        }
+        
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(1.3f)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(36.dp),
+                    spotColor = Color.Black.copy(alpha = 0.2f)
+                )
                 .clip(RoundedCornerShape(36.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(24.dp)
+        ) { page ->
+            val suggestedSong = randomPicks[page]
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val pageOffset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction)
+                        val absOffset = kotlin.math.abs(pageOffset)
+                        val scale = 1f - (absOffset * 0.15f).coerceIn(0f, 1f)
+                        val alphaAmt = 1f - (absOffset * 0.5f).coerceIn(0f, 1f)
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = alphaAmt
+                    }
             ) {
-                val gradientBrush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF45B0E6), Color(0xFF4DE3C3))
+                AsyncImage(
+                    model = suggestedSong.artworkUri ?: suggestedSong.albumId?.let { "content://media/external/audio/albumart/$it" },
+                    contentDescription = suggestedSong.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
-                Text(
-                    text = suggestedSong?.title ?: "Unknown",
-                    style = androidx.compose.ui.text.TextStyle(
-                        brush = gradientBrush,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 32.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        lineHeight = 36.sp
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent, 
+                                    MaterialTheme.colorScheme.surface
+                                )
+                            )
+                        )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = suggestedSong?.artist ?: "Unknown",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                AppPrimaryButton(
-                    text = "Play",
-                    onClick = { suggestedSong?.let { song -> onPlayClick(song, randomPicks) } },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp)
-                )
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
+                ) {
+                    Text(
+                        text = suggestedSong.title,
+                        style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = suggestedSong.artist,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        AppPrimaryButton(
+                            text = "Play",
+                            onClick = { onPlayClick(suggestedSong, randomPicks) },
+                            containerColor = MaterialTheme.colorScheme.onSurface,
+                            contentColor = MaterialTheme.colorScheme.surface,
+                            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        if (suggestedSong.year != null && suggestedSong.year > 0) {
+                            Text(
+                                text = suggestedSong.year.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                        
+                        val badgeRes = suggestedSong.getQualityBadgeResId()
+                        if (badgeRes != null) {
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(id = badgeRes),
+                                contentDescription = "Quality",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
