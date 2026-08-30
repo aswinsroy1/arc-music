@@ -122,7 +122,7 @@ fun AppearanceHeader(modifier: Modifier = Modifier, onNavigateBack: () -> Unit =
         }
         Text(
             text = "Appearance", 
-            style = MaterialTheme.typography.headlineLarge, 
+            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, fontWeight = FontWeight.Bold), 
             color = MaterialTheme.colorScheme.onSurface
         )
     }

@@ -70,6 +70,7 @@ fun GenreHubScreenContent(
             Header(
                 modifier = Modifier.padding(horizontal = 24.dp),
                 title = null,
+                fontSize = 32.sp,
                 onSettingsClick = { },
                 onBackClick = onNavigateBack
             )
