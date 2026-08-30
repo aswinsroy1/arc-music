@@ -1397,7 +1397,7 @@ fun HeroSection(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .aspectRatio(1.57f)
+                .aspectRatio(1.2f)
                 .clip(RoundedCornerShape(36.dp))
                 .jellyClick { showLyrics = !showLyrics }
         ) {
