@@ -43,6 +43,12 @@ class MusicPlayerConnection @Inject constructor(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
+    private val _shuffleModeEnabled = MutableStateFlow(false)
+    val shuffleModeEnabled: StateFlow<Boolean> = _shuffleModeEnabled.asStateFlow()
+
+    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
     private val _currentQueue = MutableStateFlow<List<MediaItem>>(emptyList())
     val currentQueue: StateFlow<List<MediaItem>> = _currentQueue.asStateFlow()
 
@@ -101,6 +107,8 @@ class MusicPlayerConnection @Inject constructor(
             // Sync initial state
             mediaController?.let {
                 _isPlaying.value = it.isPlaying
+                _shuffleModeEnabled.value = it.shuffleModeEnabled
+                _repeatMode.value = it.repeatMode
                 _currentlyPlayingItem.value = it.currentMediaItem
                 _currentMediaItemIndex.value = it.currentMediaItemIndex
                 val items = mutableListOf<MediaItem>()
@@ -223,6 +231,14 @@ class MusicPlayerConnection @Inject constructor(
             _deviceMaxVolume.value = deviceInfo.maxVolume
         }
 
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            _shuffleModeEnabled.value = shuffleModeEnabled
+        }
+
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            _repeatMode.value = repeatMode
+        }
+
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
             mediaController?.let { controller ->
                 val items = mutableListOf<MediaItem>()
@@ -262,6 +278,22 @@ class MusicPlayerConnection @Inject constructor(
 
     fun pause() {
         mediaController?.pause()
+    }
+    
+    fun toggleShuffleMode() {
+        mediaController?.let {
+            it.shuffleModeEnabled = !it.shuffleModeEnabled
+        }
+    }
+
+    fun toggleRepeatMode() {
+        mediaController?.let {
+            it.repeatMode = when (it.repeatMode) {
+                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                else -> Player.REPEAT_MODE_OFF
+            }
+        }
     }
 
     fun skipToNext() {

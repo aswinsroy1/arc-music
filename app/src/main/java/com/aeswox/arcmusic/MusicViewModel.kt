@@ -395,6 +395,12 @@ class MusicViewModel @Inject constructor(
     }
     
     val isPlaying: StateFlow<Boolean> = musicPlayerConnection.isPlaying
+    
+    val shuffleModeEnabled: StateFlow<Boolean> = musicPlayerConnection.shuffleModeEnabled
+    val repeatMode: StateFlow<Int> = musicPlayerConnection.repeatMode
+
+    fun toggleShuffleMode() = musicPlayerConnection.toggleShuffleMode()
+    fun toggleRepeatMode() = musicPlayerConnection.toggleRepeatMode()
 
     val deviceVolume = musicPlayerConnection.deviceVolume
     val deviceMaxVolume = musicPlayerConnection.deviceMaxVolume

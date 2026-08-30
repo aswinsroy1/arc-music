@@ -293,6 +293,10 @@ fun NowPlayingScreen(
 
     val deviceMaxVolume by viewModel.deviceMaxVolume.collectAsState()
 
+    val shuffleEnabled by viewModel.shuffleModeEnabled.collectAsState()
+
+    val repeatMode by viewModel.repeatMode.collectAsState()
+
     
 
     val sleepTimerTriggerTime by viewModel.sleepTimerTriggerTime.collectAsState()
@@ -902,10 +906,13 @@ fun NowPlayingScreen(
 
                     ) {
 
-                        IconButton(onClick = onNavigateToQueue) {
-
-                            CustomListIcon(color = textColor, modifier = Modifier.size(24.dp))
-
+                        IconButton(onClick = { viewModel.toggleShuffleMode() }) {
+                            Icon(
+                                imageVector = Icons.Default.Shuffle,
+                                contentDescription = "Shuffle",
+                                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
 
                         
@@ -1014,10 +1021,16 @@ fun NowPlayingScreen(
 
 
 
-                        IconButton(onClick = { showLyrics = !showLyrics }) {
-
-                            CustomLyricsIcon(color = textColor, modifier = Modifier.size(24.dp))
-
+                        IconButton(onClick = { viewModel.toggleRepeatMode() }) {
+                            Icon(
+                                imageVector = when (repeatMode) {
+                                    androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                                    else -> Icons.Default.Repeat
+                                },
+                                contentDescription = "Repeat",
+                                tint = if (repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
 
                     }
