@@ -637,46 +637,8 @@ fun NowPlayingScreen(
 
         ) {
 
-            // Top Bar
-
-            Row(
-
-                modifier = Modifier
-
-                    .fillMaxWidth()
-
-                    .padding(top = 16.dp),
-
-                horizontalArrangement = Arrangement.SpaceBetween,
-
-                verticalAlignment = Alignment.CenterVertically
-
-            ) {
-
-                IconButton(onClick = { 
-
-                    if (showLyrics) showLyrics = false else onNavigateBack()
-
-                }) {
-
-                    Icon(
-
-                        imageVector = Icons.Default.KeyboardArrowDown, 
-
-                        contentDescription = "Collapse",
-
-                        tint = textColor,
-
-                        modifier = Modifier.size(32.dp)
-
-                    )
-
-                }
-
-            }
-
+            // Top Bar removed as requested
             
-
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
                 // Controls Column
