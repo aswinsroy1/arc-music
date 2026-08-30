@@ -1333,7 +1333,7 @@ fun MusicHomeScreen(
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", fontSize: androidx.compose.ui.unit.TextUnit = 36.sp, onSettingsClick: () -> Unit = {}, onBackClick: () -> Unit = {}, onTitleLongClick: () -> Unit = {}) {
+fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", fontSize: androidx.compose.ui.unit.TextUnit = 34.sp, onSettingsClick: () -> Unit = {}, onBackClick: () -> Unit = {}, onTitleLongClick: () -> Unit = {}) {
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -2182,7 +2182,7 @@ fun SearchHeader(modifier: Modifier = Modifier) {
         Text(
             text = "Search", 
             style = androidx.compose.material3.MaterialTheme.typography.displaySmall.copy(
-                fontSize = 36.sp,
+                fontSize = 34.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             ), 
             color = MaterialTheme.colorScheme.onSurface

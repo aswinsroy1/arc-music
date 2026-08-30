@@ -245,7 +245,7 @@ private fun AppearanceHeader(
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 32.sp),
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )

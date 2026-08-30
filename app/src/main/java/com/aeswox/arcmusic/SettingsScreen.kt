@@ -465,7 +465,7 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsHeader(modifier: Modifier = Modifier, title: String = "Settings", fontSize: androidx.compose.ui.unit.TextUnit = 36.sp, onNavigateBack: () -> Unit = {}) {
+fun SettingsHeader(modifier: Modifier = Modifier, title: String = "Settings", fontSize: androidx.compose.ui.unit.TextUnit = 34.sp, onNavigateBack: () -> Unit = {}) {
     Row(
         modifier = modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

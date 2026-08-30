@@ -468,7 +468,7 @@ fun LibraryHeader(
                 Text(
                     text = targetTitle,
                     style = MaterialTheme.typography.displaySmall.copy(
-                        fontSize = 36.sp,
+                        fontSize = 34.sp,
                         fontWeight = FontWeight.Bold
                     ),
                     color = MaterialTheme.colorScheme.onSurface

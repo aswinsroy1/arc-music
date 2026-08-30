@@ -105,7 +105,7 @@ fun ShareScreen(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize()
         ) {
             item {
-                SettingsHeader(title = "Share", fontSize = 32.sp, onNavigateBack = onNavigateBack)
+                SettingsHeader(title = "Share", fontSize = 30.sp, onNavigateBack = onNavigateBack)
             }
 
             item {
