@@ -384,7 +384,7 @@ fun BottomNavigation(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(65.dp)
             .clip(RoundedCornerShape(AppCornerRadius))
             .glassEffect(hazeState, tintTransparency, noiseFactor)
             .graphicsLayer {
