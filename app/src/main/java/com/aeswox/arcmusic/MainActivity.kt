@@ -1397,7 +1397,7 @@ fun HeroSection(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .aspectRatio(1.2f)
+                .aspectRatio(1.3f)
                 .clip(RoundedCornerShape(36.dp))
                 .jellyClick { showLyrics = !showLyrics }
         ) {
@@ -1460,7 +1460,7 @@ fun HeroSection(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .aspectRatio(1.57f)
+                .aspectRatio(1.3f)
                 .clip(RoundedCornerShape(36.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
