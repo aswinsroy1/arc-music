@@ -126,7 +126,7 @@ fun StatsHeader(onBackClick: () -> Unit) {
         }
         Text(
             text = "Listening Stats",
-            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp, fontWeight = FontWeight.ExtraBold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
             color = MaterialTheme.colorScheme.onSurface
         )
         // No profile photo — user-profile feature does not exist in this app

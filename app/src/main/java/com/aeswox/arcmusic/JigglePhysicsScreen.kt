@@ -51,7 +51,7 @@ fun JigglePhysicsScreen(
                 item {
                     SettingsHeader(
                         title = "Jiggle physics",
-                        fontSize = 30.sp,
+                        fontSize = 28.sp,
                         onNavigateBack = onNavigateBack
                     )
                 }
