@@ -6,6 +6,8 @@ import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import com.aeswox.arcmusic.ui.animations.NavTransitions
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeswox.arcmusic.sharing.ShareScreen
@@ -1398,6 +1400,11 @@ fun HeroSection(
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(1.3f)
+                .shadow(
+                    elevation = 24.dp,
+                    shape = RoundedCornerShape(36.dp),
+                    spotColor = Color.Black.copy(alpha = 0.5f)
+                )
                 .clip(RoundedCornerShape(36.dp))
                 .jellyClick { showLyrics = !showLyrics }
         ) {
@@ -1434,22 +1441,51 @@ fun HeroSection(
                 visible = !showLyrics,
                 enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)),
                 exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(500)),
-                modifier = Modifier.align(Alignment.BottomStart)
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Text(
-                        text = currentSong.title, 
-                        style = MaterialTheme.typography.headlineLarge, 
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = currentSong.artist, 
-                        style = MaterialTheme.typography.bodyLarge, 
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = currentSong.title, 
+                            style = MaterialTheme.typography.headlineLarge, 
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = currentSong.artist, 
+                            style = MaterialTheme.typography.bodyLarge, 
+                            color = Color.White.copy(alpha = 0.9f),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .clickable { viewModel.togglePlayPause() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
+                            isPlaying = isPlaying,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1461,6 +1497,11 @@ fun HeroSection(
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(1.3f)
+                .shadow(
+                    elevation = 24.dp,
+                    shape = RoundedCornerShape(36.dp),
+                    spotColor = Color.Black.copy(alpha = 0.5f)
+                )
                 .clip(RoundedCornerShape(36.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
