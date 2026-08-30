@@ -43,11 +43,13 @@ fun SettingsScreen(
     glowIntensity: Float,
     themeMode: ThemeMode,
     lightThemeForNowPlaying: Boolean,
+    heroCardPlayingStateEnabled: Boolean,
     lyricsDisplayStyle: LyricsDisplayStyle,
     lastFmApiKey: String?,
     fanartTvApiKey: String?,
     onThemeModeChange: (ThemeMode) -> Unit,
     onLightThemeForNowPlayingChange: (Boolean) -> Unit,
+    onHeroCardPlayingStateEnabledChange: (Boolean) -> Unit,
     onLyricsDisplayStyleChange: (LyricsDisplayStyle) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
@@ -239,6 +241,17 @@ fun SettingsScreen(
                                 Switch(
                                     checked = lightThemeForNowPlaying, 
                                     onCheckedChange = { onLightThemeForNowPlayingChange(it) }
+                                )
+                            },
+                            showArrow = false
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.PlayCircleOutline,
+                            text = "Show hero card when playing",
+                            trailingContent = {
+                                Switch(
+                                    checked = heroCardPlayingStateEnabled,
+                                    onCheckedChange = { onHeroCardPlayingStateEnabledChange(it) }
                                 )
                             },
                             showArrow = false

@@ -51,6 +51,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val LYRICS_BLUR_DIMMING_KEY = floatPreferencesKey("lyrics_blur_dimming")
     private val CANVAS_ENABLED_KEY = booleanPreferencesKey("canvas_enabled")
     private val CANVAS_CACHE_LIMIT_MB_KEY = intPreferencesKey("canvas_cache_limit_mb")
+    private val HERO_CARD_PLAYING_STATE_ENABLED_KEY = booleanPreferencesKey("hero_card_playing_state_enabled")
 
     private val MASS_KEY = floatPreferencesKey("physics_mass")
     private val STIFFNESS_KEY = floatPreferencesKey("physics_stiffness")
@@ -122,6 +123,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     val canvasCacheLimitMb: Flow<Int> = context.dataStore.data.map { preferences ->
         preferences[CANVAS_CACHE_LIMIT_MB_KEY] ?: 250
+    }
+
+    val heroCardPlayingStateEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HERO_CARD_PLAYING_STATE_ENABLED_KEY] ?: false
     }
 
     val tintTransparency: Flow<Float> = context.dataStore.data.map { preferences ->
@@ -307,6 +312,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setCanvasCacheLimitMb(limit: Int) {
         context.dataStore.edit { preferences ->
             preferences[CANVAS_CACHE_LIMIT_MB_KEY] = limit
+        }
+    }
+
+    suspend fun setHeroCardPlayingStateEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HERO_CARD_PLAYING_STATE_ENABLED_KEY] = enabled
         }
     }
 }
