@@ -252,7 +252,7 @@ class MainActivity : ComponentActivity() {
                     
                     // Raw (target) offset â€” driven by nav-bar visibility and library selection mode
                     val rawBottomOffset = if (isNavBarVisible || isLibrarySelectionMode) {
-                        100.dp + innerPadding.calculateBottomPadding()
+                        87.dp + innerPadding.calculateBottomPadding()
                     } else {
                         24.dp + innerPadding.calculateBottomPadding()
                     }
@@ -981,7 +981,7 @@ class MainActivity : ComponentActivity() {
                                         // so it grows/shrinks as the nav bar and miniplayer come and go.
                                         val miniPlayerVisible = isMiniPlayerVisible && currentlyPlaying != null
                                         val miniPlayerH = 80.dp
-                                        val navBarH = 80.dp
+                                        val navBarH = 65.dp
                                         val rawGradientHeight = when {
                                             isNavBarVisible && miniPlayerVisible -> navBarH + 16.dp + miniPlayerH + 32.dp
                                             isNavBarVisible -> navBarH + 32.dp
