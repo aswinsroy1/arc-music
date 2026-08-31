@@ -1554,15 +1554,12 @@ fun HeroSection(
             }
         }
         
-        val currentDisplayItem = if (displayPicks.isNotEmpty()) displayPicks[pagerState.currentPage] else null
-        val currentArtwork = when (currentDisplayItem) {
-            is HeroCardItem.TrackItem -> currentDisplayItem.track.artworkUri ?: currentDisplayItem.track.albumId?.let { "content://media/external/audio/albumart/$it" }
-            is HeroCardItem.AlbumItem -> currentDisplayItem.album.artworkUri
-            is HeroCardItem.ArtistItem -> currentDisplayItem.artist.photoUri
-            else -> null
-        }
-
-        Box(
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(
+                state = pagerState,
+                snapAnimationSpec = springSpec
+            ),
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(1.3f)
@@ -1572,28 +1569,6 @@ fun HeroSection(
                     spotColor = Color.Black.copy(alpha = 0.2f)
                 )
                 .clip(RoundedCornerShape(36.dp))
-        ) {
-            AsyncImage(
-                model = currentArtwork,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(48.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-            )
-
-            androidx.compose.foundation.pager.HorizontalPager(
-                state = pagerState,
-                flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(
-                    state = pagerState,
-                    snapAnimationSpec = springSpec
-                ),
-                modifier = Modifier.fillMaxSize()
         ) { page ->
             val suggestedItem = displayPicks[page]
             
@@ -1739,7 +1714,6 @@ fun HeroSection(
                     }
                 }
             }
-        }
         }
     }
 }
