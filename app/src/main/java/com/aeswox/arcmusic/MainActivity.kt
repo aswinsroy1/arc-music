@@ -31,6 +31,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.material3.Checkbox
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
@@ -1751,7 +1752,18 @@ fun WordSyncedLyrics(
 
     LaunchedEffect(activeLineIndex) {
         if (linesToRender.isNotEmpty() && activeLineIndex in linesToRender.indices) {
-            listState.animateScrollToItem(activeLineIndex)
+            val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == activeLineIndex }
+            if (visibleItem != null && visibleItem.offset != 0) {
+                listState.animateScrollBy(
+                    value = visibleItem.offset.toFloat(),
+                    animationSpec = androidx.compose.animation.core.spring<Float>(
+                        dampingRatio = 0.75f, // slight bounce
+                        stiffness = 50f // smooth and slow
+                    )
+                )
+            } else {
+                listState.animateScrollToItem(activeLineIndex)
+            }
         }
     }
 
