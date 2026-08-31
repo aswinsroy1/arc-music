@@ -1400,13 +1400,6 @@ fun HeroSection(
     val includeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
 
     if (playingStateEnabled && isPlaying && currentSong != null) {
-        var showLyrics by remember { mutableStateOf(false) }
-
-        val blurRadius by animateDpAsState(if (showLyrics) 24.dp else 0.dp, label = "blurRadius")
-        val gradientAlphaStart by animateFloatAsState(if (showLyrics) 0.6f else 0.0f, label = "gradStart")
-        val gradientAlphaMid by animateFloatAsState(if (showLyrics) 0.6f else 0.2f, label = "gradMid")
-        val gradientAlphaEnd by animateFloatAsState(if (showLyrics) 0.6f else 0.8f, label = "gradEnd")
-
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -1417,13 +1410,13 @@ fun HeroSection(
                     spotColor = Color.Black.copy(alpha = 0.2f)
                 )
                 .clip(RoundedCornerShape(36.dp))
-                .jellyClick { showLyrics = !showLyrics }
+                .jellyClick { /* Optional: Navigate to Now Playing? */ }
         ) {
             AsyncImage(
                 model = currentSong.artworkUri ?: currentSong.albumId?.let { "content://media/external/audio/albumart/$it" },
                 contentDescription = currentSong.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().blur(blurRadius)
+                modifier = Modifier.fillMaxSize()
             )
             Box(
                 modifier = Modifier
@@ -1431,73 +1424,42 @@ fun HeroSection(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = gradientAlphaStart), 
-                                Color.Black.copy(alpha = gradientAlphaMid), 
-                                Color.Black.copy(alpha = gradientAlphaEnd)
+                                Color.Transparent, 
+                                MaterialTheme.colorScheme.surface
                             )
                         )
                     )
             )
             
-            androidx.compose.animation.AnimatedVisibility(
-                visible = showLyrics,
-                enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)),
-                exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(500)),
-                modifier = Modifier.align(Alignment.Center)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
             ) {
-                WordSyncedLyrics()
-            }
-
-            androidx.compose.animation.AnimatedVisibility(
-                visible = !showLyrics,
-                enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)),
-                exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(500)),
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = currentSong.title, 
-                            style = MaterialTheme.typography.headlineLarge, 
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = currentSong.artist, 
-                            style = MaterialTheme.typography.bodyLarge, 
-                            color = Color.White.copy(alpha = 0.9f),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f))
-                            .clickable { viewModel.togglePlayPause() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
-                            isPlaying = isPlaying,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
+                WordSyncedLyrics(
+                    modifier = Modifier.fillMaxWidth(),
+                    textColor = MaterialTheme.colorScheme.onSurface,
+                    alignment = Alignment.BottomStart,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = currentSong.title,
+                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = currentSong.artist,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     } else {
@@ -1721,7 +1683,12 @@ fun HeroSection(
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun WordSyncedLyrics(textColor: Color = Color.White) {
+fun WordSyncedLyrics(
+    modifier: Modifier = Modifier.fillMaxSize(),
+    textColor: Color = Color.White,
+    alignment: Alignment = Alignment.Center,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+) {
     val viewModel: MusicViewModel = hiltViewModel()
     val lyricsData by viewModel.lyricsUiState.collectAsState()
 
@@ -1764,8 +1731,8 @@ fun WordSyncedLyrics(textColor: Color = Color.White) {
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = modifier,
+        contentAlignment = alignment
     ) {
         androidx.compose.animation.AnimatedContent(
             targetState = activeLineIndex,
@@ -1780,10 +1747,8 @@ fun WordSyncedLyrics(textColor: Color = Color.White) {
             label = "lyricLine"
         ) {
             FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = if (alignment == Alignment.Center) 24.dp else 0.dp),
+                horizontalArrangement = horizontalArrangement,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 activeWords.forEachIndexed { wordIndex, word ->
