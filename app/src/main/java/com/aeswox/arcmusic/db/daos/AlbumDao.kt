@@ -15,7 +15,7 @@ interface AlbumDao {
     @Query("SELECT * FROM albums ORDER BY RANDOM() LIMIT :limit")
     fun getRandomAlbums(limit: Int): Flow<List<Album>>
 
-    @Query("SELECT * FROM albums WHERE artworkUri IS NOT NULL ORDER BY RANDOM() LIMIT :limit")
+    @Query("SELECT * FROM albums WHERE artworkUri IS NOT NULL AND artworkUri != '' ORDER BY RANDOM() LIMIT :limit")
     suspend fun getRandomAlbumsWithArtwork(limit: Int): List<Album>
 
     @Query("SELECT * FROM albums WHERE id = :id")
