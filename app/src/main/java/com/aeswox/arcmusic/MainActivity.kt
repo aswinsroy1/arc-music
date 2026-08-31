@@ -1378,8 +1378,8 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", fontSize
         }
         JellyIconButton(onClick = onSettingsClick) {
             Icon(
-                imageVector = Icons.Default.MoreVert, 
-                contentDescription = "More", 
+                imageVector = com.aeswox.arcmusic.ui.components.LucideSettings, 
+                contentDescription = "Settings", 
                 tint = MaterialTheme.colorScheme.onSurface, 
                 modifier = Modifier.size(32.dp)
             )
