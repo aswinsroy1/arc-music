@@ -1441,8 +1441,8 @@ fun HeroSection(
             stiffness = androidx.compose.animation.core.Spring.StiffnessLow
         )
 
-        LaunchedEffect(pagerState.settledPage) {
-            if (displayPicks.size > 1) {
+        LaunchedEffect(pagerState.settledPage, showNowPlaying) {
+            if (displayPicks.size > 1 && !showNowPlaying) {
                 delay(4500)
                 val nextPage = pagerState.currentPage + 1
                 if (nextPage < displayPicks.size) {
