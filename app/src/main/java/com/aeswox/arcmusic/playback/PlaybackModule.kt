@@ -17,9 +17,8 @@ object PlaybackModule {
     @Singleton
     fun provideMusicPlayerConnection(
         @ApplicationContext context: Context,
-        repository: MusicRepository,
-        lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository
+        repository: MusicRepository
     ): MusicPlayerConnection {
-        return MusicPlayerConnection(context, repository, lyricsRepository)
+        return MusicPlayerConnection(context, repository)
     }
 }

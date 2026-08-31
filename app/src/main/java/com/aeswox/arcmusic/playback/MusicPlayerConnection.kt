@@ -26,8 +26,7 @@ import javax.inject.Singleton
 @Singleton
 class MusicPlayerConnection @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val repository: MusicRepository,
-    private val lyricsRepository: com.aeswox.arcmusic.data.repository.LyricsRepository
+    private val repository: MusicRepository
 ) {
     private var controllerFuture: ListenableFuture<MediaController>
     private var mediaController: MediaController? = null
@@ -136,58 +135,6 @@ class MusicPlayerConnection @Inject constructor(
                 }
             }
 
-            scope.launch(Dispatchers.IO) {
-                var lastLyricLine = ""
-                var lastTrackId = ""
-                var lastIsPlaying = false
-                var currentLyrics: com.aeswox.arcmusic.data.model.Lyrics? = null
-                var currentTrack: com.aeswox.arcmusic.db.entities.Track? = null
-
-                while (isActive) {
-                    val mediaItem = _currentlyPlayingItem.value
-                    val isPlaying = _isPlaying.value
-                    val position = _currentPosition.value
-
-                    if (mediaItem != null) {
-                        val trackId = mediaItem.mediaId
-                        if (trackId != lastTrackId) {
-                            lastTrackId = trackId
-                            currentTrack = repository.getTrackById(trackId)
-                            if (currentTrack != null) {
-                                currentLyrics = lyricsRepository.getLyrics(currentTrack)
-                            } else {
-                                currentLyrics = null
-                            }
-                        }
-
-                        var activeLine = ""
-                        if (currentLyrics?.synced != null) {
-                            val synced = currentLyrics.synced!!
-                            val activeIndex = synced.binarySearch { it.time.compareTo(position) }.let { if (it < 0) -it - 2 else it }
-                            if (activeIndex in synced.indices) {
-                                activeLine = synced[activeIndex].line
-                            }
-                        }
-
-                        if (activeLine != lastLyricLine || isPlaying != lastIsPlaying) {
-                            lastLyricLine = activeLine
-                            lastIsPlaying = isPlaying
-
-                            currentTrack?.let { track ->
-                                com.aeswox.arcmusic.ui.widget.HeroWidgetUpdater.updateWidgetState(
-                                    context = context,
-                                    isPlaying = isPlaying,
-                                    trackTitle = track.title,
-                                    trackArtist = track.artist,
-                                    trackArt = track.filePath, // Fallback since actual artwork uri logic varies
-                                    currentLyric = activeLine
-                                )
-                            }
-                        }
-                    }
-                    delay(500)
-                }
-            }
         }, MoreExecutors.directExecutor())
     }
 

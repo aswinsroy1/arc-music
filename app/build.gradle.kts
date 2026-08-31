@@ -145,8 +145,6 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
-  implementation("androidx.glance:glance-appwidget:1.1.0")
-  implementation("androidx.glance:glance-material3:1.1.0")
   implementation(libs.androidx.media3.common)
   implementation(libs.androidx.media3.ui)
   implementation(libs.androidx.media3.exoplayer)
