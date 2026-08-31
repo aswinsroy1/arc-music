@@ -25,6 +25,9 @@ class ArcMusicApplication : Application(), ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .crossfade(true)
             .respectCacheHeaders(false)
+            .placeholder(R.drawable.ic_music_placeholder)
+            .error(R.drawable.ic_music_placeholder)
+            .fallback(R.drawable.ic_music_placeholder)
             .memoryCache {
                 MemoryCache.Builder(this)
                     .maxSizePercent(0.25)
