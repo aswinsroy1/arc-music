@@ -1397,6 +1397,7 @@ fun HeroSection(
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
     val playingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
+    val includeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
 
     if (playingStateEnabled && isPlaying && currentSong != null) {
         var showLyrics by remember { mutableStateOf(false) }
@@ -1503,7 +1504,7 @@ fun HeroSection(
         var currentCycle by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
         var displayPicks by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
         
-        LaunchedEffect(Unit) {
+        LaunchedEffect(includeArtistsAndAlbums) {
             val initial = viewModel.fetchHeroCardSnapshot(10)
             currentCycle = initial
             displayPicks = initial
@@ -1513,7 +1514,7 @@ fun HeroSection(
             pageCount = { displayPicks.size }
         )
 
-        LaunchedEffect(Unit) {
+        LaunchedEffect(includeArtistsAndAlbums) {
             while (true) {
                 delay(45000)
                 val nextBatch = viewModel.fetchHeroCardSnapshot(10)
@@ -1673,12 +1674,14 @@ fun HeroSection(
                         Spacer(modifier = Modifier.weight(1f))
                         
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = typeText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(bottom = 2.dp)
-                            )
+                            if (includeArtistsAndAlbums) {
+                                Text(
+                                    text = typeText,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 val year = when (suggestedItem) {
                                     is HeroCardItem.TrackItem -> suggestedItem.track.year
