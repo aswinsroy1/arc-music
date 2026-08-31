@@ -1400,107 +1400,44 @@ fun HeroSection(
     val playingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
     val includeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
 
-    if (playingStateEnabled && isPlaying && currentSong != null) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .aspectRatio(1.3f)
-                .shadow(
-                    elevation = 16.dp,
-                    shape = RoundedCornerShape(36.dp),
-                    spotColor = Color.Black.copy(alpha = 0.2f)
-                )
-                .clip(RoundedCornerShape(36.dp))
-                .jellyClick { /* Optional: Navigate to Now Playing? */ }
-        ) {
-            AsyncImage(
-                model = currentSong.artworkUri ?: currentSong.albumId?.let { "content://media/external/audio/albumart/$it" },
-                contentDescription = currentSong.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent, 
-                                MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    )
-            )
-            
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
-            ) {
-                WordSyncedLyrics(
-                    modifier = Modifier.fillMaxWidth(),
-                    textColor = MaterialTheme.colorScheme.onSurface,
-                    alignment = Alignment.BottomStart,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = currentSong.title,
-                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = currentSong.artist,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    } else {
-        var currentCycle by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
-        var displayPicks by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
-        
-        LaunchedEffect(includeArtistsAndAlbums) {
-            val initial = viewModel.fetchHeroCardSnapshot(10)
-            currentCycle = initial
-            displayPicks = initial
-        }
-        
-        val pagerState = androidx.compose.foundation.pager.rememberPagerState(
-            pageCount = { displayPicks.size }
-        )
+    val showNowPlaying = playingStateEnabled && isPlaying && currentSong != null
 
-        LaunchedEffect(includeArtistsAndAlbums) {
-            while (true) {
-                delay(45000)
-                val nextBatch = viewModel.fetchHeroCardSnapshot(10)
-                if (nextBatch.isNotEmpty()) {
-                    currentCycle = nextBatch
-                    val nextStartIdx = pagerState.currentPage + 1
-                    displayPicks = displayPicks.take(nextStartIdx) + currentCycle
-                }
-            }
-        }
-        
-        LaunchedEffect(pagerState.currentPage) {
-            if (displayPicks.isNotEmpty() && currentCycle.isNotEmpty()) {
-                if (displayPicks.size - pagerState.currentPage <= 3) {
-                    displayPicks = displayPicks + currentCycle
-                }
-            }
-        }
+    var currentCycle by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
+    var displayPicks by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
+    
+    LaunchedEffect(includeArtistsAndAlbums) {
+        val initial = viewModel.fetchHeroCardSnapshot(10)
+        currentCycle = initial
+        displayPicks = initial
+    }
+    
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        pageCount = { displayPicks.size }
+    )
 
-        if (displayPicks.isEmpty()) return
-        
+    LaunchedEffect(includeArtistsAndAlbums) {
+        while (true) {
+            delay(45000)
+            val nextBatch = viewModel.fetchHeroCardSnapshot(10)
+            if (nextBatch.isNotEmpty()) {
+                currentCycle = nextBatch
+                val nextStartIdx = pagerState.currentPage + 1
+                displayPicks = displayPicks.take(nextStartIdx) + currentCycle
+            }
+        }
+    }
+    
+    LaunchedEffect(pagerState.currentPage) {
+        if (displayPicks.isNotEmpty() && currentCycle.isNotEmpty()) {
+            if (displayPicks.size - pagerState.currentPage <= 3) {
+                displayPicks = displayPicks + currentCycle
+            }
+        }
+    }
+
+    if (displayPicks.isNotEmpty()) {
         val springSpec = androidx.compose.animation.core.spring<Float>(
-            dampingRatio = 0.85f, // More subtle bounce
+            dampingRatio = 0.85f,
             stiffness = androidx.compose.animation.core.Spring.StiffnessLow
         )
 
@@ -1519,6 +1456,7 @@ fun HeroSection(
         
         androidx.compose.foundation.pager.HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !showNowPlaying,
             flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(
                 state = pagerState,
                 snapAnimationSpec = springSpec
@@ -1533,7 +1471,8 @@ fun HeroSection(
                 )
                 .clip(RoundedCornerShape(36.dp))
         ) { page ->
-            val suggestedItem = displayPicks[page]
+            val isNowPlayingMode = showNowPlaying && page == pagerState.currentPage
+            val suggestedItem = if (isNowPlayingMode) HeroCardItem.TrackItem(currentSong!!) else displayPicks[page]
             
             val artwork = when (suggestedItem) {
                 is HeroCardItem.TrackItem -> suggestedItem.track.artworkUri ?: suggestedItem.track.albumId?.let { "content://media/external/audio/albumart/$it" }
@@ -1572,6 +1511,9 @@ fun HeroSection(
                         alpha = alphaAmt
                     }
                     .clip(RoundedCornerShape(36.dp))
+                    .jellyClick {
+                        // Optional: Navigate to Now Playing?
+                    }
             ) {
                 AsyncImage(
                     model = artwork,
@@ -1580,13 +1522,18 @@ fun HeroSection(
                     modifier = Modifier.fillMaxSize()
                 )
 
+                val gradientTopAlpha by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isNowPlayingMode) 0.8f else 0.0f,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Transparent, 
+                                    MaterialTheme.colorScheme.surface.copy(alpha = gradientTopAlpha), 
                                     MaterialTheme.colorScheme.surface
                                 )
                             )
@@ -1598,7 +1545,24 @@ fun HeroSection(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
+                        .animateContentSize(animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f))
                 ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isNowPlayingMode,
+                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
+                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
+                    ) {
+                        Column {
+                            WordSyncedLyrics(
+                                modifier = Modifier.fillMaxWidth(),
+                                textColor = MaterialTheme.colorScheme.onSurface,
+                                alignment = Alignment.BottomStart,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+
                     Text(
                         text = titleText,
                         style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
@@ -1616,60 +1580,66 @@ fun HeroSection(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !isNowPlayingMode,
+                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
                     ) {
-                        AppPrimaryButton(
-                            text = if (suggestedItem is HeroCardItem.TrackItem) "Play" else "View",
-                            onClick = { 
-                                when (suggestedItem) {
-                                    is HeroCardItem.TrackItem -> onPlayClick(suggestedItem.track, displayPicks.mapNotNull { if (it is HeroCardItem.TrackItem) it.track else null })
-                                    is HeroCardItem.AlbumItem -> onNavigateToAlbum(suggestedItem.album.id)
-                                    is HeroCardItem.ArtistItem -> onNavigateToArtist(suggestedItem.artist.id)
-                                }
-                            },
-                            containerColor = MaterialTheme.colorScheme.onSurface,
-                            contentColor = MaterialTheme.colorScheme.surface,
-                            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.weight(1f))
-                        
-                        Column(horizontalAlignment = Alignment.End) {
-                            if (includeArtistsAndAlbums) {
-                                Text(
-                                    text = typeText,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                    modifier = Modifier.padding(bottom = 2.dp)
-                                )
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val year = when (suggestedItem) {
-                                    is HeroCardItem.TrackItem -> suggestedItem.track.year
-                                    is HeroCardItem.AlbumItem -> suggestedItem.album.year
-                                    else -> null
-                                }
-                                
-                                if (year != null && year > 0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            AppPrimaryButton(
+                                text = if (suggestedItem is HeroCardItem.TrackItem) "Play" else "View",
+                                onClick = { 
+                                    when (suggestedItem) {
+                                        is HeroCardItem.TrackItem -> onPlayClick(suggestedItem.track, displayPicks.mapNotNull { if (it is HeroCardItem.TrackItem) it.track else null })
+                                        is HeroCardItem.AlbumItem -> onNavigateToAlbum(suggestedItem.album.id)
+                                        is HeroCardItem.ArtistItem -> onNavigateToArtist(suggestedItem.artist.id)
+                                    }
+                                },
+                                containerColor = MaterialTheme.colorScheme.onSurface,
+                                contentColor = MaterialTheme.colorScheme.surface,
+                                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            Column(horizontalAlignment = Alignment.End) {
+                                if (includeArtistsAndAlbums) {
                                     Text(
-                                        text = year.toString(),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        text = typeText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        modifier = Modifier.padding(bottom = 2.dp)
                                     )
                                 }
-                                
-                                if (suggestedItem is HeroCardItem.TrackItem) {
-                                    val badgeRes = suggestedItem.track.getQualityBadgeResId()
-                                    if (badgeRes != null) {
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Icon(
-                                            painter = androidx.compose.ui.res.painterResource(id = badgeRes),
-                                            contentDescription = "Quality",
-                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(24.dp)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val year = when (suggestedItem) {
+                                        is HeroCardItem.TrackItem -> suggestedItem.track.year
+                                        is HeroCardItem.AlbumItem -> suggestedItem.album.year
+                                        else -> null
+                                    }
+                                    
+                                    if (year != null && year > 0) {
+                                        Text(
+                                            text = year.toString(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                         )
+                                    }
+                                    
+                                    if (suggestedItem is HeroCardItem.TrackItem) {
+                                        val badgeRes = suggestedItem.track.getQualityBadgeResId()
+                                        if (badgeRes != null) {
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Icon(
+                                                painter = androidx.compose.ui.res.painterResource(id = badgeRes),
+                                                contentDescription = "Quality",
+                                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1757,7 +1727,7 @@ fun WordSyncedLyrics(
                 listState.animateScrollBy(
                     value = visibleItem.offset.toFloat(),
                     animationSpec = androidx.compose.animation.core.spring<Float>(
-                        dampingRatio = 0.75f, // slight bounce
+                        dampingRatio = 0.95f, // very subtle bounce
                         stiffness = 50f // smooth and slow
                     )
                 )
