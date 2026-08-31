@@ -1743,8 +1743,8 @@ fun WordSyncedLyrics(
     ) {
         androidx.compose.foundation.lazy.LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxWidth().height(100.dp),
-            contentPadding = PaddingValues(top = 10.dp, bottom = 40.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp, max = 150.dp),
+            contentPadding = PaddingValues(top = 10.dp, bottom = 12.dp),
             userScrollEnabled = false
         ) {
             items(
