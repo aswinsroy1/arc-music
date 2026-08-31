@@ -61,7 +61,7 @@ fun HeroWidgetContent() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ColorProvider(android.graphics.Color.DKGRAY)) // Fallback background
+            .background(ColorProvider(androidx.compose.ui.graphics.Color.DarkGray)) // Fallback background
     ) {
         // In a real widget, you would load the trackArt image from a file URI into a Bitmap.
         // For simplicity and battery preservation in Glance, we'll use a placeholder or gradient.
@@ -75,7 +75,7 @@ fun HeroWidgetContent() {
                 Text(
                     text = currentLyric,
                     style = TextStyle(
-                        color = ColorProvider(android.graphics.Color.WHITE),
+                        color = ColorProvider(androidx.compose.ui.graphics.Color.White),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     ),
@@ -86,7 +86,7 @@ fun HeroWidgetContent() {
             Text(
                 text = trackTitle,
                 style = TextStyle(
-                    color = ColorProvider(android.graphics.Color.WHITE),
+                    color = ColorProvider(androidx.compose.ui.graphics.Color.White),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -94,7 +94,7 @@ fun HeroWidgetContent() {
             Text(
                 text = trackArtist,
                 style = TextStyle(
-                    color = ColorProvider(android.graphics.Color.LTGRAY),
+                    color = ColorProvider(androidx.compose.ui.graphics.Color.LightGray),
                     fontSize = 14.sp
                 ),
                 modifier = GlanceModifier.padding(bottom = 12.dp)
