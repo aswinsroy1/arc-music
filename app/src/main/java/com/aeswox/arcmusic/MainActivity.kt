@@ -1692,41 +1692,66 @@ fun WordSyncedLyrics(
     val viewModel: MusicViewModel = hiltViewModel()
     val lyricsData by viewModel.lyricsUiState.collectAsState()
 
-    val syncedLines = lyricsData?.synced
+    val rawSyncedLines = lyricsData?.synced
     val plainLines  = lyricsData?.plain
-    val lines = remember(syncedLines, plainLines) {
+    val duration by viewModel.duration.collectAsState()
+
+    val syncedLines = remember(rawSyncedLines, duration) {
+        if (rawSyncedLines.isNullOrEmpty()) return@remember null
+        val enriched = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
+        val gapThreshold = 10000
+        if (rawSyncedLines.first().time > gapThreshold) {
+            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "● ● ●"))
+        }
+        for (i in 0 until rawSyncedLines.size - 1) {
+            enriched.add(rawSyncedLines[i])
+            val currentLineTime = rawSyncedLines[i].time
+            val nextLineTime = rawSyncedLines[i+1].time
+            if (nextLineTime - currentLineTime > gapThreshold) {
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = currentLineTime + 5000, line = "● ● ●"))
+            }
+        }
+        if (rawSyncedLines.isNotEmpty()) {
+            enriched.add(rawSyncedLines.last())
+            val lastTime = rawSyncedLines.last().time
+            if (duration > 0 && (duration - lastTime) > gapThreshold) {
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = lastTime + 5000, line = "● ● ●"))
+            }
+        }
+        enriched.toList()
+    }
+
+    val linesToRender = remember(syncedLines, plainLines) {
         syncedLines?.map { it.line } ?: plainLines ?: listOf("â™ª")
     }
 
     var activeLineIndex by remember { mutableIntStateOf(0) }
-    var activeWordIndex by remember { mutableIntStateOf(0) }
+    val currentPositionState = viewModel.currentPlaybackPosition.collectAsState()
 
     LaunchedEffect(syncedLines) {
         viewModel.currentPlaybackPosition.collect { pos ->
             if (!syncedLines.isNullOrEmpty()) {
-                val newLine = syncedLines.indexOfLast { it.time <= pos }.coerceAtLeast(0)
-                if (activeLineIndex != newLine) activeLineIndex = newLine
-
-                val line = syncedLines[newLine]
-                if (!line.words.isNullOrEmpty()) {
-                    val newWord = line.words.indexOfLast { it.time <= pos }.coerceAtLeast(0)
-                    if (activeWordIndex != newWord) activeWordIndex = newWord
+                val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
+                val newLineIndex = if (lastMatchIndex >= 0) {
+                    val matchTime = syncedLines[lastMatchIndex].time
+                    syncedLines.indexOfFirst { it.time == matchTime }
                 } else {
-                    activeWordIndex = -1
+                    0
+                }
+                if (activeLineIndex != newLineIndex) {
+                    activeLineIndex = newLineIndex
                 }
             } else {
                 activeLineIndex = 0
-                activeWordIndex = -1
             }
         }
     }
 
-    val activeLine = lines.getOrElse(activeLineIndex) { "â™ª" }
-    val activeWords = remember(activeLineIndex, syncedLines, activeLine) {
-        if (!syncedLines.isNullOrEmpty() && !syncedLines[activeLineIndex].words.isNullOrEmpty()) {
-            syncedLines[activeLineIndex].words!!.map { it.word }
-        } else {
-            activeLine.split(" ")
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(activeLineIndex) {
+        if (linesToRender.isNotEmpty() && activeLineIndex in linesToRender.indices) {
+            listState.animateScrollToItem(activeLineIndex)
         }
     }
 
@@ -1734,31 +1759,37 @@ fun WordSyncedLyrics(
         modifier = modifier,
         contentAlignment = alignment
     ) {
-        androidx.compose.animation.AnimatedContent(
-            targetState = activeLineIndex,
-            transitionSpec = {
-                (androidx.compose.animation.fadeIn(tween(400)) +
-                 androidx.compose.animation.slideInVertically(tween(400)) { it / 3 })
-                    .togetherWith(
-                        androidx.compose.animation.fadeOut(tween(250)) +
-                        androidx.compose.animation.slideOutVertically(tween(250)) { -it / 3 }
-                    )
-            },
-            label = "lyricLine"
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().height(100.dp),
+            contentPadding = PaddingValues(top = 10.dp, bottom = 40.dp),
+            userScrollEnabled = false
         ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = if (alignment == Alignment.Center) 24.dp else 0.dp),
-                horizontalArrangement = horizontalArrangement,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                activeWords.forEachIndexed { wordIndex, word ->
-                    val isHighlighted = wordIndex == activeWordIndex
-                    LyricWord(
-                        word = word,
-                        isHighlighted = isHighlighted,
-                        isLineActive = true,
+            items(
+                count = linesToRender.size,
+                key = { index -> index }
+            ) { lineIndex ->
+                val words = remember(lineIndex, syncedLines, linesToRender) {
+                    if (!syncedLines.isNullOrEmpty() && !syncedLines[lineIndex].words.isNullOrEmpty()) {
+                        syncedLines[lineIndex].words!!.map { it.word }
+                    } else {
+                        linesToRender[lineIndex].split(" ")
+                    }
+                }
+
+                Box(modifier = Modifier.padding(horizontal = if (alignment == Alignment.Center) 24.dp else 0.dp)) {
+                    com.aeswox.arcmusic.FadeLyricLine(
+                        lineIndex = lineIndex,
+                        syncedLine = syncedLines?.getOrNull(lineIndex),
+                        plainWords = words,
+                        activeLineIndexProvider = { activeLineIndex },
+                        currentPositionProvider = { currentPositionState.value },
+                        listState = listState,
                         textColor = textColor,
-                        baseFontSize = 22f
+                        fadeSteepness = 1.2f,
+                        fadeScaleCeiling = 0.85f,
+                        distanceSizing = true,
+                        baseFontSize = 24.sp
                     )
                 }
             }

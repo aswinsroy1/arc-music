@@ -1542,7 +1542,8 @@ fun FadeLyricLine(
     textColor: Color,
     fadeSteepness: Float = 1.2f,
     fadeScaleCeiling: Float = 0.85f,
-    distanceSizing: Boolean = true
+    distanceSizing: Boolean = true,
+    baseFontSize: androidx.compose.ui.unit.TextUnit = 32.sp
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
@@ -1617,7 +1618,7 @@ fun FadeLyricLine(
                     text = syncedWord.word,
                     color = textColor.copy(alpha = wordAlpha),
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = 32.sp,
+                        fontSize = baseFontSize,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -1629,7 +1630,7 @@ fun FadeLyricLine(
                     text = word,
                     color = textColor,
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = 32.sp,
+                        fontSize = baseFontSize,
                         fontWeight = FontWeight.Bold
                     )
                 )
