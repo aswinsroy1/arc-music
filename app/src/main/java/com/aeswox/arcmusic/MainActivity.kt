@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
