@@ -49,50 +49,13 @@ class MetadataEnrichmentService : Service() {
             Log.d("MetadataEnrichment", "Found ${tracksToEnrich.size} tracks to enrich in this batch")
 
         for (track in tracksToEnrich) {
+            val result = com.aeswox.arcmusic.data.DeepTagScanner.scanFile(track.filePath)
+
             var durationMs = track.durationMs
-            var sampleRate: Int? = null
-            var bitDepth: Int? = null
-            var codec: String? = null
-            var estimatedBitrate = track.bitrate ?: 0
-
-            val extractor = MediaExtractor()
-            try {
-                extractor.setDataSource(track.filePath)
-                for (i in 0 until extractor.trackCount) {
-                    val format = extractor.getTrackFormat(i)
-                    val trackMime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                    if (trackMime.startsWith("audio/")) {
-                        codec = trackMime
-
-                        if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                            sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                        }
-
-                        if (format.containsKey("bits-per-sample")) {
-                            bitDepth = format.getInteger("bits-per-sample")
-                        } else if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                            val encoding = format.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                            bitDepth = when (encoding) {
-                                AudioFormat.ENCODING_PCM_8BIT -> 8
-                                AudioFormat.ENCODING_PCM_16BIT -> 16
-                                AudioFormat.ENCODING_PCM_24BIT_PACKED,
-                                AudioFormat.ENCODING_PCM_FLOAT -> 24
-                                AudioFormat.ENCODING_PCM_32BIT -> 32
-                                else -> null
-                            }
-                        }
-
-                        if (durationMs == 0L && format.containsKey(MediaFormat.KEY_DURATION)) {
-                            durationMs = format.getLong(MediaFormat.KEY_DURATION) / 1000L
-                        }
-                        break
-                    }
-                }
-            } catch (e: Exception) {
-                // Ignore extraction issues
-            } finally {
-                extractor.release()
-            }
+            var sampleRate = result.sampleRate
+            var bitDepth = result.bitDepth
+            var codec = result.codec
+            var estimatedBitrate = result.bitrate ?: (track.bitrate ?: 0)
 
             if (durationMs == 0L) {
                 try {
@@ -126,7 +89,20 @@ class MetadataEnrichmentService : Service() {
             if (bitDepth == null) bitDepth = 0
             if (durationMs == 0L) durationMs = 1L // fallback to prevent looping
 
-            repository.updateTrackDeepMetadata(track.id, durationMs, sampleRate, bitDepth, estimatedBitrate, codec)
+            repository.updateTrackDeepMetadata(
+                trackId = track.id, 
+                durationMs = durationMs, 
+                sampleRate = sampleRate, 
+                bitDepth = bitDepth, 
+                bitrate = estimatedBitrate, 
+                codec = codec,
+                year = result.year,
+                composer = result.composer,
+                trackNumber = result.trackNumber,
+                discNumber = result.discNumber,
+                hasLyrics = result.hasLyrics,
+                isExplicit = result.isExplicit
+            )
         }
         }
         

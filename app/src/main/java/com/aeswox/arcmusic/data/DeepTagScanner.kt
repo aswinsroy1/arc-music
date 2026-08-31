@@ -11,7 +11,13 @@ data class DeepScanResult(
     val codec: String?,
     val bitDepth: Int?,
     val sampleRate: Int?,
-    val channelCount: Int?
+    val channelCount: Int?,
+    val year: Int?,
+    val composer: String?,
+    val trackNumber: Int?,
+    val discNumber: Int?,
+    val bitrate: Int?,
+    val hasLyrics: Boolean
 )
 
 object DeepTagScanner {
@@ -22,15 +28,50 @@ object DeepTagScanner {
         var exactBitDepth: Int? = null
         var exactSampleRate: Int? = null
         var exactChannelCount: Int? = null
+        var exactYear: Int? = null
+        var exactComposer: String? = null
+        var exactTrackNumber: Int? = null
+        var exactDiscNumber: Int? = null
+        var exactBitrate: Int? = null
+        var hasLyrics = false
 
         val file = File(filePath)
-        if (!file.exists()) return DeepScanResult(false, null, null, null, null)
+        if (!file.exists()) return DeepScanResult(false, null, null, null, null, null, null, null, null, null, false)
 
         // 1. Check for Explicit Tag via jaudiotagger
         try {
             val audioFile = AudioFileIO.read(file)
+            
+            val header = audioFile.audioHeader
+            if (header != null) {
+                val kbps = header.bitRateAsNumber
+                if (kbps > 0) {
+                    exactBitrate = (kbps * 1000).toInt()
+                }
+            }
+            
             val tag = audioFile.tag
             if (tag != null) {
+                exactYear = tag.getFirst(FieldKey.YEAR).takeIf { it.isNotBlank() }?.filter { it.isDigit() }?.take(4)?.toIntOrNull()
+                    ?: tag.getFirst(FieldKey.ORIGINAL_YEAR).takeIf { it.isNotBlank() }?.filter { it.isDigit() }?.take(4)?.toIntOrNull()
+                    
+                exactComposer = tag.getFirst(FieldKey.COMPOSER).takeIf { it.isNotBlank() }
+                
+                val trackStr = tag.getFirst(FieldKey.TRACK)
+                if (trackStr.isNotBlank()) {
+                    exactTrackNumber = trackStr.substringBefore("/").toIntOrNull()
+                }
+                
+                val discStr = tag.getFirst(FieldKey.DISC_NO)
+                if (discStr.isNotBlank()) {
+                    exactDiscNumber = discStr.substringBefore("/").toIntOrNull()
+                }
+                
+                val lyrics = tag.getFirst(FieldKey.LYRICS)
+                if (lyrics.isNotBlank()) {
+                    hasLyrics = true
+                }
+                
                 // Manually search fields for explicit markers
                 val fields = tag.fields
                 while (fields.hasNext()) {
@@ -107,7 +148,13 @@ object DeepTagScanner {
             codec = exactCodec,
             bitDepth = exactBitDepth,
             sampleRate = exactSampleRate,
-            channelCount = exactChannelCount
+            channelCount = exactChannelCount,
+            year = exactYear,
+            composer = exactComposer,
+            trackNumber = exactTrackNumber,
+            discNumber = exactDiscNumber,
+            bitrate = exactBitrate,
+            hasLyrics = hasLyrics
         )
     }
 }

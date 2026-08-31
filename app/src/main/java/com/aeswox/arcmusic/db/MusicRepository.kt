@@ -69,8 +69,8 @@ class MusicRepository(
     fun getAllTracks(): Flow<List<Track>> = trackDao.getAllTracks()
     suspend fun getTrackById(id: String): Track? = trackDao.getTrackById(id)
     suspend fun getTracksMissingDeepMetadata(): List<Track> = trackDao.getTracksMissingDeepMetadata()
-    suspend fun updateTrackDeepMetadata(trackId: String, durationMs: Long, sampleRate: Int?, bitDepth: Int?, bitrate: Int?, codec: String?) {
-        trackDao.updateTrackDeepMetadata(trackId, durationMs, sampleRate, bitDepth, bitrate, codec)
+    suspend fun updateTrackDeepMetadata(trackId: String, durationMs: Long, sampleRate: Int?, bitDepth: Int?, bitrate: Int?, codec: String?, year: Int?, composer: String?, trackNumber: Int?, discNumber: Int?, hasLyrics: Boolean, isExplicit: Boolean) {
+        trackDao.updateTrackDeepMetadata(trackId, durationMs, sampleRate, bitDepth, bitrate, codec, year, composer, trackNumber, discNumber, hasLyrics, isExplicit)
     }
     fun getAllAlbums(): Flow<List<Album>> = albumDao.getAllAlbums()
     fun getAllArtists(): Flow<List<Artist>> = artistDao.getAllArtists()
@@ -1139,6 +1139,36 @@ class MusicRepository(
 
             if (result.sampleRate != null && result.sampleRate != track.sampleRate) {
                 updatedTrack = updatedTrack.copy(sampleRate = result.sampleRate)
+                changed = true
+            }
+            
+            if (result.year != null && result.year != track.year && result.year > 0) {
+                updatedTrack = updatedTrack.copy(year = result.year)
+                changed = true
+            }
+            
+            if (result.composer != null && result.composer != track.composer) {
+                updatedTrack = updatedTrack.copy(composer = result.composer)
+                changed = true
+            }
+            
+            if (result.trackNumber != null && result.trackNumber != track.trackNumber && result.trackNumber > 0) {
+                updatedTrack = updatedTrack.copy(trackNumber = result.trackNumber)
+                changed = true
+            }
+            
+            if (result.discNumber != null && result.discNumber != track.discNumber && result.discNumber > 0) {
+                updatedTrack = updatedTrack.copy(discNumber = result.discNumber)
+                changed = true
+            }
+            
+            if (result.bitrate != null && result.bitrate != track.bitrate) {
+                updatedTrack = updatedTrack.copy(bitrate = result.bitrate)
+                changed = true
+            }
+            
+            if (result.hasLyrics && !track.hasLyrics) {
+                updatedTrack = updatedTrack.copy(hasLyrics = true, lyricsSyncedAt = System.currentTimeMillis())
                 changed = true
             }
             
