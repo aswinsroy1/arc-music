@@ -1563,12 +1563,6 @@ fun HeroSection(
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(1.3f)
-                .shadow(
-                    elevation = 16.dp,
-                    shape = RoundedCornerShape(36.dp),
-                    spotColor = Color.Black.copy(alpha = 0.2f)
-                )
-                .clip(RoundedCornerShape(36.dp))
         ) { page ->
             val suggestedItem = displayPicks[page]
             
@@ -1608,7 +1602,13 @@ fun HeroSection(
                         scaleY = scale
                         alpha = alphaAmt
                     }
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = RoundedCornerShape(36.dp),
+                        spotColor = Color.Black.copy(alpha = 0.2f)
+                    )
                     .clip(RoundedCornerShape(36.dp))
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 AsyncImage(
                     model = artwork,
