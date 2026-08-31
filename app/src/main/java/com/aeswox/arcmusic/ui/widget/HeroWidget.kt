@@ -61,68 +61,20 @@ fun HeroWidgetContent() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ColorProvider(androidx.compose.ui.graphics.Color.DarkGray)) // Fallback background
+            .background(ColorProvider(androidx.compose.ui.graphics.Color.Transparent)),
+        contentAlignment = Alignment.Center
     ) {
-        // In a real widget, you would load the trackArt image from a file URI into a Bitmap.
-        // For simplicity and battery preservation in Glance, we'll use a placeholder or gradient.
-        
-        Column(
-            modifier = GlanceModifier.fillMaxSize().padding(16.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalAlignment = Alignment.Start
-        ) {
-            if (isPlaying && currentLyric.isNotBlank()) {
-                Text(
-                    text = currentLyric,
-                    style = TextStyle(
-                        color = ColorProvider(androidx.compose.ui.graphics.Color.White),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = GlanceModifier.padding(bottom = 8.dp)
-                )
-            }
-            
+        if (isPlaying && currentLyric.isNotBlank()) {
             Text(
-                text = trackTitle,
+                text = currentLyric,
                 style = TextStyle(
                     color = ColorProvider(androidx.compose.ui.graphics.Color.White),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-            Text(
-                text = trackArtist,
-                style = TextStyle(
-                    color = ColorProvider(androidx.compose.ui.graphics.Color.LightGray),
-                    fontSize = 14.sp
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = androidx.glance.text.TextAlign.Center
                 ),
-                modifier = GlanceModifier.padding(bottom = 12.dp)
+                modifier = GlanceModifier.padding(8.dp).fillMaxWidth()
             )
-
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    provider = ImageProvider(R.drawable.ic_skip_previous), // Ensure this exists, else use standard icon
-                    contentDescription = "Previous",
-                    modifier = GlanceModifier.size(48.dp).clickable(actionRunCallback<SkipPrevAction>())
-                )
-                Spacer(modifier = GlanceModifier.size(16.dp))
-                Image(
-                    provider = ImageProvider(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
-                    contentDescription = "Play/Pause",
-                    modifier = GlanceModifier.size(64.dp).clickable(actionRunCallback<TogglePlayAction>())
-                )
-                Spacer(modifier = GlanceModifier.size(16.dp))
-                Image(
-                    provider = ImageProvider(R.drawable.ic_skip_next),
-                    contentDescription = "Next",
-                    modifier = GlanceModifier.size(48.dp).clickable(actionRunCallback<SkipNextAction>())
-                )
-            }
         }
     }
 }
