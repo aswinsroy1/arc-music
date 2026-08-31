@@ -639,6 +639,24 @@ class MusicViewModel @Inject constructor(
         }
     }
     
+    fun playAlbum(albumTitle: String) {
+        viewModelScope.launch {
+            val tracks = repository.getTracksByAlbum(albumTitle).first()
+            if (tracks.isNotEmpty()) {
+                setCurrentlyPlaying(tracks.first(), tracks)
+            }
+        }
+    }
+    
+    fun playArtist(artistName: String) {
+        viewModelScope.launch {
+            val tracks = repository.getTracksByArtist(artistName).first()
+            if (tracks.isNotEmpty()) {
+                setCurrentlyPlaying(tracks.first(), tracks)
+            }
+        }
+    }
+
     fun setCurrentlyPlaying(song: Track?, contextQueue: List<Track>? = null) {
         _currentlyPlaying.value = song
         setMiniPlayerVisible(true)

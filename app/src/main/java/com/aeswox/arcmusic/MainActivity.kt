@@ -1590,12 +1590,12 @@ fun HeroSection(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             AppPrimaryButton(
-                                text = if (suggestedItem is HeroCardItem.TrackItem) "Play" else "View",
+                                text = "Play",
                                 onClick = { 
                                     when (suggestedItem) {
                                         is HeroCardItem.TrackItem -> onPlayClick(suggestedItem.track, displayPicks.mapNotNull { if (it is HeroCardItem.TrackItem) it.track else null })
-                                        is HeroCardItem.AlbumItem -> onNavigateToAlbum(suggestedItem.album.id)
-                                        is HeroCardItem.ArtistItem -> onNavigateToArtist(suggestedItem.artist.id)
+                                        is HeroCardItem.AlbumItem -> viewModel.playAlbum(suggestedItem.album.title)
+                                        is HeroCardItem.ArtistItem -> viewModel.playArtist(suggestedItem.artist.name)
                                     }
                                 },
                                 containerColor = MaterialTheme.colorScheme.onSurface,
