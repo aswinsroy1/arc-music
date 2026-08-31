@@ -1636,12 +1636,6 @@ fun HeroSection(
                         .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
                 ) {
                     Text(
-                        text = typeText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    )
-                    Text(
                         text = titleText,
                         style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
                         color = MaterialTheme.colorScheme.onSurface,
@@ -1678,32 +1672,40 @@ fun HeroSection(
                         
                         Spacer(modifier = Modifier.weight(1f))
                         
-                        // Show Year if present
-                        val year = when (suggestedItem) {
-                            is HeroCardItem.TrackItem -> suggestedItem.track.year
-                            is HeroCardItem.AlbumItem -> suggestedItem.album.year
-                            else -> null
-                        }
-                        
-                        if (year != null && year > 0) {
+                        Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = year.toString(),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                text = typeText,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(bottom = 2.dp)
                             )
-                        }
-                        
-                        // Show Quality Badge if it's a track
-                        if (suggestedItem is HeroCardItem.TrackItem) {
-                            val badgeRes = suggestedItem.track.getQualityBadgeResId()
-                            if (badgeRes != null) {
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Icon(
-                                    painter = androidx.compose.ui.res.painterResource(id = badgeRes),
-                                    contentDescription = "Quality",
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val year = when (suggestedItem) {
+                                    is HeroCardItem.TrackItem -> suggestedItem.track.year
+                                    is HeroCardItem.AlbumItem -> suggestedItem.album.year
+                                    else -> null
+                                }
+                                
+                                if (year != null && year > 0) {
+                                    Text(
+                                        text = year.toString(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+                                
+                                if (suggestedItem is HeroCardItem.TrackItem) {
+                                    val badgeRes = suggestedItem.track.getQualityBadgeResId()
+                                    if (badgeRes != null) {
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Icon(
+                                            painter = androidx.compose.ui.res.painterResource(id = badgeRes),
+                                            contentDescription = "Quality",
+                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
