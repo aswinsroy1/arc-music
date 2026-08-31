@@ -99,6 +99,7 @@ import com.aeswox.arcmusic.ui.animations.LocalJigglePhysicsSettings
 import com.aeswox.arcmusic.ui.components.*
 import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import com.aeswox.arcmusic.data.model.SyncedLine
+import androidx.compose.ui.graphics.luminance
 
 import kotlinx.coroutines.delay
 
@@ -332,27 +333,18 @@ fun NowPlayingScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
-
+    val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
+    val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
-
     val scrimHeightFraction by animateFloatAsState(targetValue = if (showLyrics) 1f else 0.7f, label = "height")
-
     val scrimStartAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0f, label = "startAlpha")
-
     val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0.4f, label = "midAlphaRatio")
-
     val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else 0.8f, label = "endAlphaRatio")
-
     val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else 0.5f, label = "baseScrim")
-
     val sharpImageAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "sharpImageAlpha")
-
     val controlsAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "controlsAlpha")
-
     
-
-    val textColor = if (isDarkTheme) Color.White else Color.Black
-
+    val textColor = if (isDarkTheme) Color.White else if (isArtworkDark) Color.White else Color.Black
     val textAlpha = if (isDarkTheme) 0.7f else 0.6f
 
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
@@ -490,7 +482,7 @@ fun NowPlayingScreen(
 
                     .fillMaxSize()
 
-                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else accentColor.copy(alpha = 0.3f))
+                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else lightThemeBgColor.copy(alpha = 0.5f))
 
             )
 
@@ -603,11 +595,11 @@ fun NowPlayingScreen(
 
                             colors = listOf(
 
-                                (if (isDarkTheme) Color.Black else accentColor).copy(alpha = scrimStartAlpha), 
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = scrimStartAlpha), 
 
-                                (if (isDarkTheme) Color.Black else accentColor).copy(alpha = midAlphaRatio), 
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = midAlphaRatio), 
 
-                                (if (isDarkTheme) Color.Black else accentColor).copy(alpha = endAlphaRatio)
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = endAlphaRatio)
 
                             ),
 
@@ -1802,10 +1794,9 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
 
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) }
-
     val isDarkTheme = isSystemInDarkTheme()
-
-
+    val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
+    val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -1865,13 +1856,9 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
         
 
         Box(
-
             modifier = Modifier
-
                 .fillMaxSize()
-
-                .background(if (isDarkTheme) Color.Black.copy(alpha = 0.5f) else accentColor.copy(alpha = 0.3f))
-
+                .background(if (isDarkTheme) Color.Black.copy(alpha = 0.5f) else lightThemeBgColor.copy(alpha = 0.5f))
         )
 
         
@@ -1888,9 +1875,9 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.0f), 
-                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.4f), 
-                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.8f)
+                            (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = 0.0f), 
+                            (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = 0.4f), 
+                            (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = 0.8f)
                         ),
                         startY = 0f
                     )
@@ -1956,14 +1943,14 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.6f),
-                            (if (isDarkTheme) Color.Black else accentColor).copy(alpha = 0.95f),
-                            (if (isDarkTheme) Color.Black else accentColor)
+                            colors = listOf(
+                                Color.Transparent,
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = 0.6f),
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = 0.95f),
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor)
+                            )
                         )
                     )
-                )
                 .padding(top = 64.dp, bottom = 32.dp, start = 24.dp, end = 24.dp)
         ) {
             Column(
