@@ -140,7 +140,7 @@ fun CorruptedTagsScreen(
                     Spacer(modifier = Modifier.height(48.dp))
                     JellyButton(
                         onClick = {
-                            Toast.makeText(context, "Deep Scan started...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Force Refresh started...", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.onBackground,
@@ -153,7 +153,7 @@ fun CorruptedTagsScreen(
                     ) {
                         Icon(imageVector = Icons.Default.WifiTethering, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Run Deep Scan", fontWeight = FontWeight.Bold)
+                        Text("Force Refresh Metadata", fontWeight = FontWeight.Bold)
                     }
                 }
             } else {

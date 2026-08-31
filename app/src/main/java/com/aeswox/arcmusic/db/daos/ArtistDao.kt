@@ -12,6 +12,9 @@ interface ArtistDao {
     @Query("SELECT * FROM artists")
     fun getAllArtists(): Flow<List<Artist>>
 
+    @Query("SELECT * FROM artists WHERE photoUri IS NOT NULL ORDER BY RANDOM() LIMIT :limit")
+    suspend fun getRandomArtistsWithArtwork(limit: Int): List<Artist>
+
     @Query("SELECT * FROM artists WHERE id = :id")
     fun getArtistById(id: String): Flow<Artist?>
 

@@ -210,6 +210,9 @@ class MusicViewModel @Inject constructor(
     val heroCardPlayingStateEnabled: StateFlow<Boolean> = settingsRepository.heroCardPlayingStateEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     
+    val heroCardIncludeArtistsAndAlbums: StateFlow<Boolean> = settingsRepository.heroCardIncludeArtistsAndAlbums
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val libraryAlbums: StateFlow<List<Album>>
     val libraryArtists: StateFlow<List<Artist>>
     val libraryTracks: StateFlow<List<Track>>
@@ -234,6 +237,12 @@ class MusicViewModel @Inject constructor(
     fun setHeroCardPlayingStateEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setHeroCardPlayingStateEnabled(enabled)
+        }
+    }
+
+    fun setHeroCardIncludeArtistsAndAlbums(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHeroCardIncludeArtistsAndAlbums(enabled)
         }
     }
 
@@ -2286,5 +2295,22 @@ class MusicViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    suspend fun fetchHeroCardSnapshot(limit: Int): List<HeroCardItem> {
+        val includeArtistsAndAlbums = heroCardIncludeArtistsAndAlbums.value
+        if (!includeArtistsAndAlbums) {
+            return repository.getRandomTracksWithArtwork(limit).map { HeroCardItem.TrackItem(it) }
+        }
+
+        val tracksLimit = (limit * 0.5).toInt()
+        val albumsLimit = (limit * 0.3).toInt()
+        val artistsLimit = limit - tracksLimit - albumsLimit
+
+        val tracks = repository.getRandomTracksWithArtwork(tracksLimit).map { HeroCardItem.TrackItem(it) }
+        val albums = repository.getRandomAlbumsWithArtwork(albumsLimit).map { HeroCardItem.AlbumItem(it) }
+        val artists = repository.getRandomArtistsWithArtwork(artistsLimit).map { HeroCardItem.ArtistItem(it) }
+
+        return (tracks + albums + artists).shuffled()
     }
 }

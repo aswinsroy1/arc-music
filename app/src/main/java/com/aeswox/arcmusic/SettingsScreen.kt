@@ -50,6 +50,8 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onLightThemeForNowPlayingChange: (Boolean) -> Unit,
     onHeroCardPlayingStateEnabledChange: (Boolean) -> Unit,
+    heroCardIncludeArtistsAndAlbums: Boolean = false,
+    onHeroCardIncludeArtistsAndAlbumsChange: (Boolean) -> Unit,
     onLyricsDisplayStyleChange: (LyricsDisplayStyle) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
@@ -252,6 +254,17 @@ fun SettingsScreen(
                                 Switch(
                                     checked = heroCardPlayingStateEnabled,
                                     onCheckedChange = { onHeroCardPlayingStateEnabledChange(it) }
+                                )
+                            },
+                            showArrow = false
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.CollectionsBookmark,
+                            text = "Include Artists & Albums in Hero Card",
+                            trailingContent = {
+                                Switch(
+                                    checked = heroCardIncludeArtistsAndAlbums,
+                                    onCheckedChange = { onHeroCardIncludeArtistsAndAlbumsChange(it) }
                                 )
                             },
                             showArrow = false

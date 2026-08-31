@@ -47,6 +47,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks ORDER BY RANDOM() LIMIT :limit")
     fun getRandomTracks(limit: Int): Flow<List<Track>>
 
+    @Query("SELECT * FROM tracks WHERE artworkUri IS NOT NULL OR albumId IS NOT NULL ORDER BY RANDOM() LIMIT :limit")
+    suspend fun getRandomTracksWithArtwork(limit: Int): List<Track>
+
     // For Collection Health
     @Query("SELECT * FROM tracks WHERE genre IS NULL OR genre = ''")
     fun getTracksMissingGenre(): Flow<List<Track>>

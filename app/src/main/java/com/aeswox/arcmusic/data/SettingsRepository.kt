@@ -52,6 +52,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val CANVAS_ENABLED_KEY = booleanPreferencesKey("canvas_enabled")
     private val CANVAS_CACHE_LIMIT_MB_KEY = intPreferencesKey("canvas_cache_limit_mb")
     private val HERO_CARD_PLAYING_STATE_ENABLED_KEY = booleanPreferencesKey("hero_card_playing_state_enabled")
+    private val HERO_CARD_INCLUDE_ARTISTS_ALBUMS_KEY = booleanPreferencesKey("hero_card_include_artists_albums")
 
     private val MASS_KEY = floatPreferencesKey("physics_mass")
     private val STIFFNESS_KEY = floatPreferencesKey("physics_stiffness")
@@ -127,6 +128,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     val heroCardPlayingStateEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[HERO_CARD_PLAYING_STATE_ENABLED_KEY] ?: false
+    }
+
+    val heroCardIncludeArtistsAndAlbums: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[HERO_CARD_INCLUDE_ARTISTS_ALBUMS_KEY] ?: false
     }
 
     val tintTransparency: Flow<Float> = context.dataStore.data.map { preferences ->
@@ -318,6 +323,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setHeroCardPlayingStateEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HERO_CARD_PLAYING_STATE_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun setHeroCardIncludeArtistsAndAlbums(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HERO_CARD_INCLUDE_ARTISTS_ALBUMS_KEY] = enabled
         }
     }
 }

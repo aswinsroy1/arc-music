@@ -298,11 +298,11 @@ fun MediaManagementScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Deep Scan",
+                                text = "Force Refresh Metadata",
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = "Extract explicit tags and Dolby Atmos data",
+                                text = "Extract explicit tags, precise year, lyrics, and Atmos data",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

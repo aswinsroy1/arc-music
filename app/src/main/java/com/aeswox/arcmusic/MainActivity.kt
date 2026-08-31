@@ -731,6 +731,7 @@ class MainActivity : ComponentActivity() {
                             val coilDiskCacheLimitMb by viewModel.coilDiskCacheLimitMb.collectAsState()
                             val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
                             val heroCardPlayingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
+                            val heroCardIncludeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
                             
                             val dynamicBottomPadding by remember(isMiniPlayerVisible, currentlyPlaying) {
                                 derivedStateOf {
@@ -748,12 +749,14 @@ class MainActivity : ComponentActivity() {
                                     themeMode = themeMode,
                                     lightThemeForNowPlaying = lightThemeForNowPlaying,
                                     heroCardPlayingStateEnabled = heroCardPlayingStateEnabled,
+                                    onHeroCardPlayingStateEnabledChange = { viewModel.setHeroCardPlayingStateEnabled(it) },
+                                    heroCardIncludeArtistsAndAlbums = heroCardIncludeArtistsAndAlbums,
+                                    onHeroCardIncludeArtistsAndAlbumsChange = { viewModel.setHeroCardIncludeArtistsAndAlbums(it) },
                                     lyricsDisplayStyle = lyricsDisplayStyle,
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
-                                    onHeroCardPlayingStateEnabledChange = { viewModel.setHeroCardPlayingStateEnabled(it) },
                                     onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
@@ -1286,6 +1289,8 @@ fun MusicHomeScreen(
                                         currentSong = currentSong,
                                         isPlaying = isMiniPlayerVisible,
                                         onPlayClick = onSongClick,
+                                        onNavigateToAlbum = onNavigateToAlbumDetails,
+                                        onNavigateToArtist = onNavigateToArtistDetails,
                                         modifier = Modifier.padding(horizontal = 24.dp)
                                     )
                                 }
@@ -1386,10 +1391,11 @@ fun HeroSection(
     currentSong: Track?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    onPlayClick: (Track, List<Track>?) -> Unit = { _, _ -> }
+    onPlayClick: (Track, List<Track>?) -> Unit = { _, _ -> },
+    onNavigateToAlbum: (String) -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {}
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
-    val randomPicks by viewModel.randomPicks.collectAsState()
     val playingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
 
     if (playingStateEnabled && isPlaying && currentSong != null) {
@@ -1494,11 +1500,40 @@ fun HeroSection(
             }
         }
     } else {
-        if (randomPicks.isEmpty()) return
+        var currentCycle by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
+        var displayPicks by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
+        
+        LaunchedEffect(Unit) {
+            val initial = viewModel.fetchHeroCardSnapshot(10)
+            currentCycle = initial
+            displayPicks = initial
+        }
         
         val pagerState = androidx.compose.foundation.pager.rememberPagerState(
-            pageCount = { randomPicks.size }
+            pageCount = { displayPicks.size }
         )
+
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(45000)
+                val nextBatch = viewModel.fetchHeroCardSnapshot(10)
+                if (nextBatch.isNotEmpty()) {
+                    currentCycle = nextBatch
+                    val nextStartIdx = pagerState.currentPage + 1
+                    displayPicks = displayPicks.take(nextStartIdx) + currentCycle
+                }
+            }
+        }
+        
+        LaunchedEffect(pagerState.currentPage) {
+            if (displayPicks.isNotEmpty() && currentCycle.isNotEmpty()) {
+                if (displayPicks.size - pagerState.currentPage <= 3) {
+                    displayPicks = displayPicks + currentCycle
+                }
+            }
+        }
+
+        if (displayPicks.isEmpty()) return
         
         val springSpec = androidx.compose.animation.core.spring<Float>(
             dampingRatio = 0.85f, // More subtle bounce
@@ -1506,13 +1541,15 @@ fun HeroSection(
         )
 
         LaunchedEffect(pagerState.settledPage) {
-            if (randomPicks.size > 1) {
-                delay(5000)
-                val nextPage = (pagerState.currentPage + 1) % randomPicks.size
-                pagerState.animateScrollToPage(
-                    page = nextPage,
-                    animationSpec = springSpec
-                )
+            if (displayPicks.size > 1) {
+                delay(4500)
+                val nextPage = pagerState.currentPage + 1
+                if (nextPage < displayPicks.size) {
+                    pagerState.animateScrollToPage(
+                        page = nextPage,
+                        animationSpec = springSpec
+                    )
+                }
             }
         }
         
@@ -1532,7 +1569,32 @@ fun HeroSection(
                 )
                 .clip(RoundedCornerShape(36.dp))
         ) { page ->
-            val suggestedSong = randomPicks[page]
+            val suggestedItem = displayPicks[page]
+            
+            val artwork = when (suggestedItem) {
+                is HeroCardItem.TrackItem -> suggestedItem.track.artworkUri ?: suggestedItem.track.albumId?.let { "content://media/external/audio/albumart/$it" }
+                is HeroCardItem.AlbumItem -> suggestedItem.album.artworkUri
+                is HeroCardItem.ArtistItem -> suggestedItem.artist.photoUri
+            }
+            
+            val titleText = when (suggestedItem) {
+                is HeroCardItem.TrackItem -> suggestedItem.track.title
+                is HeroCardItem.AlbumItem -> suggestedItem.album.title
+                is HeroCardItem.ArtistItem -> suggestedItem.artist.name
+            }
+            
+            val subtitleText = when (suggestedItem) {
+                is HeroCardItem.TrackItem -> suggestedItem.track.artist
+                is HeroCardItem.AlbumItem -> suggestedItem.album.artist
+                is HeroCardItem.ArtistItem -> "Artist"
+            }
+
+            val typeText = when (suggestedItem) {
+                is HeroCardItem.TrackItem -> "SONG"
+                is HeroCardItem.AlbumItem -> "ALBUM"
+                is HeroCardItem.ArtistItem -> "ARTIST"
+            }
+            
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1548,8 +1610,8 @@ fun HeroSection(
                     .clip(RoundedCornerShape(36.dp))
             ) {
                 AsyncImage(
-                    model = suggestedSong.artworkUri ?: suggestedSong.albumId?.let { "content://media/external/audio/albumart/$it" },
-                    contentDescription = suggestedSong.title,
+                    model = artwork,
+                    contentDescription = titleText,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -1574,7 +1636,13 @@ fun HeroSection(
                         .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
                 ) {
                     Text(
-                        text = suggestedSong.title,
+                        text = typeText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                    Text(
+                        text = titleText,
                         style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -1582,7 +1650,7 @@ fun HeroSection(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = suggestedSong.artist,
+                        text = subtitleText,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                         maxLines = 1,
@@ -1595,8 +1663,14 @@ fun HeroSection(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         AppPrimaryButton(
-                            text = "Play",
-                            onClick = { onPlayClick(suggestedSong, randomPicks) },
+                            text = if (suggestedItem is HeroCardItem.TrackItem) "Play" else "View",
+                            onClick = { 
+                                when (suggestedItem) {
+                                    is HeroCardItem.TrackItem -> onPlayClick(suggestedItem.track, displayPicks.mapNotNull { if (it is HeroCardItem.TrackItem) it.track else null })
+                                    is HeroCardItem.AlbumItem -> onNavigateToAlbum(suggestedItem.album.id)
+                                    is HeroCardItem.ArtistItem -> onNavigateToArtist(suggestedItem.artist.id)
+                                }
+                            },
                             containerColor = MaterialTheme.colorScheme.onSurface,
                             contentColor = MaterialTheme.colorScheme.surface,
                             contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp)
@@ -1604,23 +1678,33 @@ fun HeroSection(
                         
                         Spacer(modifier = Modifier.weight(1f))
                         
-                        if (suggestedSong.year != null && suggestedSong.year > 0) {
+                        // Show Year if present
+                        val year = when (suggestedItem) {
+                            is HeroCardItem.TrackItem -> suggestedItem.track.year
+                            is HeroCardItem.AlbumItem -> suggestedItem.album.year
+                            else -> null
+                        }
+                        
+                        if (year != null && year > 0) {
                             Text(
-                                text = suggestedSong.year.toString(),
+                                text = year.toString(),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
                         }
                         
-                        val badgeRes = suggestedSong.getQualityBadgeResId()
-                        if (badgeRes != null) {
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Icon(
-                                painter = androidx.compose.ui.res.painterResource(id = badgeRes),
-                                contentDescription = "Quality",
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                modifier = Modifier.size(24.dp)
-                            )
+                        // Show Quality Badge if it's a track
+                        if (suggestedItem is HeroCardItem.TrackItem) {
+                            val badgeRes = suggestedItem.track.getQualityBadgeResId()
+                            if (badgeRes != null) {
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Icon(
+                                    painter = androidx.compose.ui.res.painterResource(id = badgeRes),
+                                    contentDescription = "Quality",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }

@@ -76,6 +76,10 @@ class MusicRepository(
     fun getAllArtists(): Flow<List<Artist>> = artistDao.getAllArtists()
     fun getRecentlyPlayedTracks(limit: Int): Flow<List<Track>> = trackDao.getRecentlyPlayedTracks(limit)
     fun getRandomTracks(limit: Int): Flow<List<Track>> = trackDao.getRandomTracks(limit)
+
+    suspend fun getRandomTracksWithArtwork(limit: Int): List<Track> = trackDao.getRandomTracksWithArtwork(limit)
+    suspend fun getRandomAlbumsWithArtwork(limit: Int): List<Album> = albumDao.getRandomAlbumsWithArtwork(limit)
+    suspend fun getRandomArtistsWithArtwork(limit: Int): List<Artist> = artistDao.getRandomArtistsWithArtwork(limit)
     fun getFullPlayHistory(): Flow<List<PlayHistory>> = playHistoryDao.getFullPlayHistory()
 
     /**
