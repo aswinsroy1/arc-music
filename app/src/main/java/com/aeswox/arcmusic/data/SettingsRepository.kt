@@ -42,7 +42,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     // Stored as pipe-separated string e.g. "/Android/media|/Downloads/VoiceNotes"
     private val EXCLUDED_FOLDERS_KEY = stringPreferencesKey("excluded_folders")
     private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
-    private val LIGHT_THEME_ARC_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_arc_now_playing")
     private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
     private val NOW_PLAYING_STYLE_KEY = stringPreferencesKey("now_playing_style")
     private val LYRICS_DISPLAY_STYLE_KEY = stringPreferencesKey("lyrics_display_style")
@@ -261,9 +260,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         it[LIGHT_THEME_NOW_PLAYING_KEY] == "true"
     }
 
-    val lightThemeForArcNowPlaying: Flow<Boolean> = context.dataStore.data.map {
-        it[LIGHT_THEME_ARC_NOW_PLAYING_KEY]?.toBoolean() ?: true
-    }
+
     
     val coilDiskCacheLimitMb: Flow<Int> = context.dataStore.data.map {
         it[COIL_DISK_CACHE_LIMIT_MB_KEY] ?: 250 // default 250MB
@@ -285,9 +282,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit { it[LIGHT_THEME_NOW_PLAYING_KEY] = value.toString() }
     }
 
-    suspend fun setLightThemeForArcNowPlaying(value: Boolean) {
-        context.dataStore.edit { it[LIGHT_THEME_ARC_NOW_PLAYING_KEY] = value.toString() }
-    }
+
     
     suspend fun setCoilDiskCacheLimitMb(value: Int) {
         context.dataStore.edit { it[COIL_DISK_CACHE_LIMIT_MB_KEY] = value }

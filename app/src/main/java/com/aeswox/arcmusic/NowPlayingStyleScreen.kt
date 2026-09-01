@@ -32,8 +32,7 @@ fun NowPlayingStyleScreen(
     onNowPlayingStyleChange: (NowPlayingStyle) -> Unit,
     lightThemeForNowPlaying: Boolean,
     onLightThemeForNowPlayingChange: (Boolean) -> Unit,
-    lightThemeForArcNowPlaying: Boolean,
-    onLightThemeForArcNowPlayingChange: (Boolean) -> Unit,
+
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -120,30 +119,7 @@ fun NowPlayingStyleScreen(
                             }
                         }
                     }
-                } else if (nowPlayingStyle == NowPlayingStyle.ARC) {
-                    item {
-                        SettingsGroup(title = "ARC OPTIONS") {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Light theme for now playing",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Switch(
-                                        checked = lightThemeForArcNowPlaying,
-                                        onCheckedChange = { onLightThemeForArcNowPlayingChange(it) }
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
-
                 item {
                     SettingsGroup(title = "GENERAL OPTIONS") {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

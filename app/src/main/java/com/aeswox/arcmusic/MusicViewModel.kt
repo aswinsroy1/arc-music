@@ -1653,12 +1653,6 @@ class MusicViewModel @Inject constructor(
         initialValue = runBlocking { settingsRepository.lightThemeForNowPlaying.first() }
     )
     
-    val lightThemeForArcNowPlaying: StateFlow<Boolean> = settingsRepository.lightThemeForArcNowPlaying.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = runBlocking { settingsRepository.lightThemeForArcNowPlaying.first() }
-    )
-    
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             settingsRepository.setThemeMode(mode)
@@ -1716,12 +1710,6 @@ class MusicViewModel @Inject constructor(
     fun setLightThemeForNowPlaying(value: Boolean) {
         viewModelScope.launch {
             settingsRepository.setLightThemeForNowPlaying(value)
-        }
-    }
-    
-    fun setLightThemeForArcNowPlaying(value: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setLightThemeForArcNowPlaying(value)
         }
     }
     
