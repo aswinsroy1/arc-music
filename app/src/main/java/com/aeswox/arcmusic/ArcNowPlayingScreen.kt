@@ -1696,24 +1696,23 @@ fun ScrubberAndTimer(
         val thumbRadius = 7.dp.toPx()
 
         // --- Geometry ---
-        // The track sits vertically centered. We define:
-        //   baselineHeight: the thick solid bar always visible for the played region
-        //   waveMaxAmp:     extra height the wave crests add above the baseline top
-        // The bottom edge is always flat; the top edge undulates.
-        val baselineHeight = 5.5.dp.toPx()
-        val waveMaxAmp = 3.5.dp.toPx()   // subtler crest height, closer to Samsung
+        // baselineHeight: thick solid body always visible for played region (trough = top of baseline)
+        // waveMaxAmp: extra px the crest rises above the baseline top
+        val baselineHeight = 8.dp.toPx()   // Thicker body — trough never looks thin
+        val waveMaxAmp = 4.dp.toPx()        // Crest height above baseline
         val totalMaxHeight = baselineHeight + waveMaxAmp
 
-        // Center everything vertically in the canvas
-        val bottomY = (h + totalMaxHeight) / 2f  // flat bottom edge of the track
-        val baselineTopY = bottomY - baselineHeight  // top of the solid baseline (= trough of wave)
+        // Center the whole track vertically in the canvas
+        val bottomY = (h + totalMaxHeight) / 2f
+        val baselineTopY = bottomY - baselineHeight
 
-        // Frequency: fixed physical cycle length (~85dp per cycle) so ~3 crests are always
-        // visible in the played region regardless of how much of the track has played.
-        val cycleLengthPx = 85.dp.toPx()
-        val frequency = 2f * Math.PI.toFloat() / cycleLengthPx
+        // Frequency: 52dp per cycle → ~2-2.5 crests visible in played region
+        val cycleLengthPx = 52.dp.toPx()
+        val freq1 = 2f * Math.PI.toFloat() / cycleLengthPx
+        // Secondary frequency at 1.6× for organic compound wave character
+        val freq2 = freq1 * 1.6f
 
-        // Unplayed track: thin flat line, right of thumb
+        // Unplayed track: thin flat line aligned to baseline center
         val unplayedCenterY = bottomY - baselineHeight / 2f
         drawLine(
             color = textColor.copy(alpha = 0.25f),
@@ -1728,30 +1727,33 @@ fun ScrubberAndTimer(
             val clampedWidth = playedWidth.coerceAtMost(w)
             val steps = clampedWidth.toInt().coerceAtLeast(2)
 
-            // Top-edge Y for a given x along the played region.
-            // Amplitude is tapered: sin(π·t) envelope so the wave fades in from
-            // the left and tapers back to flat approaching the thumb.
-            // The wave only goes UPWARD from baselineTopY (never below it).
+            // Compound organic wave: 75% primary sine + 25% secondary sine at 1.6× freq
+            // Result is a blobby, asymmetric fluid shape — not a perfect math sine.
+            // sinVal is mapped to 0..1 range so the wave only rises ABOVE baselineTopY.
             fun waveTopY(x: Float, phaseOffset: Float): Float {
                 val t = (x / clampedWidth).coerceIn(0f, 1f)
+                // Taper: sin envelope (0→peak→0) so wave fades at both ends
                 val taper = sin(Math.PI.toFloat() * t).coerceAtLeast(0f)
                 val amp = waveMaxAmp * waveAmplitude * taper
-                // sin oscillates -1..1 but we only want upward motion from baseline
-                // Map it so 0=baselineTopY and peak goes up by amp
-                val sinVal = (1f - sin(frequency * x + wavePhase + phaseOffset)) / 2f  // 0..1 range
+                // Compound wave — primary + secondary component
+                val primary = sin(freq1 * x + wavePhase + phaseOffset)
+                val secondary = sin(freq2 * x + wavePhase * 1.3f + phaseOffset + 0.8f) * 0.25f
+                val combined = primary + secondary   // range roughly -1.25..1.25
+                // Remap so wave only goes upward (0..1 range)
+                val sinVal = (1f - combined.coerceIn(-1f, 1f)) / 2f
                 return baselineTopY - amp * sinVal
             }
 
-            // --- Layer 2 (shadow) — phase-shifted, dimmer ---
+            // --- Layer 2 (shadow) — π/2 phase shift, clearly pops on trailing side of crests ---
             val path2 = Path()
             path2.moveTo(0f, bottomY)
             for (i in 0..steps) {
                 val x = (i.toFloat() / steps) * clampedWidth
-                path2.lineTo(x, waveTopY(x, Math.PI.toFloat() / 3.5f))
+                path2.lineTo(x, waveTopY(x, Math.PI.toFloat() / 2f))
             }
             path2.lineTo(clampedWidth, bottomY)
             path2.close()
-            drawPath(path = path2, color = textColor.copy(alpha = 0.5f))
+            drawPath(path = path2, color = textColor.copy(alpha = 0.58f))
 
             // --- Layer 1 (foreground primary wave) ---
             val path1 = Path()
@@ -1762,10 +1764,10 @@ fun ScrubberAndTimer(
             }
             path1.lineTo(clampedWidth, bottomY)
             path1.close()
-            drawPath(path = path1, color = textColor.copy(alpha = 0.92f))
+            drawPath(path = path1, color = textColor.copy(alpha = 0.93f))
         }
 
-        // --- Thumb circle ---
+        // --- Thumb circle —  centered on the baseline body ---
         val thumbCx = playedWidth.coerceIn(thumbRadius, w - thumbRadius)
         val thumbCy = bottomY - baselineHeight / 2f
         drawCircle(
@@ -1774,6 +1776,7 @@ fun ScrubberAndTimer(
             center = Offset(thumbCx, thumbCy)
         )
     }
+
 
 
     Spacer(modifier = Modifier.height(8.dp))
