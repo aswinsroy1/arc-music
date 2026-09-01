@@ -55,7 +55,6 @@ import coil.request.ImageRequest
 
 import androidx.compose.ui.platform.LocalContext
 
-import androidx.palette.graphics.Palette
 
 import android.graphics.drawable.BitmapDrawable
 
@@ -325,18 +324,37 @@ fun FruitNowPlayingScreen(
 
                     if (bitmap != null) {
 
-                        Palette.from(bitmap).generate { palette ->
+                        // Sample the bottom 20% strip of the artwork to get the color
+                        // that actually sits at the artwork/controls boundary.
+                        val stripTop = (bitmap.height * 0.80f).toInt().coerceAtLeast(0)
+                        val bottomStrip = android.graphics.Bitmap.createBitmap(
+                            bitmap, 0, stripTop, bitmap.width, bitmap.height - stripTop
+                        )
 
-                            palette?.dominantSwatch?.rgb?.let { color ->
+                        // Average the pixels in the strip for a smooth representative colour
+                        var rSum = 0L; var gSum = 0L; var bSum = 0L
+                        val pixels = IntArray(bottomStrip.width * bottomStrip.height)
+                        bottomStrip.getPixels(pixels, 0, bottomStrip.width, 0, 0, bottomStrip.width, bottomStrip.height)
+                        pixels.forEach { px ->
+                            rSum += android.graphics.Color.red(px)
+                            gSum += android.graphics.Color.green(px)
+                            bSum += android.graphics.Color.blue(px)
+                        }
+                        val count = pixels.size.toLong().coerceAtLeast(1L)
+                        val avgColor = Color(
+                            red   = (rSum / count).toInt().coerceIn(0, 255),
+                            green = (gSum / count).toInt().coerceIn(0, 255),
+                            blue  = (bSum / count).toInt().coerceIn(0, 255)
+                        )
+                        bottomStrip.recycle()
 
-                                accentColor = Color(color)
-
-                            } ?: palette?.mutedSwatch?.rgb?.let { color ->
-
-                                accentColor = Color(color)
-
-                            }
-
+                        // If the bottom strip is very bright (near-white artwork edge),
+                        // force a neutral grey so white controls stay legible — same
+                        // approach Apple Music uses for bright artworks.
+                        accentColor = if (avgColor.luminance() > 0.65f) {
+                            Color(0xFF888888)
+                        } else {
+                            avgColor
                         }
 
                     }
