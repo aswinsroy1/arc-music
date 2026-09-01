@@ -38,9 +38,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-
 import androidx.compose.ui.graphics.graphicsLayer
-
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 
 import androidx.compose.ui.text.font.FontWeight
@@ -334,11 +333,13 @@ fun ArcNowPlayingScreen(
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
     
+    val isLight = accentColor.luminance() > 0.6f
+    
     val scrimHeightFraction by animateFloatAsState(targetValue = if (showLyrics) 1f else 0.7f, label = "height")
     val scrimStartAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0f, label = "startAlpha")
-    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0.5f, label = "midAlphaRatio")
-    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else 0.9f, label = "endAlphaRatio")
-    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else 0.3f, label = "baseScrim")
+    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else if (isLight) 0.5f else 0.1f, label = "midAlphaRatio")
+    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else if (isLight) 0.9f else 0.3f, label = "endAlphaRatio")
+    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else if (isLight) 0.3f else 0.05f, label = "baseScrim")
     val sharpImageAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "sharpImageAlpha")
     val controlsAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "controlsAlpha")
     
@@ -486,18 +487,28 @@ fun ArcNowPlayingScreen(
 
 
 
-            // Sharp image in the top half, placed perfectly in the center as a 1:1 square
-
+            // Sharp image in the top half, full bleed without rounded corners
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 80.dp, start = 32.dp, end = 32.dp)
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp))
                     .clickable { showLyrics = true }
                     .graphicsLayer {
                         alpha = sharpImageAlpha
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        // Fade out the bottom 30% of the sharp artwork so it smoothly blends into the blurred background
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black),
+                                startY = size.height * 0.7f,
+                                endY = size.height
+                            ),
+                            blendMode = BlendMode.DstOut
+                        )
                     }
             ) {
                 // Static album art — always visible as base/fallback
