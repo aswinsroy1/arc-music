@@ -778,7 +778,7 @@ fun ArcNowPlayingScreen(
 
                     
 
-                    ScrubberAndTimer(viewModel = viewModel, textColor = textColor, textAlpha = textAlpha, songToPlay = songToPlay)
+                    ScrubberAndTimer(viewModel = viewModel, textColor = textColor, textAlpha = textAlpha, songToPlay = songToPlay, isPlayingProvider = { viewModel.isPlaying.value })
 
                     
 
@@ -1626,25 +1626,47 @@ fun ScrubberAndTimer(
     textColor: Color,
     textAlpha: Float,
     songToPlay: Track?,
-    showBadges: Boolean = true
+    showBadges: Boolean = true,
+    isPlayingProvider: (() -> Boolean)? = null
 ) {
     val currentPosition by viewModel.currentPosition.collectAsState()
     val duration by viewModel.duration.collectAsState()
+    val isPlayingState by viewModel.isPlaying.collectAsState()
+    val isPlaying = isPlayingProvider?.invoke() ?: isPlayingState
     var isSeeking by remember { mutableStateOf(false) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
-    
+
     val progress = if (isSeeking) {
         sliderPosition
     } else {
         if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
     }
-    
-    Box(
+
+    // Animate wave phase — continuously advances when playing
+    val infiniteTransition = rememberInfiniteTransition(label = "wavePhase")
+    val wavePhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * Math.PI.toFloat()),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "wavePhase"
+    )
+
+    // Animate amplitude between 0 (paused) and 1 (playing)
+    val targetAmplitude = if (isPlaying && !isSeeking) 1f else 0f
+    val waveAmplitude by animateFloatAsState(
+        targetValue = targetAmplitude,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "waveAmplitude"
+    )
+
+    // Wave seekbar canvas
+    Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(10.dp)
-            .clip(RoundedCornerShape(5.dp))
-            .background(textColor.copy(alpha = 0.25f))
+            .height(36.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     val newProgress = (offset.x / size.width).coerceIn(0f, 1f)
@@ -1653,34 +1675,97 @@ fun ScrubberAndTimer(
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
-                    onDragStart = { 
-                        isSeeking = true 
+                    onDragStart = {
+                        isSeeking = true
                         sliderPosition = (it.x / size.width).coerceIn(0f, 1f)
                     },
                     onDragEnd = {
                         isSeeking = false
                         viewModel.seekTo(sliderPosition)
                     },
-                    onDragCancel = {
-                        isSeeking = false
-                    }
+                    onDragCancel = { isSeeking = false }
                 ) { change, dragAmount ->
                     change.consume()
                     sliderPosition = (sliderPosition + dragAmount / size.width).coerceIn(0f, 1f)
                 }
             }
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(5.dp))
-                .background(textColor)
+        val w = size.width
+        val h = size.height
+        val centerY = h / 2f
+        val playedWidth = w * progress
+        val trackHeight = 6.dp.toPx()
+        val unplayedHeight = 3.dp.toPx()
+        val thumbRadius = 7.dp.toPx()
+
+        // Max wave amplitude in pixels
+        val maxAmp = (h / 2f - thumbRadius - 2.dp.toPx()).coerceAtLeast(0f)
+        // Frequency: ~1.8 full cycles across the track
+        val frequency = 2f * Math.PI.toFloat() * 1.8f / w
+
+        // --- Draw unplayed track (right of thumb) ---
+        drawLine(
+            color = textColor.copy(alpha = 0.25f),
+            start = Offset(playedWidth, centerY),
+            end = Offset(w, centerY),
+            strokeWidth = unplayedHeight,
+            cap = StrokeCap.Round
+        )
+
+        // --- Draw played wave region ---
+        if (playedWidth > 2f) {
+            val steps = (playedWidth).toInt().coerceAtLeast(2)
+
+            // Helper: compute y for a wave sample at position x within played region
+            // Amplitude is tapered: sin(π * t) where t = x/playedWidth
+            // so it rises from 0 at start, peaks in middle, falls to 0 at thumb
+            fun waveY(x: Float, phaseOffset: Float): Float {
+                val t = x / playedWidth  // 0..1 across played region
+                val taper = sin(Math.PI.toFloat() * t)  // 0 → 1 → 0
+                val amp = maxAmp * waveAmplitude * taper
+                return centerY - amp * sin(frequency * x + wavePhase + phaseOffset)
+            }
+
+            // --- Layer 2 (shadow, slightly behind) ---
+            // Phase offset ~π/2, slightly dimmer
+            val path2 = Path()
+            path2.moveTo(0f, centerY)
+            for (i in 0..steps) {
+                val x = (i.toFloat() / steps) * playedWidth
+                path2.lineTo(x, waveY(x, -Math.PI.toFloat() / 2.2f))
+            }
+            path2.lineTo(playedWidth, centerY)
+            path2.close()
+            drawPath(
+                path = path2,
+                color = textColor.copy(alpha = 0.45f)
+            )
+
+            // --- Layer 1 (foreground, primary wave) ---
+            val path1 = Path()
+            path1.moveTo(0f, centerY)
+            for (i in 0..steps) {
+                val x = (i.toFloat() / steps) * playedWidth
+                path1.lineTo(x, waveY(x, 0f))
+            }
+            path1.lineTo(playedWidth, centerY)
+            path1.close()
+            drawPath(
+                path = path1,
+                color = textColor.copy(alpha = 0.9f)
+            )
+        }
+
+        // --- Draw thumb circle ---
+        drawCircle(
+            color = textColor,
+            radius = thumbRadius,
+            center = Offset(playedWidth.coerceIn(thumbRadius, w - thumbRadius), centerY)
         )
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
-    
+    Spacer(modifier = Modifier.height(8.dp))
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1701,7 +1786,7 @@ fun ScrubberAndTimer(
                 val codec = songToPlay?.codec?.lowercase() ?: ""
                 val path = songToPlay?.filePath?.lowercase() ?: ""
                 val isAtmos = codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3") || (path.endsWith(".m4a") && codec.contains("ec-3"))
-                
+
                 if (isAtmos) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
@@ -1723,7 +1808,7 @@ fun ScrubberAndTimer(
                 }
             }
         }
-        
+
         Text(
             text = formatDuration(duration),
             style = MaterialTheme.typography.labelMedium,
