@@ -1692,77 +1692,87 @@ fun ScrubberAndTimer(
     ) {
         val w = size.width
         val h = size.height
-        val centerY = h / 2f
         val playedWidth = w * progress
-        val trackHeight = 6.dp.toPx()
-        val unplayedHeight = 3.dp.toPx()
         val thumbRadius = 7.dp.toPx()
 
-        // Max wave amplitude in pixels
-        val maxAmp = (h / 2f - thumbRadius - 2.dp.toPx()).coerceAtLeast(0f)
-        // Frequency: ~1.8 full cycles across the track
-        val frequency = 2f * Math.PI.toFloat() * 1.8f / w
+        // --- Geometry ---
+        // The track sits vertically centered. We define:
+        //   baselineHeight: the thick solid bar always visible for the played region
+        //   waveMaxAmp:     extra height the wave crests add above the baseline top
+        // The bottom edge is always flat; the top edge undulates.
+        val baselineHeight = 5.5.dp.toPx()
+        val waveMaxAmp = 5.dp.toPx()     // how many px the crest rises above the baseline top
+        val totalMaxHeight = baselineHeight + waveMaxAmp
 
-        // --- Draw unplayed track (right of thumb) ---
+        // Center everything vertically in the canvas
+        val bottomY = (h + totalMaxHeight) / 2f  // flat bottom edge of the track
+        val baselineTopY = bottomY - baselineHeight  // top of the solid baseline (= trough of wave)
+
+        // Frequency: ~2 full cycles visible across the entire width
+        val frequency = 2f * Math.PI.toFloat() * 2f / w
+
+        // Unplayed track: thin flat line, right of thumb
+        val unplayedCenterY = bottomY - baselineHeight / 2f
         drawLine(
             color = textColor.copy(alpha = 0.25f),
-            start = Offset(playedWidth, centerY),
-            end = Offset(w, centerY),
-            strokeWidth = unplayedHeight,
+            start = Offset(playedWidth.coerceAtMost(w), unplayedCenterY),
+            end = Offset(w, unplayedCenterY),
+            strokeWidth = 3.dp.toPx(),
             cap = StrokeCap.Round
         )
 
-        // --- Draw played wave region ---
-        if (playedWidth > 2f) {
-            val steps = (playedWidth).toInt().coerceAtLeast(2)
+        // --- Draw played region ---
+        if (playedWidth > 1f) {
+            val clampedWidth = playedWidth.coerceAtMost(w)
+            val steps = clampedWidth.toInt().coerceAtLeast(2)
 
-            // Helper: compute y for a wave sample at position x within played region
-            // Amplitude is tapered: sin(π * t) where t = x/playedWidth
-            // so it rises from 0 at start, peaks in middle, falls to 0 at thumb
-            fun waveY(x: Float, phaseOffset: Float): Float {
-                val t = x / playedWidth  // 0..1 across played region
-                val taper = sin(Math.PI.toFloat() * t)  // 0 → 1 → 0
-                val amp = maxAmp * waveAmplitude * taper
-                return centerY - amp * sin(frequency * x + wavePhase + phaseOffset)
+            // Top-edge Y for a given x along the played region.
+            // Amplitude is tapered: sin(π·t) envelope so the wave fades in from
+            // the left and tapers back to flat approaching the thumb.
+            // The wave only goes UPWARD from baselineTopY (never below it).
+            fun waveTopY(x: Float, phaseOffset: Float): Float {
+                val t = (x / clampedWidth).coerceIn(0f, 1f)
+                val taper = sin(Math.PI.toFloat() * t).coerceAtLeast(0f)
+                val amp = waveMaxAmp * waveAmplitude * taper
+                // sin oscillates -1..1 but we only want upward motion from baseline
+                // Map it so 0=baselineTopY and peak goes up by amp
+                val sinVal = (1f - sin(frequency * x + wavePhase + phaseOffset)) / 2f  // 0..1 range
+                return baselineTopY - amp * sinVal
             }
 
-            // --- Layer 2 (shadow, slightly behind) ---
-            // Phase offset ~π/2, slightly dimmer
+            // --- Layer 2 (shadow) — phase-shifted, dimmer ---
             val path2 = Path()
-            path2.moveTo(0f, centerY)
+            path2.moveTo(0f, bottomY)
             for (i in 0..steps) {
-                val x = (i.toFloat() / steps) * playedWidth
-                path2.lineTo(x, waveY(x, -Math.PI.toFloat() / 2.2f))
+                val x = (i.toFloat() / steps) * clampedWidth
+                path2.lineTo(x, waveTopY(x, Math.PI.toFloat() / 2.5f))
             }
-            path2.lineTo(playedWidth, centerY)
+            path2.lineTo(clampedWidth, bottomY)
             path2.close()
-            drawPath(
-                path = path2,
-                color = textColor.copy(alpha = 0.45f)
-            )
+            drawPath(path = path2, color = textColor.copy(alpha = 0.5f))
 
-            // --- Layer 1 (foreground, primary wave) ---
+            // --- Layer 1 (foreground primary wave) ---
             val path1 = Path()
-            path1.moveTo(0f, centerY)
+            path1.moveTo(0f, bottomY)
             for (i in 0..steps) {
-                val x = (i.toFloat() / steps) * playedWidth
-                path1.lineTo(x, waveY(x, 0f))
+                val x = (i.toFloat() / steps) * clampedWidth
+                path1.lineTo(x, waveTopY(x, 0f))
             }
-            path1.lineTo(playedWidth, centerY)
+            path1.lineTo(clampedWidth, bottomY)
             path1.close()
-            drawPath(
-                path = path1,
-                color = textColor.copy(alpha = 0.9f)
-            )
+            drawPath(path = path1, color = textColor.copy(alpha = 0.92f))
         }
 
-        // --- Draw thumb circle ---
+        // --- Thumb circle ---
+        val thumbCx = playedWidth.coerceIn(thumbRadius, w - thumbRadius)
+        val thumbCy = bottomY - baselineHeight / 2f
         drawCircle(
             color = textColor,
             radius = thumbRadius,
-            center = Offset(playedWidth.coerceIn(thumbRadius, w - thumbRadius), centerY)
+            center = Offset(thumbCx, thumbCy)
         )
     }
+
 
     Spacer(modifier = Modifier.height(8.dp))
 
