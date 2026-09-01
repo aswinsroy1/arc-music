@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aeswox.arcmusic.ThemeMode
 import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
+import com.aeswox.arcmusic.data.model.NowPlayingStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -42,6 +43,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val EXCLUDED_FOLDERS_KEY = stringPreferencesKey("excluded_folders")
     private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
     private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
+    private val NOW_PLAYING_STYLE_KEY = stringPreferencesKey("now_playing_style")
     private val LYRICS_DISPLAY_STYLE_KEY = stringPreferencesKey("lyrics_display_style")
     private val LYRICS_SHOW_CONTROLS_KEY = booleanPreferencesKey("lyrics_show_controls")
     private val LYRICS_FADE_STEEPNESS_KEY = floatPreferencesKey("lyrics_fade_steepness")
@@ -91,6 +93,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         when (preferences[LYRICS_DISPLAY_STYLE_KEY]) {
             "distance_blur" -> LyricsDisplayStyle.DISTANCE_BLUR
             else            -> LyricsDisplayStyle.FADE
+        }
+    }
+
+    val nowPlayingStyle: Flow<NowPlayingStyle> = context.dataStore.data.map { preferences ->
+        when (preferences[NOW_PLAYING_STYLE_KEY]) {
+            "fruit" -> NowPlayingStyle.FRUIT
+            else    -> NowPlayingStyle.ARC
         }
     }
 
@@ -280,6 +289,15 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             it[LYRICS_DISPLAY_STYLE_KEY] = when (style) {
                 LyricsDisplayStyle.FADE          -> "fade"
                 LyricsDisplayStyle.DISTANCE_BLUR -> "distance_blur"
+            }
+        }
+    }
+
+    suspend fun setNowPlayingStyle(style: NowPlayingStyle) {
+        context.dataStore.edit {
+            it[NOW_PLAYING_STYLE_KEY] = when (style) {
+                NowPlayingStyle.ARC   -> "arc"
+                NowPlayingStyle.FRUIT -> "fruit"
             }
         }
     }

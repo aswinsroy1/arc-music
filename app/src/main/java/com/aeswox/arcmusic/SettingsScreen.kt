@@ -34,6 +34,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.lazy.items
 import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
+import com.aeswox.arcmusic.data.model.NowPlayingStyle
 import com.aeswox.arcmusic.db.entities.Playlist
 
 @Composable
@@ -44,6 +45,7 @@ fun SettingsScreen(
     themeMode: ThemeMode,
     lightThemeForNowPlaying: Boolean,
     heroCardPlayingStateEnabled: Boolean,
+    nowPlayingStyle: NowPlayingStyle,
     lyricsDisplayStyle: LyricsDisplayStyle,
     lastFmApiKey: String?,
     fanartTvApiKey: String?,
@@ -52,6 +54,7 @@ fun SettingsScreen(
     onHeroCardPlayingStateEnabledChange: (Boolean) -> Unit,
     heroCardIncludeArtistsAndAlbums: Boolean = false,
     onHeroCardIncludeArtistsAndAlbumsChange: (Boolean) -> Unit,
+    onNowPlayingStyleChange: (NowPlayingStyle) -> Unit,
     onLyricsDisplayStyleChange: (LyricsDisplayStyle) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
@@ -61,6 +64,7 @@ fun SettingsScreen(
     onNavigateToJigglePhysics: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
     onNavigateToMediaManagement: () -> Unit,
+    onNavigateToNowPlayingStyleSettings: () -> Unit,
     onNavigateToLyricStyleSettings: () -> Unit,
     onNavigateToCanvasSettings: () -> Unit,
     onNavigateBack: () -> Unit,
@@ -268,6 +272,33 @@ fun SettingsScreen(
                                 )
                             },
                             showArrow = false
+                        )
+                        SettingsItem(
+                            icon = Icons.Outlined.MusicNote,
+                            text = "Now Playing Style",
+                            onClick = onNavigateToNowPlayingStyleSettings,
+                            showArrow = true,
+                            trailingContent = {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    LyricsStyleChip(
+                                        label = "Arc",
+                                        selected = nowPlayingStyle == NowPlayingStyle.ARC,
+                                        onClick = { onNowPlayingStyleChange(NowPlayingStyle.ARC) }
+                                    )
+                                    LyricsStyleChip(
+                                        label = "Fruit",
+                                        selected = nowPlayingStyle == NowPlayingStyle.FRUIT,
+                                        onClick = { onNowPlayingStyleChange(NowPlayingStyle.FRUIT) }
+                                    )
+                                }
+                            }
                         )
                         SettingsItem(
                             icon = Icons.Outlined.MusicNote,

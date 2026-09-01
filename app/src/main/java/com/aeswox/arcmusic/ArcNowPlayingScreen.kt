@@ -232,7 +232,7 @@ fun LosslessLogo(modifier: Modifier = Modifier, color: Color) {
 
 @Composable
 
-fun NowPlayingScreen(
+fun ArcNowPlayingScreen(
 
     tintTransparency: Float,
 

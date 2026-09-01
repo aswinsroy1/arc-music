@@ -207,6 +207,7 @@ class MainActivity : ComponentActivity() {
                     val lightThemeForNowPlaying by viewModel.lightThemeForNowPlaying.collectAsState()
                     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
                     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+                    val nowPlayingStyle by viewModel.nowPlayingStyle.collectAsState()
                     val artworkUrl = if (isMiniPlayerVisible) currentlyPlaying?.artworkUri ?: currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" } else null
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
                     
@@ -332,33 +333,66 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             viewModel.setPlayerExpanded(false)
                                         }
-                                        NowPlayingScreen(
-                                            tintTransparency = tintTransparency,
-                                            noiseFactor = noiseFactor,
-                                            glowIntensity = glowIntensity,
-                                            isDarkTheme = isDarkThemeForNowPlaying,
-                                            onNavigateBack = { viewModel.setPlayerExpanded(false) },
-                                            onNavigateToQueue = { 
-                                                viewModel.setPlayerExpanded(false)
-                                                navController.navigate("queue") 
-                                            },
-                                            onNavigateToAlbum = { albumId -> 
-                                                viewModel.setPlayerExpanded(false)
-                                                navController.navigate("album_details/$albumId") 
-                                            },
-                                            onNavigateToArtist = { artistId -> 
-                                                viewModel.setPlayerExpanded(false)
-                                                navController.navigate("artist_details/$artistId") 
-                                            },
-                                            onNavigateToShare = { type, id ->
-                                                viewModel.setPlayerExpanded(false)
-                                                navController.navigate("share?type=$type&id=$id")
-                                            },
-                                            onNavigateToEditMetadata = { trackId -> 
-                                                viewModel.setPlayerExpanded(false)
-                                                navController.navigate("edit_metadata/$trackId?readOnly=true") 
+                                        when (nowPlayingStyle) {
+                                            com.aeswox.arcmusic.data.model.NowPlayingStyle.ARC -> {
+                                                ArcNowPlayingScreen(
+                                                    tintTransparency = tintTransparency,
+                                                    noiseFactor = noiseFactor,
+                                                    glowIntensity = glowIntensity,
+                                                    isDarkTheme = isDarkThemeForNowPlaying,
+                                                    onNavigateBack = { viewModel.setPlayerExpanded(false) },
+                                                    onNavigateToQueue = { 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("queue") 
+                                                    },
+                                                    onNavigateToAlbum = { albumId -> 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("album_details/$albumId") 
+                                                    },
+                                                    onNavigateToArtist = { artistId -> 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("artist_details/$artistId") 
+                                                    },
+                                                    onNavigateToShare = { type, id ->
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("share?type=$type&id=$id")
+                                                    },
+                                                    onNavigateToEditMetadata = { trackId -> 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("edit_metadata/$trackId?readOnly=true") 
+                                                    }
+                                                )
                                             }
-                                        )
+                                            com.aeswox.arcmusic.data.model.NowPlayingStyle.FRUIT -> {
+                                                FruitNowPlayingScreen(
+                                                    tintTransparency = tintTransparency,
+                                                    noiseFactor = noiseFactor,
+                                                    glowIntensity = glowIntensity,
+                                                    isDarkTheme = isDarkThemeForNowPlaying,
+                                                    onNavigateBack = { viewModel.setPlayerExpanded(false) },
+                                                    onNavigateToQueue = { 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("queue") 
+                                                    },
+                                                    onNavigateToAlbum = { albumId -> 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("album_details/$albumId") 
+                                                    },
+                                                    onNavigateToArtist = { artistId -> 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("artist_details/$artistId") 
+                                                    },
+                                                    onNavigateToShare = { type, id ->
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("share?type=$type&id=$id")
+                                                    },
+                                                    onNavigateToEditMetadata = { trackId -> 
+                                                        viewModel.setPlayerExpanded(false)
+                                                        navController.navigate("edit_metadata/$trackId?readOnly=true") 
+                                                    }
+                                                )
+                                            }
+                                        }
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 ) {
@@ -754,6 +788,8 @@ class MainActivity : ComponentActivity() {
                                     onHeroCardPlayingStateEnabledChange = { viewModel.setHeroCardPlayingStateEnabled(it) },
                                     heroCardIncludeArtistsAndAlbums = heroCardIncludeArtistsAndAlbums,
                                     onHeroCardIncludeArtistsAndAlbumsChange = { viewModel.setHeroCardIncludeArtistsAndAlbums(it) },
+                                    nowPlayingStyle = nowPlayingStyle,
+                                    onNowPlayingStyleChange = { viewModel.setNowPlayingStyle(it) },
                                     lyricsDisplayStyle = lyricsDisplayStyle,
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
@@ -768,6 +804,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToJigglePhysics = { navController.navigate("jiggle_physics") },
                                     onNavigateToEqualizer = { navController.navigate("equalizer") },
                                     onNavigateToMediaManagement = { navController.navigate("media_management") },
+                                    onNavigateToNowPlayingStyleSettings = { navController.navigate("now_playing_style_settings") },
                                     onNavigateToLyricStyleSettings = { navController.navigate("lyrics_style_settings") },
                                     onNavigateToCanvasSettings = { navController.navigate("canvas_settings") },
                                     onNavigateBack = { navController.popBackStack() },
@@ -844,6 +881,21 @@ class MainActivity : ComponentActivity() {
                                     onTintTransparencyChange = { viewModel.setTintTransparency(it) },
                                     onNoiseFactorChange = { viewModel.setNoiseFactor(it) },
                                     onGlowIntensityChange = { viewModel.setGlowIntensity(it) },
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable(
+                            route = "now_playing_style_settings",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                NowPlayingStyleScreen(
+                                    nowPlayingStyle = nowPlayingStyle,
+                                    onNowPlayingStyleChange = { viewModel.setNowPlayingStyle(it) },
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }

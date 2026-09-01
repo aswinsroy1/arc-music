@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
+import com.aeswox.arcmusic.data.model.NowPlayingStyle
 import com.aeswox.arcmusic.db.MusicRepository
 import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
@@ -1744,6 +1745,10 @@ class MusicViewModel @Inject constructor(
         LyricsDisplayStyle.FADE
     )
 
+    val nowPlayingStyle: StateFlow<NowPlayingStyle> = settingsRepository.nowPlayingStyle.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), NowPlayingStyle.ARC
+    )
+
     val lyricsShowControls: StateFlow<Boolean> = settingsRepository.lyricsShowControls.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), true
     )
@@ -1789,6 +1794,10 @@ class MusicViewModel @Inject constructor(
 
     fun setLyricsDisplayStyle(style: LyricsDisplayStyle) {
         viewModelScope.launch { settingsRepository.setLyricsDisplayStyle(style) }
+    }
+
+    fun setNowPlayingStyle(style: NowPlayingStyle) {
+        viewModelScope.launch { settingsRepository.setNowPlayingStyle(style) }
     }
 
     fun setLyricsShowControls(show: Boolean) {
