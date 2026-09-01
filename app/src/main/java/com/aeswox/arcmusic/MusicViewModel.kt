@@ -1647,8 +1647,17 @@ class MusicViewModel @Inject constructor(
         initialValue = runBlocking { settingsRepository.physicsGravity.first() }
     )
     
-    private val _lightThemeForNowPlaying = MutableStateFlow(false)
-    val lightThemeForNowPlaying: StateFlow<Boolean> = _lightThemeForNowPlaying.asStateFlow()
+    val lightThemeForNowPlaying: StateFlow<Boolean> = settingsRepository.lightThemeForNowPlaying.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = runBlocking { settingsRepository.lightThemeForNowPlaying.first() }
+    )
+    
+    val lightThemeForArcNowPlaying: StateFlow<Boolean> = settingsRepository.lightThemeForArcNowPlaying.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = runBlocking { settingsRepository.lightThemeForArcNowPlaying.first() }
+    )
     
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
@@ -1705,7 +1714,15 @@ class MusicViewModel @Inject constructor(
     }
     
     fun setLightThemeForNowPlaying(value: Boolean) {
-        _lightThemeForNowPlaying.value = value
+        viewModelScope.launch {
+            settingsRepository.setLightThemeForNowPlaying(value)
+        }
+    }
+    
+    fun setLightThemeForArcNowPlaying(value: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setLightThemeForArcNowPlaying(value)
+        }
     }
     
     val lastFmApiKey = settingsRepository.lastFmApiKey.stateIn(

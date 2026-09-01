@@ -332,19 +332,19 @@ fun ArcNowPlayingScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
-    
-    val isLight = accentColor.luminance() > 0.6f
+    val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
+    val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val scrimHeightFraction by animateFloatAsState(targetValue = if (showLyrics) 1f else 0.7f, label = "height")
     val scrimStartAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0f, label = "startAlpha")
-    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else if (isLight) 0.5f else 0.1f, label = "midAlphaRatio")
-    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else if (isLight) 0.9f else 0.3f, label = "endAlphaRatio")
-    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else if (isLight) 0.3f else 0.05f, label = "baseScrim")
+    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0.4f, label = "midAlphaRatio")
+    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else 0.8f, label = "endAlphaRatio")
+    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else 0.5f, label = "baseScrim")
     val sharpImageAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "sharpImageAlpha")
     val controlsAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "controlsAlpha")
     
-    val textColor = Color.White
-    val textAlpha = 0.7f
+    val textColor = if (isDarkTheme) Color.White else if (isArtworkDark) Color.White else Color.Black
+    val textAlpha = if (isDarkTheme) 0.7f else 0.6f
 
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
@@ -437,7 +437,7 @@ fun ArcNowPlayingScreen(
 
                 contentDescription = null,
 
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.Crop,
 
                 onSuccess = { state ->
 
@@ -481,18 +481,20 @@ fun ArcNowPlayingScreen(
 
                     .fillMaxSize()
 
-                    .background(Color.Black.copy(alpha = baseScrimAlpha))
+                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else lightThemeBgColor.copy(alpha = 0.5f))
 
             )
 
 
 
-            // Sharp image in the top half, full bleed without rounded corners
+            // Sharp image in the top half, fading out at the bottom — with optional canvas overlay
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .aspectRatio(1f)
+                    .aspectRatio(0.9f)
+                    .clip(RoundedCornerShape(32.dp))
                     .clickable { showLyrics = true }
                     .graphicsLayer {
                         alpha = sharpImageAlpha
@@ -500,14 +502,16 @@ fun ArcNowPlayingScreen(
                     }
                     .drawWithContent {
                         drawContent()
-                        // Fade out the bottom 30% of the sharp artwork so it smoothly blends into the blurred background
                         drawRect(
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black),
-                                startY = size.height * 0.7f,
+                                0.0f to Color.Transparent,
+                                0.15f to Color.Black,
+                                0.4f to Color.Black,
+                                1.0f to Color.Transparent,
+                                startY = 0f,
                                 endY = size.height
                             ),
-                            blendMode = BlendMode.DstOut
+                            blendMode = BlendMode.DstIn
                         )
                     }
             ) {
@@ -590,11 +594,11 @@ fun ArcNowPlayingScreen(
 
                             colors = listOf(
 
-                                Color.Black.copy(alpha = scrimStartAlpha), 
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = scrimStartAlpha), 
 
-                                Color.Black.copy(alpha = midAlphaRatio), 
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = midAlphaRatio), 
 
-                                Color.Black.copy(alpha = endAlphaRatio)
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = endAlphaRatio)
 
                             ),
 
@@ -1425,7 +1429,6 @@ fun ArcNowPlayingScreen(
 
 
 @Composable
-
 fun CustomPauseIcon(color: Color, modifier: Modifier = Modifier) {
 
     Canvas(modifier = modifier) {

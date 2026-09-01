@@ -205,6 +205,7 @@ class MainActivity : ComponentActivity() {
                     val noiseFactor by viewModel.noiseFactor.collectAsState()
                     val glowIntensity by viewModel.glowIntensity.collectAsState()
                     val lightThemeForNowPlaying by viewModel.lightThemeForNowPlaying.collectAsState()
+                    val lightThemeForArcNowPlaying by viewModel.lightThemeForArcNowPlaying.collectAsState()
                     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
                     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
                     val nowPlayingStyle by viewModel.nowPlayingStyle.collectAsState()
@@ -339,7 +340,7 @@ class MainActivity : ComponentActivity() {
                                                     tintTransparency = tintTransparency,
                                                     noiseFactor = noiseFactor,
                                                     glowIntensity = glowIntensity,
-                                                    isDarkTheme = isDarkThemeForNowPlaying,
+                                                    isDarkTheme = !lightThemeForArcNowPlaying,
                                                     onNavigateBack = { viewModel.setPlayerExpanded(false) },
                                                     onNavigateToQueue = { 
                                                         viewModel.setPlayerExpanded(false)
@@ -368,7 +369,7 @@ class MainActivity : ComponentActivity() {
                                                     tintTransparency = tintTransparency,
                                                     noiseFactor = noiseFactor,
                                                     glowIntensity = glowIntensity,
-                                                    isDarkTheme = isDarkThemeForNowPlaying,
+                                                    isDarkTheme = !lightThemeForNowPlaying,
                                                     onNavigateBack = { viewModel.setPlayerExpanded(false) },
                                                     onNavigateToQueue = { 
                                                         viewModel.setPlayerExpanded(false)
@@ -896,6 +897,8 @@ class MainActivity : ComponentActivity() {
                                     onNowPlayingStyleChange = { viewModel.setNowPlayingStyle(it) },
                                     lightThemeForNowPlaying = lightThemeForNowPlaying,
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
+                                    lightThemeForArcNowPlaying = lightThemeForArcNowPlaying,
+                                    onLightThemeForArcNowPlayingChange = { viewModel.setLightThemeForArcNowPlaying(it) },
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }
