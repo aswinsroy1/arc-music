@@ -437,7 +437,7 @@ fun ArcNowPlayingScreen(
 
                 contentDescription = null,
 
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.FillBounds,
 
                 onSuccess = { state ->
 
