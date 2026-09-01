@@ -339,7 +339,7 @@ fun ArcNowPlayingScreen(
     val scrimStartAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0f, label = "startAlpha")
     val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else if (isWhiteArtwork) 0.85f else 0.4f, label = "midAlphaRatio")
     val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else if (isWhiteArtwork) 1.0f else 0.8f, label = "endAlphaRatio")
-    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else if (isWhiteArtwork) 0.75f else 0.5f, label = "baseScrim")
+    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else if (isWhiteArtwork) 0.92f else 0.5f, label = "baseScrim")
     val sharpImageAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "sharpImageAlpha")
     val controlsAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "controlsAlpha")
     
@@ -476,7 +476,7 @@ fun ArcNowPlayingScreen(
                         // approach Apple Music uses for bright artworks.
                         if (avgColor.luminance() > 0.65f) {
                             isWhiteArtwork = true
-                            accentColor = Color(0xFF888888)
+                            accentColor = Color(0xFF666666)
                         } else {
                             isWhiteArtwork = false
                             accentColor = avgColor
@@ -502,7 +502,7 @@ fun ArcNowPlayingScreen(
 
                     .fillMaxSize()
 
-                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else lightThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.75f else 0.5f))
+                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else lightThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f))
 
             )
 
@@ -1876,7 +1876,7 @@ fun FullScreenWordSyncedLyrics(textColor: Color = Color.White) {
                     // approach Apple Music uses for bright artworks.
                     if (avgColor.luminance() > 0.65f) {
                         isWhiteArtwork = true
-                        accentColor = Color(0xFF888888)
+                        accentColor = Color(0xFF666666)
                     } else {
                         isWhiteArtwork = false
                         accentColor = avgColor
