@@ -30,6 +30,8 @@ import dev.chrisbanes.haze.haze
 fun NowPlayingStyleScreen(
     nowPlayingStyle: NowPlayingStyle,
     onNowPlayingStyleChange: (NowPlayingStyle) -> Unit,
+    lightThemeForNowPlaying: Boolean,
+    onLightThemeForNowPlayingChange: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -90,6 +92,30 @@ fun NowPlayingStyleScreen(
                                 selected = nowPlayingStyle == NowPlayingStyle.FRUIT,
                                 onClick = { onNowPlayingStyleChange(NowPlayingStyle.FRUIT) }
                             )
+                        }
+                    }
+                }
+
+                if (nowPlayingStyle == NowPlayingStyle.FRUIT) {
+                    item {
+                        SettingsGroup(title = "FRUIT OPTIONS") {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Light theme for now playing",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Switch(
+                                        checked = lightThemeForNowPlaying,
+                                        onCheckedChange = { onLightThemeForNowPlayingChange(it) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

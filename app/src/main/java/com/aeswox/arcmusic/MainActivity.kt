@@ -783,7 +783,6 @@ class MainActivity : ComponentActivity() {
                                     noiseFactor = noiseFactor,
                                     glowIntensity = glowIntensity,
                                     themeMode = themeMode,
-                                    lightThemeForNowPlaying = lightThemeForNowPlaying,
                                     heroCardPlayingStateEnabled = heroCardPlayingStateEnabled,
                                     onHeroCardPlayingStateEnabledChange = { viewModel.setHeroCardPlayingStateEnabled(it) },
                                     heroCardIncludeArtistsAndAlbums = heroCardIncludeArtistsAndAlbums,
@@ -794,7 +793,6 @@ class MainActivity : ComponentActivity() {
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
-                                    onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
                                     onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
@@ -896,6 +894,8 @@ class MainActivity : ComponentActivity() {
                                 NowPlayingStyleScreen(
                                     nowPlayingStyle = nowPlayingStyle,
                                     onNowPlayingStyleChange = { viewModel.setNowPlayingStyle(it) },
+                                    lightThemeForNowPlaying = lightThemeForNowPlaying,
+                                    onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }

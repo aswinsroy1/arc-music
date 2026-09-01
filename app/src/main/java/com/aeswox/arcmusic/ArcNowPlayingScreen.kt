@@ -333,19 +333,17 @@ fun ArcNowPlayingScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
-    val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
-    val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val scrimHeightFraction by animateFloatAsState(targetValue = if (showLyrics) 1f else 0.7f, label = "height")
     val scrimStartAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0f, label = "startAlpha")
-    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0.4f, label = "midAlphaRatio")
-    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else 0.8f, label = "endAlphaRatio")
-    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else 0.5f, label = "baseScrim")
+    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0.5f, label = "midAlphaRatio")
+    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else 0.9f, label = "endAlphaRatio")
+    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else 0.3f, label = "baseScrim")
     val sharpImageAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "sharpImageAlpha")
     val controlsAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "controlsAlpha")
     
-    val textColor = if (isDarkTheme) Color.White else if (isArtworkDark) Color.White else Color.Black
-    val textAlpha = if (isDarkTheme) 0.7f else 0.6f
+    val textColor = Color.White
+    val textAlpha = 0.7f
 
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
@@ -482,38 +480,24 @@ fun ArcNowPlayingScreen(
 
                     .fillMaxSize()
 
-                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else lightThemeBgColor.copy(alpha = 0.5f))
+                    .background(Color.Black.copy(alpha = baseScrimAlpha))
 
             )
 
 
 
-            // Sharp image in the top half, fading out at the bottom — with optional canvas overlay
+            // Sharp image in the top half, placed perfectly in the center as a 1:1 square
 
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .padding(top = 80.dp, start = 32.dp, end = 32.dp)
                     .fillMaxWidth()
-                    .aspectRatio(0.9f)
-                    .clip(RoundedCornerShape(32.dp))
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(16.dp))
                     .clickable { showLyrics = true }
                     .graphicsLayer {
                         alpha = sharpImageAlpha
-                        compositingStrategy = CompositingStrategy.Offscreen
-                    }
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                0.0f to Color.Transparent,
-                                0.15f to Color.Black,
-                                0.4f to Color.Black,
-                                1.0f to Color.Transparent,
-                                startY = 0f,
-                                endY = size.height
-                            ),
-                            blendMode = BlendMode.DstIn
-                        )
                     }
             ) {
                 // Static album art — always visible as base/fallback
@@ -595,11 +579,11 @@ fun ArcNowPlayingScreen(
 
                             colors = listOf(
 
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = scrimStartAlpha), 
+                                Color.Black.copy(alpha = scrimStartAlpha), 
 
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = midAlphaRatio), 
+                                Color.Black.copy(alpha = midAlphaRatio), 
 
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = endAlphaRatio)
+                                Color.Black.copy(alpha = endAlphaRatio)
 
                             ),
 

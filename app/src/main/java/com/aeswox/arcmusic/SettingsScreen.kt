@@ -43,14 +43,12 @@ fun SettingsScreen(
     noiseFactor: Float,
     glowIntensity: Float,
     themeMode: ThemeMode,
-    lightThemeForNowPlaying: Boolean,
     heroCardPlayingStateEnabled: Boolean,
     nowPlayingStyle: NowPlayingStyle,
     lyricsDisplayStyle: LyricsDisplayStyle,
     lastFmApiKey: String?,
     fanartTvApiKey: String?,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onLightThemeForNowPlayingChange: (Boolean) -> Unit,
     onHeroCardPlayingStateEnabledChange: (Boolean) -> Unit,
     heroCardIncludeArtistsAndAlbums: Boolean = false,
     onHeroCardIncludeArtistsAndAlbumsChange: (Boolean) -> Unit,
@@ -239,17 +237,6 @@ fun SettingsScreen(
                             },
                             showArrow = false,
                             enabled = false
-                        )
-                        SettingsItem(
-                            icon = Icons.Outlined.LightMode, 
-                            text = "Light theme for now playing", 
-                            trailingContent = {
-                                Switch(
-                                    checked = lightThemeForNowPlaying, 
-                                    onCheckedChange = { onLightThemeForNowPlayingChange(it) }
-                                )
-                            },
-                            showArrow = false
                         )
                         SettingsItem(
                             icon = Icons.Outlined.PlayCircleOutline,
