@@ -262,7 +262,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     val lightThemeForArcNowPlaying: Flow<Boolean> = context.dataStore.data.map {
-        it[LIGHT_THEME_ARC_NOW_PLAYING_KEY] == "true"
+        it[LIGHT_THEME_ARC_NOW_PLAYING_KEY]?.toBoolean() ?: true
     }
     
     val coilDiskCacheLimitMb: Flow<Int> = context.dataStore.data.map {
