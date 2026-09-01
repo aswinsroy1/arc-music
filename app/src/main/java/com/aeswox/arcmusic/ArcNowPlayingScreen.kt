@@ -1701,15 +1701,17 @@ fun ScrubberAndTimer(
         //   waveMaxAmp:     extra height the wave crests add above the baseline top
         // The bottom edge is always flat; the top edge undulates.
         val baselineHeight = 5.5.dp.toPx()
-        val waveMaxAmp = 5.dp.toPx()     // how many px the crest rises above the baseline top
+        val waveMaxAmp = 3.5.dp.toPx()   // subtler crest height, closer to Samsung
         val totalMaxHeight = baselineHeight + waveMaxAmp
 
         // Center everything vertically in the canvas
         val bottomY = (h + totalMaxHeight) / 2f  // flat bottom edge of the track
         val baselineTopY = bottomY - baselineHeight  // top of the solid baseline (= trough of wave)
 
-        // Frequency: ~2 full cycles visible across the entire width
-        val frequency = 2f * Math.PI.toFloat() * 2f / w
+        // Frequency: fixed physical cycle length (~85dp per cycle) so ~3 crests are always
+        // visible in the played region regardless of how much of the track has played.
+        val cycleLengthPx = 85.dp.toPx()
+        val frequency = 2f * Math.PI.toFloat() / cycleLengthPx
 
         // Unplayed track: thin flat line, right of thumb
         val unplayedCenterY = bottomY - baselineHeight / 2f
@@ -1745,7 +1747,7 @@ fun ScrubberAndTimer(
             path2.moveTo(0f, bottomY)
             for (i in 0..steps) {
                 val x = (i.toFloat() / steps) * clampedWidth
-                path2.lineTo(x, waveTopY(x, Math.PI.toFloat() / 2.5f))
+                path2.lineTo(x, waveTopY(x, Math.PI.toFloat() / 3.5f))
             }
             path2.lineTo(clampedWidth, bottomY)
             path2.close()
