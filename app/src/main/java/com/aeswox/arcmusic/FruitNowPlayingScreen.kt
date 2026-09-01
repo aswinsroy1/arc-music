@@ -209,18 +209,19 @@ fun FruitNowPlayingScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
+    var isWhiteArtwork by remember { mutableStateOf(false) } // true when artwork bottom is near-white
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val scrimHeightFraction by animateFloatAsState(targetValue = if (showLyrics) 1f else 0.7f, label = "height")
     val scrimStartAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0f, label = "startAlpha")
-    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else 0.4f, label = "midAlphaRatio")
-    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else 0.8f, label = "endAlphaRatio")
-    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else 0.5f, label = "baseScrim")
+    val midAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.0f else if (isWhiteArtwork) 0.85f else 0.4f, label = "midAlphaRatio")
+    val endAlphaRatio by animateFloatAsState(targetValue = if (showLyrics) 0.1f else if (isWhiteArtwork) 1.0f else 0.8f, label = "endAlphaRatio")
+    val baseScrimAlpha by animateFloatAsState(targetValue = if (showLyrics) 0.15f else if (isWhiteArtwork) 0.75f else 0.5f, label = "baseScrim")
     val sharpImageAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "sharpImageAlpha")
     val controlsAlpha by animateFloatAsState(targetValue = if (showLyrics) 0f else 1f, label = "controlsAlpha")
     
-    val textColor = if (isDarkTheme) Color.White else if (isArtworkDark) Color.White else Color.Black
+    val textColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (isArtworkDark) Color.White else Color.Black
     val textAlpha = if (isDarkTheme) 0.7f else 0.6f
 
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
@@ -351,10 +352,12 @@ fun FruitNowPlayingScreen(
                         // If the bottom strip is very bright (near-white artwork edge),
                         // force a neutral grey so white controls stay legible — same
                         // approach Apple Music uses for bright artworks.
-                        accentColor = if (avgColor.luminance() > 0.65f) {
-                            Color(0xFF888888)
+                        if (avgColor.luminance() > 0.65f) {
+                            isWhiteArtwork = true
+                            accentColor = Color(0xFF888888)
                         } else {
-                            avgColor
+                            isWhiteArtwork = false
+                            accentColor = avgColor
                         }
 
                     }
