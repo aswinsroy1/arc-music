@@ -657,6 +657,78 @@ class MusicViewModel @Inject constructor(
         }
     }
 
+    fun addSelectedItemsToQueue(selectedItems: List<String>, playNext: Boolean) {
+        viewModelScope.launch {
+            val tracksToAdd = mutableListOf<Track>()
+            
+            // Handle Tracks
+            val trackIds = selectedItems.mapNotNull { if (it.startsWith("track_")) it.removePrefix("track_") else null }
+            if (trackIds.isNotEmpty()) {
+                val tracks = libraryTracks.value.filter { trackIds.contains(it.id) }
+                tracksToAdd.addAll(tracks)
+            }
+            
+            // Handle Albums
+            val albumIds = selectedItems.mapNotNull { if (it.startsWith("album_")) it.removePrefix("album_") else null }
+            if (albumIds.isNotEmpty()) {
+                val albums = libraryAlbums.value.filter { albumIds.contains(it.id) }
+                for (album in albums) {
+                    val albumTracks = repository.getTracksByAlbum(album.title).first()
+                    tracksToAdd.addAll(albumTracks)
+                }
+            }
+            
+            // Handle Artists
+            val artistIds = selectedItems.mapNotNull { if (it.startsWith("artist_")) it.removePrefix("artist_") else null }
+            if (artistIds.isNotEmpty()) {
+                val artists = libraryArtists.value.filter { artistIds.contains(it.id) }
+                for (artist in artists) {
+                    val artistTracks = repository.getTracksByArtist(artist.name).first()
+                    tracksToAdd.addAll(artistTracks)
+                }
+            }
+            
+            // Handle Playlists
+            val playlistIds = selectedItems.mapNotNull { if (it.startsWith("playlist_")) it.removePrefix("playlist_") else null }
+            if (playlistIds.isNotEmpty()) {
+                for (playlistId in playlistIds) {
+                    val playlistTracks = repository.getTracksForPlaylistById(playlistId).first()
+                    tracksToAdd.addAll(playlistTracks)
+                }
+            }
+            
+            if (tracksToAdd.isNotEmpty()) {
+                val queue = tracksToAdd.mapNotNull { track ->
+                    androidx.media3.common.MediaItem.Builder()
+                        .setUri(android.net.Uri.fromFile(java.io.File(track.filePath)))
+                        .setMediaId(track.id)
+                        .setMediaMetadata(
+                            androidx.media3.common.MediaMetadata.Builder()
+                                .setTitle(track.title)
+                                .setArtist(track.artist)
+                                .setArtworkUri(track.artworkUri?.let { android.net.Uri.parse(it) })
+                                .setExtras(android.os.Bundle().apply {
+                                    putLong("durationMs", track.durationMs)
+                                })
+                                .build()
+                        )
+                        .build()
+                }
+                
+                withContext(Dispatchers.Main) {
+                    val message = if (playNext) "Playing next" else "Added to queue"
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+
+                if (playNext) {
+                    musicPlayerConnection.addNext(queue)
+                } else {
+                    musicPlayerConnection.addLater(queue)
+                }
+            }
+        }
+    }
+
     fun setCurrentlyPlaying(song: Track?, contextQueue: List<Track>? = null) {
         _currentlyPlaying.value = song
         setMiniPlayerVisible(true)

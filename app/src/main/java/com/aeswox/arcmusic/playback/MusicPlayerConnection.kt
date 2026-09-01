@@ -264,6 +264,28 @@ class MusicPlayerConnection @Inject constructor(
         mediaController?.play()
     }
     
+    fun addNext(mediaItems: List<MediaItem>) {
+        mediaController?.let { controller ->
+            val currentIndex = controller.currentMediaItemIndex
+            val insertIndex = if (currentIndex >= 0) currentIndex + 1 else 0
+            controller.addMediaItems(insertIndex, mediaItems)
+            if (!controller.isPlaying && controller.playbackState == Player.STATE_IDLE) {
+                controller.prepare()
+                controller.play()
+            }
+        }
+    }
+    
+    fun addLater(mediaItems: List<MediaItem>) {
+        mediaController?.let { controller ->
+            controller.addMediaItems(mediaItems)
+            if (!controller.isPlaying && controller.playbackState == Player.STATE_IDLE) {
+                controller.prepare()
+                controller.play()
+            }
+        }
+    }
+    
     fun clearQueue() {
         mediaController?.clearMediaItems()
         _currentQueue.value = emptyList()

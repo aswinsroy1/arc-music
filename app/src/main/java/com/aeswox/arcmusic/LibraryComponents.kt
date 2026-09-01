@@ -205,8 +205,16 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
                 isAllFavorited = isAllSelectedFavorited,
                 onAddToPlaylist = { showAddToPlaylistSheet = true },
                 onRename = { renameTrigger++ },
-                onPlayNext = { selectedItems.clear() },
-                onPlayLater = { selectedItems.clear() },
+                onPlayNext = { 
+                    viewModel.addSelectedItemsToQueue(selectedItems.toList(), playNext = true)
+                    selectedItems.clear() 
+                    onSelectionModeChange(false)
+                },
+                onPlayLater = { 
+                    viewModel.addSelectedItemsToQueue(selectedItems.toList(), playNext = false)
+                    selectedItems.clear() 
+                    onSelectionModeChange(false)
+                },
                 onAddToFavorites = { 
                     when (currentTab) {
                         "Albums" -> {
