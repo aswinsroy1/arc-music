@@ -62,6 +62,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val AMPLITUDE_KEY = floatPreferencesKey("physics_amplitude")
     private val GRAVITY_KEY = floatPreferencesKey("physics_gravity")
 
+    private val SEEKBAR_BASELINE_HEIGHT_KEY = floatPreferencesKey("seekbar_baseline_height")
+    private val SEEKBAR_WAVE_MAX_AMP_KEY = floatPreferencesKey("seekbar_wave_max_amp")
+    private val SEEKBAR_CYCLE_LENGTH_KEY = floatPreferencesKey("seekbar_cycle_length")
+    private val SEEKBAR_SHADOW_OFFSET_KEY = floatPreferencesKey("seekbar_shadow_offset")
+    private val SEEKBAR_SHADOW_OPACITY_KEY = floatPreferencesKey("seekbar_shadow_opacity")
+    private val SEEKBAR_PRIMARY_OPACITY_KEY = floatPreferencesKey("seekbar_primary_opacity")
+    private val SEEKBAR_THUMB_RADIUS_KEY = floatPreferencesKey("seekbar_thumb_radius")
+    private val SEEKBAR_UNPLAYED_STROKE_KEY = floatPreferencesKey("seekbar_unplayed_stroke")
+    private val SEEKBAR_BLOOM_DURATION_KEY = floatPreferencesKey("seekbar_bloom_duration")
+
+
     val hasCompletedOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[HAS_COMPLETED_ONBOARDING_KEY] ?: false
     }
@@ -175,6 +186,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         preferences[GRAVITY_KEY] ?: 9.81f
     }
 
+    val seekbarBaselineHeight: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_BASELINE_HEIGHT_KEY] ?: 5.5f }
+    val seekbarWaveMaxAmp: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_WAVE_MAX_AMP_KEY] ?: 3.5f }
+    val seekbarCycleLength: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_CYCLE_LENGTH_KEY] ?: 85f }
+    val seekbarShadowOffset: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_SHADOW_OFFSET_KEY] ?: (Math.PI.toFloat() / 3.5f) }
+    val seekbarShadowOpacity: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_SHADOW_OPACITY_KEY] ?: 0.5f }
+    val seekbarPrimaryOpacity: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_PRIMARY_OPACITY_KEY] ?: 0.92f }
+    val seekbarThumbRadius: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_THUMB_RADIUS_KEY] ?: 7.0f }
+    val seekbarUnplayedStroke: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_UNPLAYED_STROKE_KEY] ?: 3.0f }
+    val seekbarBloomDuration: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_BLOOM_DURATION_KEY] ?: 600f }
+
+
     suspend fun setHasCompletedOnboarding(completed: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HAS_COMPLETED_ONBOARDING_KEY] = completed
@@ -244,6 +266,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setPhysicsGravity(value: Float) {
         context.dataStore.edit { preferences -> preferences[GRAVITY_KEY] = value }
     }
+
+    suspend fun setSeekbarBaselineHeight(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_BASELINE_HEIGHT_KEY] = value } }
+    suspend fun setSeekbarWaveMaxAmp(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_WAVE_MAX_AMP_KEY] = value } }
+    suspend fun setSeekbarCycleLength(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_CYCLE_LENGTH_KEY] = value } }
+    suspend fun setSeekbarShadowOffset(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_SHADOW_OFFSET_KEY] = value } }
+    suspend fun setSeekbarShadowOpacity(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_SHADOW_OPACITY_KEY] = value } }
+    suspend fun setSeekbarPrimaryOpacity(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_PRIMARY_OPACITY_KEY] = value } }
+    suspend fun setSeekbarThumbRadius(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_THUMB_RADIUS_KEY] = value } }
+    suspend fun setSeekbarUnplayedStroke(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_UNPLAYED_STROKE_KEY] = value } }
+    suspend fun setSeekbarBloomDuration(value: Float) { context.dataStore.edit { preferences -> preferences[SEEKBAR_BLOOM_DURATION_KEY] = value } }
+
 
     // ------- Media Management Prefs -------
 

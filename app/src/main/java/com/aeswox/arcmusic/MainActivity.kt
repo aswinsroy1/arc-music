@@ -799,6 +799,7 @@ class MainActivity : ComponentActivity() {
                                     coilDiskCacheLimitMb = coilDiskCacheLimitMb,
                                     onCoilDiskCacheLimitMbChange = { viewModel.setCoilDiskCacheLimitMb(it) },
                                     onNavigateToAppearance = { navController.navigate("appearance") },
+                                    onNavigateToWaveProperties = { navController.navigate("wave_properties") },
                                     onNavigateToJigglePhysics = { navController.navigate("jiggle_physics") },
                                     onNavigateToEqualizer = { navController.navigate("equalizer") },
                                     onNavigateToMediaManagement = { navController.navigate("media_management") },
@@ -933,6 +934,56 @@ class MainActivity : ComponentActivity() {
                                     lyricsBlurDimming = lyricsBlurDimming,
                                     onLyricsBlurDimmingChange = { viewModel.setLyricsBlurDimming(it) },
                                     onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable(
+                            route = "wave_properties",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            val seekbarBaselineHeight by viewModel.seekbarBaselineHeight.collectAsState()
+                            val seekbarWaveMaxAmp by viewModel.seekbarWaveMaxAmp.collectAsState()
+                            val seekbarCycleLength by viewModel.seekbarCycleLength.collectAsState()
+                            val seekbarShadowOffset by viewModel.seekbarShadowOffset.collectAsState()
+                            val seekbarShadowOpacity by viewModel.seekbarShadowOpacity.collectAsState()
+                            val seekbarPrimaryOpacity by viewModel.seekbarPrimaryOpacity.collectAsState()
+                            val seekbarThumbRadius by viewModel.seekbarThumbRadius.collectAsState()
+                            val seekbarUnplayedStroke by viewModel.seekbarUnplayedStroke.collectAsState()
+                            val seekbarBloomDuration by viewModel.seekbarBloomDuration.collectAsState()
+
+                            val dynamicBottomPadding by remember(isMiniPlayerVisible, currentlyPlaying) {
+                                derivedStateOf {
+                                    val miniPlayerOffset = if (isMiniPlayerVisible && currentlyPlaying != null) 96.dp else 0.dp
+                                    24.dp + miniPlayerOffset
+                                }
+                            }
+
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                WavePropertiesScreen(
+                                    bottomPadding = PaddingValues(bottom = dynamicBottomPadding),
+
+                                    onBack = { navController.popBackStack() },
+                                    baselineHeight = seekbarBaselineHeight,
+                                    onBaselineHeightChange = { viewModel.setSeekbarBaselineHeight(it) },
+                                    waveMaxAmp = seekbarWaveMaxAmp,
+                                    onWaveMaxAmpChange = { viewModel.setSeekbarWaveMaxAmp(it) },
+                                    cycleLength = seekbarCycleLength,
+                                    onCycleLengthChange = { viewModel.setSeekbarCycleLength(it) },
+                                    shadowOffset = seekbarShadowOffset,
+                                    onShadowOffsetChange = { viewModel.setSeekbarShadowOffset(it) },
+                                    shadowOpacity = seekbarShadowOpacity,
+                                    onShadowOpacityChange = { viewModel.setSeekbarShadowOpacity(it) },
+                                    primaryOpacity = seekbarPrimaryOpacity,
+                                    onPrimaryOpacityChange = { viewModel.setSeekbarPrimaryOpacity(it) },
+                                    thumbRadius = seekbarThumbRadius,
+                                    onThumbRadiusChange = { viewModel.setSeekbarThumbRadius(it) },
+                                    unplayedStroke = seekbarUnplayedStroke,
+                                    onUnplayedStrokeChange = { viewModel.setSeekbarUnplayedStroke(it) },
+                                    bloomDuration = seekbarBloomDuration,
+                                    onBloomDurationChange = { viewModel.setSeekbarBloomDuration(it) }
                                 )
                             }
                         }

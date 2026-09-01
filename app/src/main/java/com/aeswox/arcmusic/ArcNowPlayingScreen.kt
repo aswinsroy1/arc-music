@@ -1633,6 +1633,17 @@ fun ScrubberAndTimer(
     val duration by viewModel.duration.collectAsState()
     val isPlayingState by viewModel.isPlaying.collectAsState()
     val isPlaying = isPlayingProvider?.invoke() ?: isPlayingState
+
+    val seekbarBaselineHeight by viewModel.seekbarBaselineHeight.collectAsState()
+    val seekbarWaveMaxAmp by viewModel.seekbarWaveMaxAmp.collectAsState()
+    val seekbarCycleLength by viewModel.seekbarCycleLength.collectAsState()
+    val seekbarShadowOffset by viewModel.seekbarShadowOffset.collectAsState()
+    val seekbarShadowOpacity by viewModel.seekbarShadowOpacity.collectAsState()
+    val seekbarPrimaryOpacity by viewModel.seekbarPrimaryOpacity.collectAsState()
+    val seekbarThumbRadius by viewModel.seekbarThumbRadius.collectAsState()
+    val seekbarUnplayedStroke by viewModel.seekbarUnplayedStroke.collectAsState()
+    val seekbarBloomDuration by viewModel.seekbarBloomDuration.collectAsState()
+
     var isSeeking by remember { mutableStateOf(false) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
 
@@ -1658,7 +1669,7 @@ fun ScrubberAndTimer(
     val targetAmplitude = if (isPlaying && !isSeeking) 1f else 0f
     val waveAmplitude by animateFloatAsState(
         targetValue = targetAmplitude,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = seekbarBloomDuration.toInt(), easing = FastOutSlowInEasing),
         label = "waveAmplitude"
     )
 
@@ -1693,33 +1704,32 @@ fun ScrubberAndTimer(
         val w = size.width
         val h = size.height
         val playedWidth = w * progress
-        val thumbRadius = 7.dp.toPx()
+        val thumbRadiusPx = seekbarThumbRadius.dp.toPx()
 
         // --- Geometry ---
         // The track sits vertically centered. We define:
         //   baselineHeight: the thick solid bar always visible for the played region
         //   waveMaxAmp:     extra height the wave crests add above the baseline top
         // The bottom edge is always flat; the top edge undulates.
-        val baselineHeight = 5.5.dp.toPx()
-        val waveMaxAmp = 3.5.dp.toPx()   // subtler crest height, closer to Samsung
-        val totalMaxHeight = baselineHeight + waveMaxAmp
+        val baselineHeightPx = seekbarBaselineHeight.dp.toPx()
+        val waveMaxAmpPx = seekbarWaveMaxAmp.dp.toPx()
+        val totalMaxHeight = baselineHeightPx + waveMaxAmpPx
 
         // Center everything vertically in the canvas
         val bottomY = (h + totalMaxHeight) / 2f  // flat bottom edge of the track
-        val baselineTopY = bottomY - baselineHeight  // top of the solid baseline (= trough of wave)
+        val baselineTopY = bottomY - baselineHeightPx  // top of the solid baseline (= trough of wave)
 
-        // Frequency: fixed physical cycle length (~85dp per cycle) so ~3 crests are always
-        // visible in the played region regardless of how much of the track has played.
-        val cycleLengthPx = 85.dp.toPx()
+        // Frequency: physical cycle length
+        val cycleLengthPx = seekbarCycleLength.dp.toPx()
         val frequency = 2f * Math.PI.toFloat() / cycleLengthPx
 
         // Unplayed track: thin flat line, right of thumb
-        val unplayedCenterY = bottomY - baselineHeight / 2f
+        val unplayedCenterY = bottomY - baselineHeightPx / 2f
         drawLine(
             color = textColor.copy(alpha = 0.25f),
             start = Offset(playedWidth.coerceAtMost(w), unplayedCenterY),
             end = Offset(w, unplayedCenterY),
-            strokeWidth = 3.dp.toPx(),
+            strokeWidth = seekbarUnplayedStroke.dp.toPx(),
             cap = StrokeCap.Round
         )
 
@@ -1735,7 +1745,7 @@ fun ScrubberAndTimer(
             fun waveTopY(x: Float, phaseOffset: Float): Float {
                 val t = (x / clampedWidth).coerceIn(0f, 1f)
                 val taper = sin(Math.PI.toFloat() * t).coerceAtLeast(0f)
-                val amp = waveMaxAmp * waveAmplitude * taper
+                val amp = waveMaxAmpPx * waveAmplitude * taper
                 // sin oscillates -1..1 but we only want upward motion from baseline
                 // Map it so 0=baselineTopY and peak goes up by amp
                 val sinVal = (1f - sin(frequency * x + wavePhase + phaseOffset)) / 2f  // 0..1 range
@@ -1747,11 +1757,11 @@ fun ScrubberAndTimer(
             path2.moveTo(0f, bottomY)
             for (i in 0..steps) {
                 val x = (i.toFloat() / steps) * clampedWidth
-                path2.lineTo(x, waveTopY(x, Math.PI.toFloat() / 3.5f))
+                path2.lineTo(x, waveTopY(x, seekbarShadowOffset))
             }
             path2.lineTo(clampedWidth, bottomY)
             path2.close()
-            drawPath(path = path2, color = textColor.copy(alpha = 0.5f))
+            drawPath(path = path2, color = textColor.copy(alpha = seekbarShadowOpacity))
 
             // --- Layer 1 (foreground primary wave) ---
             val path1 = Path()
@@ -1762,15 +1772,15 @@ fun ScrubberAndTimer(
             }
             path1.lineTo(clampedWidth, bottomY)
             path1.close()
-            drawPath(path = path1, color = textColor.copy(alpha = 0.92f))
+            drawPath(path = path1, color = textColor.copy(alpha = seekbarPrimaryOpacity))
         }
 
         // --- Thumb circle ---
-        val thumbCx = playedWidth.coerceIn(thumbRadius, w - thumbRadius)
-        val thumbCy = bottomY - baselineHeight / 2f
+        val thumbCx = playedWidth.coerceIn(thumbRadiusPx, w - thumbRadiusPx)
+        val thumbCy = bottomY - baselineHeightPx / 2f
         drawCircle(
             color = textColor,
-            radius = thumbRadius,
+            radius = thumbRadiusPx,
             center = Offset(thumbCx, thumbCy)
         )
     }

@@ -1646,6 +1646,16 @@ class MusicViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = runBlocking { settingsRepository.physicsGravity.first() }
     )
+
+    val seekbarBaselineHeight: StateFlow<Float> = settingsRepository.seekbarBaselineHeight.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarBaselineHeight.first() })
+    val seekbarWaveMaxAmp: StateFlow<Float> = settingsRepository.seekbarWaveMaxAmp.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarWaveMaxAmp.first() })
+    val seekbarCycleLength: StateFlow<Float> = settingsRepository.seekbarCycleLength.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarCycleLength.first() })
+    val seekbarShadowOffset: StateFlow<Float> = settingsRepository.seekbarShadowOffset.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarShadowOffset.first() })
+    val seekbarShadowOpacity: StateFlow<Float> = settingsRepository.seekbarShadowOpacity.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarShadowOpacity.first() })
+    val seekbarPrimaryOpacity: StateFlow<Float> = settingsRepository.seekbarPrimaryOpacity.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarPrimaryOpacity.first() })
+    val seekbarThumbRadius: StateFlow<Float> = settingsRepository.seekbarThumbRadius.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarThumbRadius.first() })
+    val seekbarUnplayedStroke: StateFlow<Float> = settingsRepository.seekbarUnplayedStroke.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarUnplayedStroke.first() })
+    val seekbarBloomDuration: StateFlow<Float> = settingsRepository.seekbarBloomDuration.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = runBlocking { settingsRepository.seekbarBloomDuration.first() })
     
     val lightThemeForNowPlaying: StateFlow<Boolean> = settingsRepository.lightThemeForNowPlaying.stateIn(
         scope = viewModelScope,
@@ -1706,6 +1716,16 @@ class MusicViewModel @Inject constructor(
             settingsRepository.setPhysicsGravity(value)
         }
     }
+
+    fun setSeekbarBaselineHeight(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarBaselineHeight(value) } }
+    fun setSeekbarWaveMaxAmp(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarWaveMaxAmp(value) } }
+    fun setSeekbarCycleLength(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarCycleLength(value) } }
+    fun setSeekbarShadowOffset(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarShadowOffset(value) } }
+    fun setSeekbarShadowOpacity(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarShadowOpacity(value) } }
+    fun setSeekbarPrimaryOpacity(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarPrimaryOpacity(value) } }
+    fun setSeekbarThumbRadius(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarThumbRadius(value) } }
+    fun setSeekbarUnplayedStroke(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarUnplayedStroke(value) } }
+    fun setSeekbarBloomDuration(value: Float) { viewModelScope.launch { settingsRepository.setSeekbarBloomDuration(value) } }
     
     fun setLightThemeForNowPlaying(value: Boolean) {
         viewModelScope.launch {

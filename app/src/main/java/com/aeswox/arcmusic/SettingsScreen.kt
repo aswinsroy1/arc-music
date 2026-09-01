@@ -59,7 +59,9 @@ fun SettingsScreen(
     coilDiskCacheLimitMb: Int,
     onCoilDiskCacheLimitMbChange: (Int) -> Unit,
     onNavigateToAppearance: () -> Unit,
+    onNavigateToWaveProperties: () -> Unit,
     onNavigateToJigglePhysics: () -> Unit,
+
     onNavigateToEqualizer: () -> Unit,
     onNavigateToMediaManagement: () -> Unit,
     onNavigateToNowPlayingStyleSettings: () -> Unit,
@@ -211,8 +213,10 @@ fun SettingsScreen(
                 item {
                     SettingsGroup(title = "APPEARANCE") {
                         SettingsItem(icon = Icons.Outlined.Brush, text = "Appearance", onClick = onNavigateToAppearance)
+                        SettingsItem(icon = Icons.Outlined.GraphicEq, text = "Wave properties", onClick = onNavigateToWaveProperties)
                         SettingsItem(
                             icon = Icons.Outlined.DarkMode, 
+
                             text = "Dark mode", 
                             trailingContent = {
                                 Switch(
