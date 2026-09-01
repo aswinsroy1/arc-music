@@ -1513,7 +1513,23 @@ fun HeroSection(
                     }
                     .clip(RoundedCornerShape(36.dp))
                     .jellyClick {
-                        // Optional: Navigate to Now Playing?
+                        if (!isNowPlayingMode) {
+                            when (suggestedItem) {
+                                is HeroCardItem.AlbumItem -> onNavigateToAlbum(suggestedItem.album.title)
+                                is HeroCardItem.ArtistItem -> onNavigateToArtist(suggestedItem.artist.name)
+                                is HeroCardItem.TrackItem -> {
+                                    val albumName = suggestedItem.track.album
+                                    if (!albumName.isNullOrEmpty() && albumName != "Unknown Album") {
+                                        onNavigateToAlbum(albumName)
+                                    } else {
+                                        val artistName = suggestedItem.track.artist
+                                        if (!artistName.isNullOrEmpty() && artistName != "Unknown Artist") {
+                                            onNavigateToArtist(artistName)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
             ) {
                 AsyncImage(
