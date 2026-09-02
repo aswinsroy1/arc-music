@@ -279,6 +279,8 @@ fun ArcNowPlayingScreen(
 
     var showDeviceSheet by remember { mutableStateOf(false) }
 
+    var showLyrics by remember { mutableStateOf(false) }
+
     
 
     val deviceVolume by viewModel.deviceVolume.collectAsState()
@@ -323,18 +325,51 @@ fun ArcNowPlayingScreen(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    androidx.activity.compose.BackHandler(enabled = showLyrics) {
+        showLyrics = false
+    }
+
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
     var isWhiteArtwork by remember { mutableStateOf(false) } // true when artwork bottom is near-white
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
-    val scrimHeightFraction = 0.7f
+    // Spring spec used for all lyrics-mode transitions so they share a bouncy, jelly feel
+    val lyricsSpring = spring<Float>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessLow
+    )
+    val scrimHeightFraction by animateFloatAsState(
+        targetValue = if (showLyrics) 1.0f else 0.7f,
+        animationSpec = lyricsSpring,
+        label = "scrimHeight"
+    )
     val scrimStartAlpha = 0f
-    val midAlphaRatio by animateFloatAsState(targetValue = if (isWhiteArtwork) 0.85f else 0.4f, label = "midAlphaRatio")
-    val endAlphaRatio by animateFloatAsState(targetValue = if (isWhiteArtwork) 1.0f else 0.8f, label = "endAlphaRatio")
-    val baseScrimAlpha by animateFloatAsState(targetValue = if (isWhiteArtwork) 0.92f else 0.5f, label = "baseScrim")
-    val sharpImageAlpha = 1f
-    val controlsAlpha = 1f
+    val midAlphaRatio by animateFloatAsState(
+        targetValue = if (showLyrics) 0.0f else if (isWhiteArtwork) 0.85f else 0.4f,
+        animationSpec = lyricsSpring,
+        label = "midAlphaRatio"
+    )
+    val endAlphaRatio by animateFloatAsState(
+        targetValue = if (showLyrics) 0.08f else if (isWhiteArtwork) 1.0f else 0.8f,
+        animationSpec = lyricsSpring,
+        label = "endAlphaRatio"
+    )
+    val baseScrimAlpha by animateFloatAsState(
+        targetValue = if (showLyrics) 0.15f else if (isWhiteArtwork) 0.92f else 0.5f,
+        animationSpec = lyricsSpring,
+        label = "baseScrim"
+    )
+    val sharpImageAlpha by animateFloatAsState(
+        targetValue = if (showLyrics) 0f else 1f,
+        animationSpec = lyricsSpring,
+        label = "sharpImageAlpha"
+    )
+    val controlsAlpha by animateFloatAsState(
+        targetValue = if (showLyrics) 0f else 1f,
+        animationSpec = lyricsSpring,
+        label = "controlsAlpha"
+    )
     
     val textColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (isArtworkDark) Color.White else Color.Black
     val textAlpha = if (isDarkTheme) 0.7f else 0.6f
@@ -381,7 +416,8 @@ fun ArcNowPlayingScreen(
 
                         } else if (totalDrag > 100) {
 
-                            onNavigateBack()
+                            // In lyrics mode swipe-down dismisses lyrics; otherwise exits the screen
+                            if (showLyrics) showLyrics = false else onNavigateBack()
 
                         }
 
@@ -509,6 +545,7 @@ fun ArcNowPlayingScreen(
                     .fillMaxWidth()
                     .aspectRatio(0.9f)
                     .clip(RoundedCornerShape(32.dp))
+                    .clickable { showLyrics = true }
                     .graphicsLayer {
                         alpha = sharpImageAlpha
                         compositingStrategy = CompositingStrategy.Offscreen
@@ -1009,9 +1046,28 @@ fun ArcNowPlayingScreen(
 
         }
 
-
-
-
+        // Full-screen lyrics overlay — placed at outer Box level so it covers the entire screen
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showLyrics,
+            enter = androidx.compose.animation.fadeIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ),
+            exit = androidx.compose.animation.fadeOut(animationSpec = tween(350)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                ArcLyricsOverlay(
+                    textColor = textColor,
+                    isDarkTheme = isDarkTheme,
+                    accentColor = accentColor,
+                    isWhiteArtwork = isWhiteArtwork,
+                    onDismiss = { showLyrics = false }
+                )
+            }
+        }
 
         if (showSleepTimerDialog) {
 
@@ -1848,5 +1904,381 @@ fun ScrubberAndTimer(
 }
 
 
+/**
+ * Full-screen lyrics overlay for Arc style.
+ *
+ * Rendered on top of the existing blurred/scrimmed background — no duplicate
+ * background layers are drawn here. The composable owns its own lyrics state
+ * and scroll logic, mirroring [FullScreenWordSyncedLyrics] exactly but with:
+ *  - A small artwork thumbnail + song title row at the top (tap to dismiss)
+ *  - A spring-animated docked controls panel at the bottom
+ *  - Swipe-down anywhere on the lyrics list to dismiss (handled by the outer
+ *    Box in [ArcNowPlayingScreen])
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun ArcLyricsOverlay(
+    textColor: Color = Color.White,
+    isDarkTheme: Boolean = true,
+    accentColor: Color = Color(0xFFB28D84),
+    isWhiteArtwork: Boolean = false,
+    onDismiss: () -> Unit = {}
+) {
+    val viewModel: MusicViewModel = hiltViewModel()
+    val currentlyPlayingEntity by viewModel.currentlyPlaying.collectAsState()
+    val randomPicks       by viewModel.randomPicks.collectAsState()
+    val libraryTracks     by viewModel.libraryTracks.collectAsState()
 
+    val rawSongToPlay = currentlyPlayingEntity ?: randomPicks.firstOrNull()
+    val songToPlay    = libraryTracks.find { it.id == rawSongToPlay?.id } ?: rawSongToPlay
 
+    val imageUrl = songToPlay?.artworkUri
+        ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" }
+        ?: ""
+
+    // ── Lyrics data ──────────────────────────────────────────────────────────
+    val lyricsData             by viewModel.lyricsUiState.collectAsState()
+    val lyricsDisplayStyle     by viewModel.lyricsDisplayStyle.collectAsState()
+    val lyricsShowControls     by viewModel.lyricsShowControls.collectAsState()
+    val lyricsFadeSteepness    by viewModel.lyricsFadeSteepness.collectAsState()
+    val lyricsFadeScaleCeiling by viewModel.lyricsFadeScaleCeiling.collectAsState()
+    val lyricsFadeDistanceSizing by viewModel.lyricsFadeDistanceSizing.collectAsState()
+    val lyricsBlurRadius       by viewModel.lyricsBlurRadius.collectAsState()
+    val lyricsBlurDimming      by viewModel.lyricsBlurDimming.collectAsState()
+
+    val rawSyncedLines = lyricsData?.synced
+    val plainLines     = lyricsData?.plain
+    val duration       by viewModel.duration.collectAsState()
+
+    // Enrich synced lines: insert "● ● ●" placeholders for long gaps (same as Fruit screen)
+    val syncedLines = remember(rawSyncedLines, duration) {
+        if (rawSyncedLines.isNullOrEmpty()) return@remember null
+        val enriched     = mutableListOf<SyncedLine>()
+        val gapThreshold = 10_000
+        if (rawSyncedLines.first().time > gapThreshold)
+            enriched.add(SyncedLine(time = 2000, line = "\u25CF \u25CF \u25CF"))
+        for (i in 0 until rawSyncedLines.size - 1) {
+            enriched.add(rawSyncedLines[i])
+            if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
+                enriched.add(SyncedLine(time = rawSyncedLines[i].time + 5000, line = "\u25CF \u25CF \u25CF"))
+        }
+        if (rawSyncedLines.isNotEmpty()) {
+            enriched.add(rawSyncedLines.last())
+            if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
+                enriched.add(SyncedLine(time = rawSyncedLines.last().time + 5000, line = "\u25CF \u25CF \u25CF"))
+        }
+        enriched.toList()
+    }
+
+    val currentPositionState = viewModel.currentPlaybackPosition.collectAsState()
+    val linesToRender = remember(syncedLines, plainLines) {
+        syncedLines?.map { it.line } ?: plainLines ?: listOf("No lyrics available")
+    }
+
+    // ── Active-line tracking ─────────────────────────────────────────────────
+    var activeLineIndex by remember { mutableIntStateOf(0) }
+    var activeWordIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(syncedLines) {
+        viewModel.currentPlaybackPosition.collect { pos ->
+            if (!syncedLines.isNullOrEmpty()) {
+                val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
+                val newLineIndex = if (lastMatchIndex >= 0) {
+                    val matchTime = syncedLines[lastMatchIndex].time
+                    syncedLines.indexOfFirst { it.time == matchTime }
+                } else 0
+                if (activeLineIndex != newLineIndex) activeLineIndex = newLineIndex
+                if (newLineIndex in syncedLines.indices) {
+                    val line = syncedLines[newLineIndex]
+                    if (!line.words.isNullOrEmpty()) {
+                        val newWordIndex = line.words.indexOfLast { it.time <= pos }.coerceAtLeast(0)
+                        if (activeWordIndex != newWordIndex) activeWordIndex = newWordIndex
+                    } else {
+                        if (activeWordIndex != -1) activeWordIndex = -1
+                    }
+                }
+            } else {
+                if (activeLineIndex != -1) activeLineIndex = -1
+                if (activeWordIndex != -1) activeWordIndex = -1
+            }
+        }
+    }
+
+    val activeLineIndexProvider = remember { { activeLineIndex } }
+    val activeWordIndexProvider = remember { { activeWordIndex } }
+
+    // ── Scroll state ─────────────────────────────────────────────────────────
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(activeLineIndex) {
+        if (activeLineIndex in 0 until linesToRender.size) {
+            val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == activeLineIndex }
+            if (visibleItem != null && visibleItem.offset != 0) {
+                listState.animateScrollBy(
+                    value = visibleItem.offset.toFloat(),
+                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 50f)
+                )
+            } else {
+                listState.animateScrollToItem(activeLineIndex)
+            }
+        }
+    }
+
+    // ── Spring-physics entry for the bottom controls panel ───────────────────
+    var controlsVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(120)
+        controlsVisible = true
+    }
+    val controlsSlideY by animateFloatAsState(
+        targetValue = if (controlsVisible) 0f else 400f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness   = Spring.StiffnessMediumLow
+        ),
+        label = "arc_lyrics_controlsSlide"
+    )
+    val controlsFadeAlpha by animateFloatAsState(
+        targetValue = if (controlsVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "arc_lyrics_controlsFade"
+    )
+
+    val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor
+                            else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
+    val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
+
+    val listSpacing   = if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) 42.dp else 28.dp
+    val bottomPadding = if (lyricsShowControls) 300.dp else 120.dp
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // Soft gradient at the bottom to frame the controls panel
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.55f)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            bgColor.copy(alpha = 0f),
+                            bgColor.copy(alpha = 0.45f),
+                            bgColor.copy(alpha = 0.85f)
+                        )
+                    )
+                )
+        )
+
+        // ── Lyrics list ──────────────────────────────────────────────────────
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top   = 140.dp,
+                bottom = bottomPadding,
+                start = 28.dp,
+                end   = 28.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(listSpacing)
+        ) {
+            itemsIndexed(linesToRender) { lineIndex, line ->
+                val words = remember(lineIndex, syncedLines, line) {
+                    if (!syncedLines.isNullOrEmpty() && !syncedLines[lineIndex].words.isNullOrEmpty())
+                        syncedLines[lineIndex].words!!.map { it.word }
+                    else
+                        line.split(" ")
+                }
+                if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) {
+                    FadeLyricLine(
+                        lineIndex               = lineIndex,
+                        syncedLine              = syncedLines?.getOrNull(lineIndex),
+                        plainWords              = words,
+                        activeLineIndexProvider = activeLineIndexProvider,
+                        currentPositionProvider = { currentPositionState.value },
+                        listState               = listState,
+                        textColor               = textColor,
+                        fadeSteepness           = lyricsFadeSteepness,
+                        fadeScaleCeiling        = lyricsFadeScaleCeiling,
+                        distanceSizing          = lyricsFadeDistanceSizing
+                    )
+                } else {
+                    LyricLine(
+                        line                   = line,
+                        words                  = words,
+                        lineIndex              = lineIndex,
+                        activeLineIndexProvider = activeLineIndexProvider,
+                        activeWordIndexProvider = activeWordIndexProvider,
+                        textColor              = textColor,
+                        blurRadiusMax          = lyricsBlurRadius,
+                        blurDimming            = lyricsBlurDimming
+                    )
+                }
+            }
+        }
+
+        // ── Top header: small artwork thumb + title + tap-to-dismiss ─────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .systemBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Dismiss lyrics",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onDismiss() }
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = songToPlay?.title ?: "Unknown",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = textColor,
+                    maxLines = 1
+                )
+                Text(
+                    text  = songToPlay?.artist ?: "Unknown",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textColor.copy(alpha = 0.65f),
+                    maxLines = 1
+                )
+            }
+        }
+
+        // ── Docked bottom controls (spring entry) ────────────────────────────
+        if (lyricsShowControls) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        translationY = controlsSlideY
+                        alpha        = controlsFadeAlpha
+                    }
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                bgColor.copy(alpha = 0.65f),
+                                bgColor.copy(alpha = 0.96f),
+                                bgColor
+                            )
+                        )
+                    )
+                    .navigationBarsPadding()
+                    .padding(top = 56.dp, bottom = 28.dp, start = 24.dp, end = 24.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+
+                    // Title + fav
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text  = songToPlay?.title ?: "Unknown",
+                                style = MaterialTheme.typography.displaySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize   = 26.sp
+                                ),
+                                color    = textColor,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text  = songToPlay?.artist ?: "Unknown",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = textColor.copy(alpha = 0.7f),
+                                maxLines = 1
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(textColor.copy(alpha = 0.15f))
+                                .clickable {
+                                    songToPlay?.let { track ->
+                                        viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (songToPlay?.isFavorite == true)
+                                    Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint     = if (songToPlay?.isFavorite == true) Color.White else textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    ScrubberAndTimer(
+                        viewModel  = viewModel,
+                        textColor  = textColor,
+                        textAlpha  = 0.7f,
+                        songToPlay = songToPlay,
+                        showBadges = false
+                    )
+
+                    Spacer(modifier = Modifier.height(40.dp))
+
+                    // Playback controls
+                    val isPlayingArc by viewModel.isPlaying.collectAsState()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick  = { viewModel.skipToPrevious() },
+                            modifier = Modifier.size(64.dp)
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Rounded.FastRewind,
+                                contentDescription = "Previous",
+                                tint               = textColor,
+                                modifier           = Modifier.size(52.dp)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clickable { viewModel.togglePlayPause() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
+                                isPlaying = isPlayingArc,
+                                tint      = textColor,
+                                modifier  = Modifier.size(50.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick  = { viewModel.skipToNext() },
+                            modifier = Modifier.size(64.dp)
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Rounded.FastForward,
+                                contentDescription = "Next",
+                                tint               = textColor,
+                                modifier           = Modifier.size(52.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
