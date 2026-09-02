@@ -112,6 +112,11 @@ class MediaStoreScanner @Inject constructor(
                     }
                 }
 
+                val hasExplicitTag = title.contains("[E]", ignoreCase = true) || 
+                                     title.contains("(Explicit)", ignoreCase = true) || 
+                                     filePath.contains("[E]", ignoreCase = true) || 
+                                     filePath.contains("(Explicit)", ignoreCase = true)
+
                 tracks.add(
                     ScannedTrack(
                         id = id,
@@ -134,10 +139,7 @@ class MediaStoreScanner @Inject constructor(
                         dateAdded = dateAdded,
                         dateModified = dateModified,
                         artworkUri = artworkUriStr,
-                        isExplicit = title.contains("[E]", ignoreCase = true) || 
-                                     title.contains("(Explicit)", ignoreCase = true) || 
-                                     filePath.contains("[E]", ignoreCase = true) || 
-                                     filePath.contains("(Explicit)", ignoreCase = true)
+                        isExplicit = if (hasExplicitTag) true else null
                     )
                 )
             }
@@ -196,5 +198,5 @@ data class ScannedTrack(
     val dateAdded: Long,
     val dateModified: Long,
     val artworkUri: String?,
-    val isExplicit: Boolean = false
+    val isExplicit: Boolean? = null
 )
