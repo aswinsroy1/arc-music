@@ -366,12 +366,6 @@ fun ArcNowPlayingScreen(
         animationSpec = lyricsSpring,
         label = "baseScrim"
     )
-    // Artwork morphs to thumbnail — alpha stays 1, we use scale + translate instead
-    val artworkScale by animateFloatAsState(
-        targetValue = if (showLyrics) 0.13f else 1f,
-        animationSpec = lyricsSpring,
-        label = "artworkScale"
-    )
     // Controls slide down slightly and fade when lyrics cover the center
     val controlsAlpha by animateFloatAsState(
         targetValue = if (showLyrics) 0f else 1f,
@@ -560,18 +554,8 @@ fun ArcNowPlayingScreen(
                     .clip(RoundedCornerShape(32.dp))
                     .clickable { showLyrics = true }
                     .graphicsLayer {
-                        // In lyrics mode: scale down to thumbnail size and translate to top-left.
-                        // Pivot is center of the artwork box by default.
-                        // Target center: ~62dp from left, ~(statusBar + 34dp) from top.
-                        // We approximate the offset using the rendered size.
-                        val targetCenterX = 62.dp.toPx()
-                        val targetCenterY = 100.dp.toPx() // approx status bar + header row mid
-                        val originCenterX = size.width / 2f
-                        val originCenterY = size.height / 2f
-                        scaleX = artworkScale
-                        scaleY = artworkScale
-                        translationX = lyricsFraction * (targetCenterX - originCenterX)
-                        translationY = lyricsFraction * (targetCenterY - originCenterY)
+                        // Fade out the artwork completely when entering lyrics mode
+                        alpha = 1f - lyricsFraction
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
                     .drawWithContent {
@@ -2108,39 +2092,7 @@ fun ArcLyricsContent(
             }
         }
 
-        // ── Top header: small artwork thumb + title + tap-to-dismiss ─────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .systemBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "Dismiss lyrics",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onDismiss() }
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text  = songToPlay?.title ?: "Unknown",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = textColor,
-                    maxLines = 1
-                )
-                Text(
-                    text  = songToPlay?.artist ?: "Unknown",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = textColor.copy(alpha = 0.65f),
-                    maxLines = 1
-                )
-            }
-        }
+
 
         // ── Docked bottom controls (spring entry) ────────────────────────────
         if (lyricsShowControls) {
