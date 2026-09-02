@@ -1763,6 +1763,10 @@ fun ScrubberAndTimer(
             path2.close()
             drawPath(path = path2, color = textColor.copy(alpha = seekbarShadowOpacity))
 
+            // Round the ends of the shadow wave
+            drawCircle(color = textColor.copy(alpha = seekbarShadowOpacity), radius = baselineHeightPx / 2f, center = Offset(0f, bottomY - baselineHeightPx / 2f))
+            drawCircle(color = textColor.copy(alpha = seekbarShadowOpacity), radius = baselineHeightPx / 2f, center = Offset(clampedWidth, bottomY - baselineHeightPx / 2f))
+
             // --- Layer 1 (foreground primary wave) ---
             val path1 = Path()
             path1.moveTo(0f, bottomY)
@@ -1773,6 +1777,10 @@ fun ScrubberAndTimer(
             path1.lineTo(clampedWidth, bottomY)
             path1.close()
             drawPath(path = path1, color = textColor.copy(alpha = seekbarPrimaryOpacity))
+            
+            // Round the ends of the primary wave
+            drawCircle(color = textColor.copy(alpha = seekbarPrimaryOpacity), radius = baselineHeightPx / 2f, center = Offset(0f, bottomY - baselineHeightPx / 2f))
+            drawCircle(color = textColor.copy(alpha = seekbarPrimaryOpacity), radius = baselineHeightPx / 2f, center = Offset(clampedWidth, bottomY - baselineHeightPx / 2f))
         }
 
         // --- Thumb circle ---

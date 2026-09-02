@@ -186,14 +186,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         preferences[GRAVITY_KEY] ?: 9.81f
     }
 
-    val seekbarBaselineHeight: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_BASELINE_HEIGHT_KEY] ?: 5.5f }
-    val seekbarWaveMaxAmp: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_WAVE_MAX_AMP_KEY] ?: 3.5f }
-    val seekbarCycleLength: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_CYCLE_LENGTH_KEY] ?: 85f }
-    val seekbarShadowOffset: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_SHADOW_OFFSET_KEY] ?: (Math.PI.toFloat() / 3.5f) }
-    val seekbarShadowOpacity: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_SHADOW_OPACITY_KEY] ?: 0.5f }
+    val seekbarBaselineHeight: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_BASELINE_HEIGHT_KEY] ?: 4.27f }
+    val seekbarWaveMaxAmp: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_WAVE_MAX_AMP_KEY] ?: 8.81f }
+    val seekbarCycleLength: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_CYCLE_LENGTH_KEY] ?: 126.41f }
+    val seekbarShadowOffset: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_SHADOW_OFFSET_KEY] ?: 2.42f }
+    val seekbarShadowOpacity: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_SHADOW_OPACITY_KEY] ?: 0.50f }
     val seekbarPrimaryOpacity: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_PRIMARY_OPACITY_KEY] ?: 0.92f }
-    val seekbarThumbRadius: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_THUMB_RADIUS_KEY] ?: 7.0f }
-    val seekbarUnplayedStroke: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_UNPLAYED_STROKE_KEY] ?: 3.0f }
+    val seekbarThumbRadius: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_THUMB_RADIUS_KEY] ?: 7.00f }
+    val seekbarUnplayedStroke: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_UNPLAYED_STROKE_KEY] ?: 4.26f }
     val seekbarBloomDuration: Flow<Float> = context.dataStore.data.map { preferences -> preferences[SEEKBAR_BLOOM_DURATION_KEY] ?: 600f }
 
 
