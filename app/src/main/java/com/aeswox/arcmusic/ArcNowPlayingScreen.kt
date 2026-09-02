@@ -334,10 +334,16 @@ fun ArcNowPlayingScreen(
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
-    // Spring spec used for all lyrics-mode transitions so they share a bouncy, jelly feel
+    // Single 0→1 fraction driving all lyrics-mode transforms so every element
+    // moves/fades in lockstep with a single shared spring spec.
     val lyricsSpring = spring<Float>(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessLow
+    )
+    val lyricsFraction by animateFloatAsState(
+        targetValue = if (showLyrics) 1f else 0f,
+        animationSpec = lyricsSpring,
+        label = "lyricsFraction"
     )
     val scrimHeightFraction by animateFloatAsState(
         targetValue = if (showLyrics) 1.0f else 0.7f,
@@ -360,15 +366,22 @@ fun ArcNowPlayingScreen(
         animationSpec = lyricsSpring,
         label = "baseScrim"
     )
-    val sharpImageAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0f else 1f,
+    // Artwork morphs to thumbnail — alpha stays 1, we use scale + translate instead
+    val artworkScale by animateFloatAsState(
+        targetValue = if (showLyrics) 0.13f else 1f,
         animationSpec = lyricsSpring,
-        label = "sharpImageAlpha"
+        label = "artworkScale"
     )
+    // Controls slide down slightly and fade when lyrics cover the center
     val controlsAlpha by animateFloatAsState(
         targetValue = if (showLyrics) 0f else 1f,
         animationSpec = lyricsSpring,
         label = "controlsAlpha"
+    )
+    val controlsSlide by animateFloatAsState(
+        targetValue = if (showLyrics) 1f else 0f,
+        animationSpec = lyricsSpring,
+        label = "controlsSlide"
     )
     
     val textColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (isArtworkDark) Color.White else Color.Black
@@ -547,7 +560,18 @@ fun ArcNowPlayingScreen(
                     .clip(RoundedCornerShape(32.dp))
                     .clickable { showLyrics = true }
                     .graphicsLayer {
-                        alpha = sharpImageAlpha
+                        // In lyrics mode: scale down to thumbnail size and translate to top-left.
+                        // Pivot is center of the artwork box by default.
+                        // Target center: ~62dp from left, ~(statusBar + 34dp) from top.
+                        // We approximate the offset using the rendered size.
+                        val targetCenterX = 62.dp.toPx()
+                        val targetCenterY = 100.dp.toPx() // approx status bar + header row mid
+                        val originCenterX = size.width / 2f
+                        val originCenterY = size.height / 2f
+                        scaleX = artworkScale
+                        scaleY = artworkScale
+                        translationX = lyricsFraction * (targetCenterX - originCenterX)
+                        translationY = lyricsFraction * (targetCenterY - originCenterY)
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
                     .drawWithContent {
@@ -690,7 +714,11 @@ fun ArcNowPlayingScreen(
 
                         .fillMaxSize()
 
-                        .graphicsLayer { alpha = controlsAlpha }
+                        .graphicsLayer {
+                            alpha = controlsAlpha
+                            // Slide the whole controls block down slightly as lyrics take over
+                            translationY = controlsSlide * 80.dp.toPx()
+                        }
 
                 ) {
 
@@ -1046,27 +1074,20 @@ fun ArcNowPlayingScreen(
 
         }
 
-        // Full-screen lyrics overlay — placed at outer Box level so it covers the entire screen
-        androidx.compose.animation.AnimatedVisibility(
-            visible = showLyrics,
-            enter = androidx.compose.animation.fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            ),
-            exit = androidx.compose.animation.fadeOut(animationSpec = tween(350)),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                ArcLyricsOverlay(
-                    textColor = textColor,
-                    isDarkTheme = isDarkTheme,
-                    accentColor = accentColor,
-                    isWhiteArtwork = isWhiteArtwork,
-                    onDismiss = { showLyrics = false }
-                )
-            }
+        // ── Lyrics content — always composed, crossfades in/out with lyricsFraction ──
+        // No AnimatedVisibility here: every element is the *same* element that was
+        // already on screen, now moving/fading to a new position. This gives a true
+        // in-place transformation instead of a new-screen-appearing feel.
+        if (lyricsFraction > 0.01f) {
+            ArcLyricsContent(
+                lyricsFraction = lyricsFraction,
+                textColor = textColor,
+                isDarkTheme = isDarkTheme,
+                accentColor = accentColor,
+                isWhiteArtwork = isWhiteArtwork,
+                imageUrl = imageUrl,
+                onDismiss = { showLyrics = false }
+            )
         }
 
         if (showSleepTimerDialog) {
@@ -1905,23 +1926,26 @@ fun ScrubberAndTimer(
 
 
 /**
- * Full-screen lyrics overlay for Arc style.
+ * Lyrics content for Arc style.
  *
- * Rendered on top of the existing blurred/scrimmed background — no duplicate
- * background layers are drawn here. The composable owns its own lyrics state
- * and scroll logic, mirroring [FullScreenWordSyncedLyrics] exactly but with:
- *  - A small artwork thumbnail + song title row at the top (tap to dismiss)
- *  - A spring-animated docked controls panel at the bottom
- *  - Swipe-down anywhere on the lyrics list to dismiss (handled by the outer
- *    Box in [ArcNowPlayingScreen])
+ * Rendered directly inside the main now-playing Box so every element is
+ * part of the SAME composition — not a separate screen. The [lyricsFraction]
+ * (0 = normal, 1 = lyrics) is passed in from the parent and drives the
+ * alpha of the entire layer. This gives a true cross-fade/morph feel.
+ *
+ * There is intentionally NO background here: the expanding scrim in the
+ * parent already provides the dark overlay. Adding another background would
+ * make it look like a new surface is sliding in.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun ArcLyricsOverlay(
+fun ArcLyricsContent(
+    lyricsFraction: Float = 1f,
     textColor: Color = Color.White,
     isDarkTheme: Boolean = true,
     accentColor: Color = Color(0xFFB28D84),
     isWhiteArtwork: Boolean = false,
+    imageUrl: String = "",
     onDismiss: () -> Unit = {}
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
@@ -1932,9 +1956,7 @@ fun ArcLyricsOverlay(
     val rawSongToPlay = currentlyPlayingEntity ?: randomPicks.firstOrNull()
     val songToPlay    = libraryTracks.find { it.id == rawSongToPlay?.id } ?: rawSongToPlay
 
-    val imageUrl = songToPlay?.artworkUri
-        ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" }
-        ?: ""
+    // imageUrl is passed in from the parent — no need to re-derive it here
 
     // ── Lyrics data ──────────────────────────────────────────────────────────
     val lyricsData             by viewModel.lyricsUiState.collectAsState()
@@ -2024,26 +2046,6 @@ fun ArcLyricsOverlay(
         }
     }
 
-    // ── Spring-physics entry for the bottom controls panel ───────────────────
-    var controlsVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(120)
-        controlsVisible = true
-    }
-    val controlsSlideY by animateFloatAsState(
-        targetValue = if (controlsVisible) 0f else 400f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness   = Spring.StiffnessMediumLow
-        ),
-        label = "arc_lyrics_controlsSlide"
-    )
-    val controlsFadeAlpha by animateFloatAsState(
-        targetValue = if (controlsVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 250),
-        label = "arc_lyrics_controlsFade"
-    )
-
     val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor
                             else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
@@ -2051,24 +2053,13 @@ fun ArcLyricsOverlay(
     val listSpacing   = if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) 42.dp else 28.dp
     val bottomPadding = if (lyricsShowControls) 300.dp else 120.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // The entire lyrics layer uses lyricsFraction for alpha — this is what makes
+    // the transition feel like elements morphing in place, not a new screen fading in.
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .graphicsLayer { alpha = lyricsFraction }
+    ) {
 
-        // Soft gradient at the bottom to frame the controls panel
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.55f)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            bgColor.copy(alpha = 0f),
-                            bgColor.copy(alpha = 0.45f),
-                            bgColor.copy(alpha = 0.85f)
-                        )
-                    )
-                )
-        )
 
         // ── Lyrics list ──────────────────────────────────────────────────────
         LazyColumn(
@@ -2157,10 +2148,6 @@ fun ArcLyricsOverlay(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .graphicsLayer {
-                        translationY = controlsSlideY
-                        alpha        = controlsFadeAlpha
-                    }
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
