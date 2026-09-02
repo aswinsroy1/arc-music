@@ -380,7 +380,7 @@ fun AlbumTrackItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (isExplicit) {
+                if (false /* isExplicit */) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier

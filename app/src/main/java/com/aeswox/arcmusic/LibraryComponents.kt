@@ -1279,7 +1279,7 @@ fun LibraryGridItem(item: LibraryUiItem, modifier: Modifier = Modifier, isSelect
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false)
             )
-            if (item.track?.isExplicit == true) {
+            if (false /* item.track?.isExplicit == true */) {
                 Spacer(modifier = Modifier.width(4.dp))
                 com.aeswox.arcmusic.ExplicitBadge()
             }

@@ -2989,7 +2989,7 @@ fun SongResultItem(title: String, artist: String, duration: String, imageUrl: An
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                if (isExplicit) {
+                if (false /* isExplicit */) {
                     Spacer(modifier = Modifier.width(6.dp))
                     com.aeswox.arcmusic.ExplicitBadge()
                 }

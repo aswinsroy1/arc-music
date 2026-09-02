@@ -733,7 +733,7 @@ fun ArcNowPlayingScreen(
                                     maxLines = 1,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
-                                if (songToPlay?.isExplicit == true) {
+                                if (false /* songToPlay?.isExplicit == true */) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     com.aeswox.arcmusic.ExplicitBadge()
                                 }
@@ -2139,7 +2139,7 @@ fun ArcLyricsContent(
                                     maxLines = 1,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
-                                if (songToPlay?.isExplicit == true) {
+                                if (false /* songToPlay?.isExplicit == true */) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     com.aeswox.arcmusic.ExplicitBadge()
                                 }
