@@ -729,10 +729,12 @@ class MusicRepository(
         for (track in tracksMissingExplicit) {
             val query = "track:\"${track.title}\" artist:\"${track.artist}\""
             val response = try { deezerService.searchTrack(query) } catch (e: Exception) { null }
-            val deezerMatch = response?.data?.firstOrNull()
-            // If no match found, or if not explicit, mark as false so we don't retry forever.
-            val isExplicit = deezerMatch?.explicitLyrics ?: false
-            trackDao.updateExplicitStatus(track.id, isExplicit)
+            if (response != null) {
+                val deezerMatch = response.data?.firstOrNull()
+                // If no match found, or if not explicit, mark as false so we don't retry forever.
+                val isExplicit = deezerMatch?.explicitLyrics ?: false
+                trackDao.updateExplicitStatus(track.id, isExplicit)
+            }
             delay(800)
         }
     }

@@ -27,7 +27,7 @@ import com.aeswox.arcmusic.db.daos.*
         CachedNewSong::class,
         CachedTrending::class
     ], 
-    version = 23, 
+    version = 24, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -268,6 +268,14 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Reset all existing tracks' explicit status to NULL so they get scanned properly.
+                // Previously, MIGRATION_21_22 defaulted them to 0 (false).
+                db.execSQL("UPDATE tracks SET isExplicit = NULL")
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -280,7 +288,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                     MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                     MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, 
-                    MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23
+                    MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24
                 )
                 .fallbackToDestructiveMigration()
                 .build()
