@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import com.aeswox.arcmusic.utils.ArtistUtils
@@ -722,8 +723,19 @@ class MusicRepository(
                 }
             }
         }
+        
+        // Fetch explicit status for tracks that haven't been checked yet
+        val tracksMissingExplicit = trackDao.getTracksMissingExplicitStatus().first()
+        for (track in tracksMissingExplicit) {
+            val query = "track:\"${track.title}\" artist:\"${track.artist}\""
+            val response = try { deezerService.searchTrack(query) } catch (e: Exception) { null }
+            val deezerMatch = response?.data?.firstOrNull()
+            // If no match found, or if not explicit, mark as false so we don't retry forever.
+            val isExplicit = deezerMatch?.explicitLyrics ?: false
+            trackDao.updateExplicitStatus(track.id, isExplicit)
+            delay(800)
+        }
     }
-
     fun searchTracks(query: String): Flow<List<Track>> = trackDao.searchTracks(query)
     fun searchAlbums(query: String): Flow<List<Album>> = albumDao.searchAlbums(query)
     fun searchArtists(query: String): Flow<List<Artist>> = artistDao.searchArtists(query)
@@ -1126,7 +1138,7 @@ class MusicRepository(
             var changed = false
             var updatedTrack = track
 
-            if (result.isExplicit && !track.isExplicit) {
+            if (result.isExplicit && track.isExplicit != true) {
                 updatedTrack = updatedTrack.copy(isExplicit = true)
                 changed = true
             }

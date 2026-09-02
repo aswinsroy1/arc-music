@@ -395,3 +395,23 @@ Apply UI visual polish to the status bar, bottom navigation, and home screen hea
 
 ### Build
 - Compiled successfully.
+## Date: 2026-09-02
+
+### Goal
+Fetch and store explicit-content status via Deezer, and display it in the existing UI badge.
+
+### Changed Files
+- **Track.kt**: Updated isExplicit to be nullable (Boolean?) to differentiate between unchecked and checked-not-explicit.
+- **MusicDatabase.kt**: Added MIGRATION_22_23 to rebuild the 	racks table to support the nullable isExplicit field.
+- **DeezerService.kt**: Added explicitLyrics parsing from the Deezer API response.
+- **MusicRepository.kt**: Extended etchMissingArtwork() to additionally check for explicit-content status for tracks that haven't been checked yet (isExplicit IS NULL), querying Deezer and updating the database.
+- **ArcNowPlayingScreen.kt & FruitNowPlayingScreen.kt**: Wired the main track titles to conditionally display the ExplicitBadge if isExplicit == true.
+- **MainActivity.kt**: Adjusted track row items to safely pass 	rack.isExplicit == true.
+
+### Key Decisions
+- Deezer is the source of truth for explicit lyrics.
+- Reusing the existing background artwork enrichment loop ensures no extra background tasks are spawned.
+- Migration is non-destructive, rebuilding the table while preserving all existing data.
+
+### Build
+- Compiled successfully with 0 errors.

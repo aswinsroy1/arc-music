@@ -27,7 +27,7 @@ import com.aeswox.arcmusic.db.daos.*
         CachedNewSong::class,
         CachedTrending::class
     ], 
-    version = 22, 
+    version = 23, 
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -218,6 +218,56 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Rebuild the tracks table to make isExplicit nullable (INTEGER instead of INTEGER NOT NULL)
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `tracks_new` (
+                        `id` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `artist` TEXT NOT NULL,
+                        `albumArtist` TEXT,
+                        `albumId` INTEGER,
+                        `album` TEXT NOT NULL,
+                        `genre` TEXT,
+                        `composer` TEXT,
+                        `year` INTEGER,
+                        `trackNumber` INTEGER,
+                        `discNumber` INTEGER,
+                        `durationMs` INTEGER NOT NULL,
+                        `filePath` TEXT NOT NULL,
+                        `fileSizeBytes` INTEGER NOT NULL,
+                        `bitrate` INTEGER,
+                        `codec` TEXT,
+                        `artworkUri` TEXT,
+                        `sampleRate` INTEGER,
+                        `bitDepth` INTEGER,
+                        `dateAdded` INTEGER NOT NULL,
+                        `dateModified` INTEGER NOT NULL,
+                        `isFavorite` INTEGER NOT NULL,
+                        `playCount` INTEGER NOT NULL,
+                        `lastPlayedAt` INTEGER,
+                        `source` TEXT NOT NULL,
+                        `remoteId` TEXT,
+                        `hasLyrics` INTEGER NOT NULL,
+                        `lyricsSyncedAt` INTEGER NOT NULL,
+                        `canvasUrl` TEXT,
+                        `canvasSyncedAt` INTEGER NOT NULL,
+                        `isExplicit` INTEGER,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+                
+                db.execSQL("""
+                    INSERT INTO `tracks_new` (`id`, `title`, `artist`, `albumArtist`, `albumId`, `album`, `genre`, `composer`, `year`, `trackNumber`, `discNumber`, `durationMs`, `filePath`, `fileSizeBytes`, `bitrate`, `codec`, `artworkUri`, `sampleRate`, `bitDepth`, `dateAdded`, `dateModified`, `isFavorite`, `playCount`, `lastPlayedAt`, `source`, `remoteId`, `hasLyrics`, `lyricsSyncedAt`, `canvasUrl`, `canvasSyncedAt`, `isExplicit`)
+                    SELECT `id`, `title`, `artist`, `albumArtist`, `albumId`, `album`, `genre`, `composer`, `year`, `trackNumber`, `discNumber`, `durationMs`, `filePath`, `fileSizeBytes`, `bitrate`, `codec`, `artworkUri`, `sampleRate`, `bitDepth`, `dateAdded`, `dateModified`, `isFavorite`, `playCount`, `lastPlayedAt`, `source`, `remoteId`, `hasLyrics`, `lyricsSyncedAt`, `canvasUrl`, `canvasSyncedAt`, `isExplicit` FROM `tracks`
+                """.trimIndent())
+                
+                db.execSQL("DROP TABLE `tracks`")
+                db.execSQL("ALTER TABLE `tracks_new` RENAME TO `tracks`")
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -230,7 +280,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                     MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                     MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, 
-                    MIGRATION_20_21, MIGRATION_21_22
+                    MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23
                 )
                 .fallbackToDestructiveMigration()
                 .build()

@@ -722,15 +722,22 @@ fun ArcNowPlayingScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
 
-                            Text(
-                                text = songToPlay?.title ?: "Unknown",
-                                style = MaterialTheme.typography.displaySmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 28.sp
-                                ),
-                                color = textColor,
-                                maxLines = 1
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = songToPlay?.title ?: "Unknown",
+                                    style = MaterialTheme.typography.displaySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 28.sp
+                                    ),
+                                    color = textColor,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (songToPlay?.isExplicit == true) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    com.aeswox.arcmusic.ExplicitBadge()
+                                }
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = songToPlay?.artist ?: "Unknown",
@@ -2121,15 +2128,22 @@ fun ArcLyricsContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text  = songToPlay?.title ?: "Unknown",
-                                style = MaterialTheme.typography.displaySmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize   = 26.sp
-                                ),
-                                color    = textColor,
-                                maxLines = 1
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text  = songToPlay?.title ?: "Unknown",
+                                    style = MaterialTheme.typography.displaySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize   = 26.sp
+                                    ),
+                                    color    = textColor,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (songToPlay?.isExplicit == true) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    com.aeswox.arcmusic.ExplicitBadge()
+                                }
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text  = songToPlay?.artist ?: "Unknown",

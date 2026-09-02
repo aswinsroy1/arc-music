@@ -48,7 +48,8 @@ data class DeezerTrack(
     @Json(name = "album") val album: DeezerAlbum? = null,
     @Json(name = "artist") val artist: DeezerArtist? = null,
     @Json(name = "track_position") val trackPosition: Int? = null,
-    @Json(name = "disk_number") val diskNumber: Int? = null
+    @Json(name = "disk_number") val diskNumber: Int? = null,
+    @Json(name = "explicit_lyrics") val explicitLyrics: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)

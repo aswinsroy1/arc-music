@@ -72,6 +72,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE hasLyrics = 0")
     fun getTracksMissingLyrics(): Flow<List<Track>>
 
+    @Query("SELECT * FROM tracks WHERE isExplicit IS NULL")
+    fun getTracksMissingExplicitStatus(): Flow<List<Track>>
+
     @Query("SELECT * FROM tracks WHERE lyricsSyncedAt > 0 ORDER BY lyricsSyncedAt DESC LIMIT :limit")
     fun getRecentlySyncedLyrics(limit: Int): Flow<List<Track>>
 
@@ -83,6 +86,9 @@ interface TrackDao {
 
     @Query("UPDATE tracks SET isFavorite = :isFavorite WHERE id = :trackId")
     suspend fun updateTrackFavoriteStatus(trackId: String, isFavorite: Boolean)
+
+    @Query("UPDATE tracks SET isExplicit = :isExplicit WHERE id = :trackId")
+    suspend fun updateExplicitStatus(trackId: String, isExplicit: Boolean)
 
     @Query("UPDATE tracks SET artworkUri = :artworkUri WHERE id = :trackId")
     suspend fun updateTrackArtwork(trackId: String, artworkUri: String?)

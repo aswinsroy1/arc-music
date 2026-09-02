@@ -2911,7 +2911,7 @@ fun SongsResultSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modi
                         duration = "$minutes:$seconds", 
                         imageUrl = track.artworkUri ?: fallbackImage,
                         qualityBadgeResId = null,
-                        isExplicit = track.isExplicit,
+                        isExplicit = track.isExplicit == true,
                         onClick = { onTrackClick(track) }
                     )
                 }
