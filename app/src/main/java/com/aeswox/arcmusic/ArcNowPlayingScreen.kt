@@ -2,6 +2,7 @@
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateContentSize
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.isActive
 
@@ -334,48 +335,10 @@ fun ArcNowPlayingScreen(
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
-    // Single 0→1 fraction driving all lyrics-mode transforms so every element
-    // moves/fades in lockstep with a single shared spring spec.
-    val lyricsSpring = spring<Float>(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow
-    )
-    val lyricsFraction by animateFloatAsState(
-        targetValue = if (showLyrics) 1f else 0f,
-        animationSpec = lyricsSpring,
-        label = "lyricsFraction"
-    )
-    val scrimHeightFraction by animateFloatAsState(
-        targetValue = if (showLyrics) 1.0f else 0.7f,
-        animationSpec = lyricsSpring,
-        label = "scrimHeight"
-    )
-    val scrimStartAlpha = 0f
-    val midAlphaRatio by animateFloatAsState(
-        targetValue = if (showLyrics) 0.0f else if (isWhiteArtwork) 0.85f else 0.4f,
-        animationSpec = lyricsSpring,
-        label = "midAlphaRatio"
-    )
-    val endAlphaRatio by animateFloatAsState(
-        targetValue = if (showLyrics) 0.08f else if (isWhiteArtwork) 1.0f else 0.8f,
-        animationSpec = lyricsSpring,
-        label = "endAlphaRatio"
-    )
-    val baseScrimAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.15f else if (isWhiteArtwork) 0.92f else 0.5f,
-        animationSpec = lyricsSpring,
-        label = "baseScrim"
-    )
-    // Controls slide down slightly and fade when lyrics cover the center
-    val controlsAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0f else 1f,
-        animationSpec = lyricsSpring,
-        label = "controlsAlpha"
-    )
-    val controlsSlide by animateFloatAsState(
-        targetValue = if (showLyrics) 1f else 0f,
-        animationSpec = lyricsSpring,
-        label = "controlsSlide"
+    val gradientTopAlpha by animateFloatAsState(
+        targetValue = if (showLyrics) 0.8f else 0.0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 50f),
+        label = "gradientTopAlpha"
     )
     
     val textColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (isArtworkDark) Color.White else Color.Black
@@ -538,7 +501,7 @@ fun ArcNowPlayingScreen(
 
                     .fillMaxSize()
 
-                    .background(if (isDarkTheme) Color.Black.copy(alpha = baseScrimAlpha) else lightThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f))
+                    .background(if (isDarkTheme) Color.Black.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f) else lightThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f))
 
             )
 
@@ -554,8 +517,6 @@ fun ArcNowPlayingScreen(
                     .clip(RoundedCornerShape(32.dp))
                     .clickable { showLyrics = true }
                     .graphicsLayer {
-                        // Fade out the artwork completely when entering lyrics mode
-                        alpha = 1f - lyricsFraction
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
                     .drawWithContent {
@@ -636,36 +597,36 @@ fun ArcNowPlayingScreen(
 
             // Extra gradient scrim at the bottom to ensure text readability
 
+            // Gradient scrim at the top (for lyrics readability over artwork)
             Box(
-
                 modifier = Modifier
-
-                    .fillMaxWidth()
-
-                    .fillMaxHeight(scrimHeightFraction)
-
-                    .align(Alignment.BottomCenter)
-
+                    .fillMaxSize()
                     .background(
-
                         Brush.verticalGradient(
-
                             colors = listOf(
-
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = scrimStartAlpha), 
-
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = midAlphaRatio), 
-
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = endAlphaRatio)
-
-                            ),
-
-                            startY = 0f
-
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = gradientTopAlpha),
+                                Color.Transparent
+                            )
                         )
-
                     )
+            )
 
+            // Extra gradient scrim at the bottom to ensure text readability
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.7f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent, 
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = if (isWhiteArtwork) 0.85f else 0.4f), 
+                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = if (isWhiteArtwork) 1.0f else 0.8f)
+                            ),
+                            startY = 0f
+                        )
+                    )
             )
 
         }
@@ -688,30 +649,38 @@ fun ArcNowPlayingScreen(
 
             // Top Bar removed as requested
             
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-
-                // Controls Column
-
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                 Column(
-
                     modifier = Modifier
-
-                        .fillMaxSize()
-
-                        .graphicsLayer {
-                            alpha = controlsAlpha
-                            // Slide the whole controls block down slightly as lyrics take over
-                            translationY = controlsSlide * 80.dp.toPx()
-                        }
-
+                        .fillMaxWidth()
+                        .animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = 50f))
                 ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showLyrics,
+                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
+                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
+                    ) {
+                        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
+                            ArcLyricsContent(
+                                lyricsFraction = 1f,
+                                textColor = textColor,
+                                isDarkTheme = isDarkTheme,
+                                accentColor = accentColor,
+                                isWhiteArtwork = isWhiteArtwork,
+                                imageUrl = imageUrl,
+                                onDismiss = { showLyrics = false }
+                            )
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !showLyrics,
+                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
+                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
 
                     // Title and Actions
-
                     Row(
 
                         modifier = Modifier.fillMaxWidth(),
@@ -1059,26 +1028,10 @@ fun ArcNowPlayingScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
+                        }
+                    }
                 }
-
             }
-
-        }
-
-        // ── Lyrics content — always composed, crossfades in/out with lyricsFraction ──
-        // No AnimatedVisibility here: every element is the *same* element that was
-        // already on screen, now moving/fading to a new position. This gives a true
-        // in-place transformation instead of a new-screen-appearing feel.
-        if (lyricsFraction > 0.01f) {
-            ArcLyricsContent(
-                lyricsFraction = lyricsFraction,
-                textColor = textColor,
-                isDarkTheme = isDarkTheme,
-                accentColor = accentColor,
-                isWhiteArtwork = isWhiteArtwork,
-                imageUrl = imageUrl,
-                onDismiss = { showLyrics = false }
-            )
         }
 
         if (showSleepTimerDialog) {
