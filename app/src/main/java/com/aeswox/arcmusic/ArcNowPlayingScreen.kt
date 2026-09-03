@@ -337,7 +337,7 @@ fun ArcNowPlayingScreen(
     
     val gradientTopAlpha by animateFloatAsState(
         targetValue = if (showLyrics) 0.88f else 0.0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 50f),
+        animationSpec = spring(dampingRatio = 0.99f, stiffness = 30f),
         label = "gradientTopAlpha"
     )
     
@@ -653,7 +653,7 @@ fun ArcNowPlayingScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = 50f))
+                        .animateContentSize(animationSpec = spring(dampingRatio = 0.99f, stiffness = 30f))
                 ) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = showLyrics,
