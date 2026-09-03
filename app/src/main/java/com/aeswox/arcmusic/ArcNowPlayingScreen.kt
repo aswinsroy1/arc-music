@@ -649,7 +649,8 @@ fun ArcNowPlayingScreen(
             // Top Bar removed as requested
             
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                AnimatedContent(
+                SharedTransitionLayout {
+                    AnimatedContent(
                     targetState = showLyrics,
                     transitionSpec = {
                         (fadeIn() togetherWith fadeOut()).using(
@@ -664,6 +665,7 @@ fun ArcNowPlayingScreen(
                     if (isLyrics) {
                         Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
                             ArcLyricsContent(
+                                animatedVisibilityScope = this@AnimatedContent,
                                 lyricsFraction = 1f,
                                 textColor = textColor,
                                 isDarkTheme = isDarkTheme,
@@ -679,15 +681,13 @@ fun ArcNowPlayingScreen(
 
                     // Title and Actions
                     Row(
-
                         modifier = Modifier.fillMaxWidth(),
-
                         verticalAlignment = Alignment.CenterVertically
-
                     ) {
-
-                        Column(modifier = Modifier.weight(1f)) {
-
+                        Column(modifier = Modifier.weight(1f).sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "title_artist"),
+                            animatedVisibilityScope = this@AnimatedContent
+                        )) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = songToPlay?.title ?: "Unknown",
@@ -753,11 +753,12 @@ fun ArcNowPlayingScreen(
                             }
 
                             Box(
-
                                 modifier = Modifier
-
+                                    .sharedBounds(
+                                        sharedContentState = rememberSharedContentState(key = "favorite"),
+                                        animatedVisibilityScope = this@AnimatedContent
+                                    )
                                     .size(48.dp)
-
                                     .clip(CircleShape)
 
                                     .background(textColor.copy(alpha = 0.15f))
@@ -798,11 +799,12 @@ fun ArcNowPlayingScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    
-
-                    ScrubberAndTimer(viewModel = viewModel, textColor = textColor, textAlpha = textAlpha, songToPlay = songToPlay, isPlayingProvider = { viewModel.isPlaying.value })
-
-                    
+                    Box(modifier = Modifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "scrubber"),
+                        animatedVisibilityScope = this@AnimatedContent
+                    )) {
+                        ScrubberAndTimer(viewModel = viewModel, textColor = textColor, textAlpha = textAlpha, songToPlay = songToPlay, isPlayingProvider = { viewModel.isPlaying.value })
+                    }
 
                     Spacer(modifier = Modifier.height(48.dp))
 
@@ -813,67 +815,56 @@ fun ArcNowPlayingScreen(
                     val isPlaying by viewModel.isPlaying.collectAsState()
 
                     Row(
-
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-
                         horizontalArrangement = Arrangement.SpaceBetween,
-
                         verticalAlignment = Alignment.CenterVertically
-
                     ) {
-
-                        IconButton(onClick = { viewModel.skipToPrevious() }, modifier = Modifier.size(64.dp)) {
-
-                            Icon(
-
-                                imageVector = Icons.Rounded.FastRewind, 
-
-                                contentDescription = "Previous",
-
-                                tint = textColor,
-
-                                modifier = Modifier.size(52.dp)
-
+                        IconButton(onClick = { viewModel.skipToPrevious() }, modifier = Modifier
+                            .sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "prev_btn"),
+                                animatedVisibilityScope = this@AnimatedContent
                             )
-
+                            .size(64.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.FastRewind, 
+                                contentDescription = "Previous",
+                                tint = textColor,
+                                modifier = Modifier.size(52.dp)
+                            )
                         }
 
                         Box(
-
                             modifier = Modifier
-
+                                .sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "play_pause"),
+                                    animatedVisibilityScope = this@AnimatedContent
+                                )
                                 .size(80.dp)
-
                                 .clickable { viewModel.togglePlayPause() },
-
                             contentAlignment = Alignment.Center
-
                         ) {
-
                             com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
                                 isPlaying = isPlaying,
                                 tint = textColor,
                                 modifier = Modifier.size(50.dp)
                             )
-
                         }
 
-                        IconButton(onClick = { viewModel.skipToNext() }, modifier = Modifier.size(64.dp)) {
-
-                            Icon(
-
-                                imageVector = Icons.Rounded.FastForward, 
-
-                                contentDescription = "Next",
-
-                                tint = textColor,
-
-                                modifier = Modifier.size(52.dp)
-
+                        IconButton(onClick = { viewModel.skipToNext() }, modifier = Modifier
+                            .sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "next_btn"),
+                                animatedVisibilityScope = this@AnimatedContent
                             )
-
+                            .size(64.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.FastForward, 
+                                contentDescription = "Next",
+                                tint = textColor,
+                                modifier = Modifier.size(52.dp)
+                            )
                         }
-
                     }
 
                     
@@ -1027,6 +1018,7 @@ fun ArcNowPlayingScreen(
 
                         }
                     }
+                }
                 }
             }
         }
@@ -1878,9 +1870,10 @@ fun ScrubberAndTimer(
  * parent already provides the dark overlay. Adding another background would
  * make it look like a new surface is sliding in.
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
-fun ArcLyricsContent(
+fun SharedTransitionScope.ArcLyricsContent(
+    animatedVisibilityScope: AnimatedVisibilityScope,
     lyricsFraction: Float = 1f,
     textColor: Color = Color.White,
     isDarkTheme: Boolean = true,
@@ -2077,7 +2070,10 @@ fun ArcLyricsContent(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(modifier = Modifier.weight(1f).sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "title_artist"),
+                            animatedVisibilityScope = animatedVisibilityScope
+                        )) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text  = songToPlay?.title ?: "Unknown",
@@ -2104,6 +2100,10 @@ fun ArcLyricsContent(
                         }
                         Box(
                             modifier = Modifier
+                                .sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "favorite"),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
                                 .size(48.dp)
                                 .clip(CircleShape)
                                 .background(textColor.copy(alpha = 0.15f))
@@ -2126,13 +2126,18 @@ fun ArcLyricsContent(
 
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    ScrubberAndTimer(
-                        viewModel  = viewModel,
-                        textColor  = textColor,
-                        textAlpha  = 0.7f,
-                        songToPlay = songToPlay,
-                        showBadges = false
-                    )
+                    Box(modifier = Modifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "scrubber"),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )) {
+                        ScrubberAndTimer(
+                            viewModel  = viewModel,
+                            textColor  = textColor,
+                            textAlpha  = 0.7f,
+                            songToPlay = songToPlay,
+                            showBadges = false
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(40.dp))
 
@@ -2147,7 +2152,12 @@ fun ArcLyricsContent(
                     ) {
                         IconButton(
                             onClick  = { viewModel.skipToPrevious() },
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier
+                                .sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "prev_btn"),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
+                                .size(64.dp)
                         ) {
                             Icon(
                                 imageVector        = Icons.Rounded.FastRewind,
@@ -2158,6 +2168,10 @@ fun ArcLyricsContent(
                         }
                         Box(
                             modifier = Modifier
+                                .sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "play_pause"),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
                                 .size(80.dp)
                                 .clickable { viewModel.togglePlayPause() },
                             contentAlignment = Alignment.Center
@@ -2170,7 +2184,12 @@ fun ArcLyricsContent(
                         }
                         IconButton(
                             onClick  = { viewModel.skipToNext() },
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier
+                                .sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "next_btn"),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
+                                .size(64.dp)
                         ) {
                             Icon(
                                 imageVector        = Icons.Rounded.FastForward,
