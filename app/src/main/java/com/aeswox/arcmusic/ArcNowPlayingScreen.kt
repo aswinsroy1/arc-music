@@ -336,7 +336,7 @@ fun ArcNowPlayingScreen(
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.8f else 0.0f,
+        targetValue = if (showLyrics) 0.88f else 0.0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 50f),
         label = "gradientTopAlpha"
     )
