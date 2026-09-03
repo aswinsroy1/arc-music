@@ -660,6 +660,7 @@ fun ArcNowPlayingScreen(
                             )
                         )
                     },
+                    contentAlignment = Alignment.BottomCenter,
                     label = "LyricsSwap"
                 ) { isLyrics ->
                     if (isLyrics) {
@@ -799,7 +800,7 @@ fun ArcNowPlayingScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    Box(modifier = Modifier.sharedBounds(
+                    Box(modifier = Modifier.fillMaxWidth().sharedBounds(
                         sharedContentState = rememberSharedContentState(key = "scrubber"),
                         animatedVisibilityScope = this@AnimatedContent
                     )) {
@@ -2126,7 +2127,7 @@ fun SharedTransitionScope.ArcLyricsContent(
 
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    Box(modifier = Modifier.sharedBounds(
+                    Box(modifier = Modifier.fillMaxWidth().sharedBounds(
                         sharedContentState = rememberSharedContentState(key = "scrubber"),
                         animatedVisibilityScope = animatedVisibilityScope
                     )) {
