@@ -1,8 +1,7 @@
 @file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.isActive
 
@@ -650,16 +649,19 @@ fun ArcNowPlayingScreen(
             // Top Bar removed as requested
             
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(animationSpec = spring(dampingRatio = 0.99f, stiffness = 30f))
-                ) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = showLyrics,
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
-                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
-                    ) {
+                AnimatedContent(
+                    targetState = showLyrics,
+                    transitionSpec = {
+                        (fadeIn() togetherWith fadeOut()).using(
+                            SizeTransform(
+                                clip = false,
+                                sizeAnimationSpec = { _, _ -> spring(dampingRatio = 0.99f, stiffness = 45f) }
+                            )
+                        )
+                    },
+                    label = "LyricsSwap"
+                ) { isLyrics ->
+                    if (isLyrics) {
                         Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
                             ArcLyricsContent(
                                 lyricsFraction = 1f,
@@ -671,14 +673,9 @@ fun ArcNowPlayingScreen(
                                 onDismiss = { showLyrics = false }
                             )
                         }
-                    }
-
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = !showLyrics,
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
-                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
-                    ) {
+                    } else {
                         Column(modifier = Modifier.fillMaxWidth()) {
+
 
                     // Title and Actions
                     Row(
