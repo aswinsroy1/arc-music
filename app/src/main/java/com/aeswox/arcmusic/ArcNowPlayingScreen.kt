@@ -336,7 +336,7 @@ fun ArcNowPlayingScreen(
     
     val gradientTopAlpha by animateFloatAsState(
         targetValue = if (showLyrics) 0.88f else 0.0f,
-        animationSpec = spring(dampingRatio = 0.99f, stiffness = 30f),
+        animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
     )
     
@@ -655,7 +655,7 @@ fun ArcNowPlayingScreen(
                         (fadeIn() togetherWith fadeOut()).using(
                             SizeTransform(
                                 clip = false,
-                                sizeAnimationSpec = { _, _ -> spring(dampingRatio = 0.99f, stiffness = 45f) }
+                                sizeAnimationSpec = { _, _ -> spring(dampingRatio = 0.99f, stiffness = 400f) }
                             )
                         )
                     },
