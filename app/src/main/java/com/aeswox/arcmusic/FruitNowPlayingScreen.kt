@@ -642,8 +642,6 @@ fun FruitNowPlayingScreen(
 
                 .systemBarsPadding()
 
-                .padding(horizontal = 24.dp)
-
         ) {
 
             // Top Bar removed as requested
