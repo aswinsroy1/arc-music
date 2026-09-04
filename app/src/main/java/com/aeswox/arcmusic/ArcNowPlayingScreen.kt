@@ -674,7 +674,7 @@ fun ArcNowPlayingScreen(
                             )
                         }
                     } else {
-                        Column(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
 
 
                     // Title and Actions
@@ -2070,7 +2070,7 @@ fun ArcLyricsContent(
                     .navigationBarsPadding()
                     .padding(top = 56.dp, bottom = 28.dp, start = 24.dp, end = 24.dp)
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
 
                     // Title + fav
                     Row(
@@ -2182,6 +2182,172 @@ fun ArcLyricsContent(
                     }
                 }
             }
+        }
+    }
+}
+
+
+@Composable
+fun CustomLyricsIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val strokeW = size.width * 0.08f
+        val w = size.width
+        val h = size.height
+        val corner = w * 0.2f
+        
+        val path = Path().apply {
+            addRoundRect(
+                androidx.compose.ui.geometry.RoundRect(
+                    left = strokeW, top = strokeW, right = w - strokeW, bottom = h * 0.8f,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner)
+                )
+            )
+            moveTo(w * 0.65f, h * 0.8f)
+            lineTo(w * 0.65f, h - strokeW)
+            lineTo(w * 0.85f, h * 0.8f)
+        }
+        
+        drawPath(path, color, style = Stroke(width = strokeW, join = androidx.compose.ui.graphics.StrokeJoin.Round, cap = StrokeCap.Round))
+        
+        val q1 = Offset(w * 0.35f, h * 0.38f)
+        val q2 = Offset(w * 0.65f, h * 0.38f)
+        val r = w * 0.07f
+        
+        drawCircle(color, r, q1)
+        drawCircle(color, r, q2)
+        
+        val tails = Path().apply {
+            moveTo(q1.x + r, q1.y)
+            quadraticBezierTo(q1.x + r, q1.y + r * 2.5f, q1.x - r, q1.y + r * 3f)
+            
+            moveTo(q2.x + r, q2.y)
+            quadraticBezierTo(q2.x + r, q2.y + r * 2.5f, q2.x - r, q2.y + r * 3f)
+        }
+        drawPath(tails, color, style = Stroke(width = strokeW * 0.7f, cap = StrokeCap.Round))
+    }
+}
+
+
+@Composable
+fun LyricWord(
+    word: String,
+    isHighlighted: Boolean,
+    isLineActive: Boolean,
+    textColor: Color,
+    baseFontSize: Float = 24f
+) {
+    val wordAlpha by animateFloatAsState(
+        targetValue = if (isHighlighted || !isLineActive) 1f else 0.55f,
+        animationSpec = tween(durationMillis = 200),
+        label = "wordAlpha"
+    )
+    // Use fontSize animation instead of graphicsLayer scale so Compose measures
+    // the text at its real size and words never overflow their layout bounds.
+    val wordFontSize by animateFloatAsState(
+        targetValue = if (isHighlighted) baseFontSize + 2f else baseFontSize,
+        animationSpec = tween(durationMillis = 200),
+        label = "wordFontSize"
+    )
+
+    Text(
+        text = word,
+        color = textColor.copy(alpha = wordAlpha),
+        style = MaterialTheme.typography.displayMedium.copy(
+            fontSize = wordFontSize.sp,
+            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium
+        )
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun LyricLine(
+    line: String,
+    words: List<String>,
+    lineIndex: Int,
+    activeLineIndexProvider: () -> Int,
+    activeWordIndexProvider: () -> Int,
+    textColor: Color,
+    blurRadiusMax: Float = 10f,
+    blurDimming: Float = 0.28f
+) {
+    val distance by remember {
+        derivedStateOf {
+            kotlin.math.abs(lineIndex - activeLineIndexProvider())
+        }
+    }
+    val isActive by remember { derivedStateOf { distance == 0 } }
+    val isNear by remember { derivedStateOf { distance == 1 } }
+    val isFar by remember { derivedStateOf { distance >= 3 } }
+
+    val targetAlpha = when {
+        isActive -> 1f
+        isNear   -> 0.55f
+        isFar    -> (blurDimming * 0.42f)
+        else     -> blurDimming
+    }
+    val targetPadding = when {
+        isActive -> 28.dp
+        isNear   -> 12.dp
+        else     -> 8.dp
+    }
+
+    val lineAnimSpec = tween<Float>(durationMillis = 300)
+    val paddingAnimSpec = tween<androidx.compose.ui.unit.Dp>(durationMillis = 300)
+
+    val lineAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = lineAnimSpec,
+        label = "alpha"
+    )
+    val linePadding by animateDpAsState(
+        targetValue = targetPadding,
+        animationSpec = paddingAnimSpec,
+        label = "padding"
+    )
+
+    // Blur non-active lines; active line is never blurred.
+    val targetBlur = if (distance > 0) {
+        (distance * (blurRadiusMax * 0.25f)).coerceAtMost(blurRadiusMax).dp
+    } else 0.dp
+    val blurRadius by animateDpAsState(
+        targetValue = targetBlur,
+        animationSpec = tween(durationMillis = 400),
+        label = "lineBlur"
+    )
+
+    // Animate font size at the line level instead of graphicsLayer scale.
+    // This way Compose measures the FlowRow at the actual rendered size so
+    // words never escape their layout bounds.
+    val targetFontSize = when {
+        isActive -> 24f
+        isNear   -> 21f
+        else     -> 18f
+    }
+    val lineFontSize by animateFloatAsState(
+        targetValue = targetFontSize,
+        animationSpec = lineAnimSpec,
+        label = "fontSize"
+    )
+
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = linePadding)
+            .graphicsLayer { alpha = lineAlpha }
+            .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        words.forEachIndexed { wordIndex, word ->
+            val isHighlighted = isActive && wordIndex == activeWordIndexProvider()
+            LyricWord(
+                word = word,
+                isHighlighted = isHighlighted,
+                isLineActive = isActive,
+                textColor = textColor,
+                baseFontSize = lineFontSize
+            )
         }
     }
 }
