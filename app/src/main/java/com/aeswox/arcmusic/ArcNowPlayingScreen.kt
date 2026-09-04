@@ -737,20 +737,9 @@ fun ArcNowPlayingScreen(
                                 Spacer(modifier = Modifier.size(40.dp))
                             }
 
-                            Spacer(modifier = Modifier.height(28.dp))
+                            Spacer(modifier = Modifier.height(32.dp))
 
-                            // ── Wave Seekbar (reused as-is) ──────────────────────────────────────
-                            ScrubberAndTimer(
-                                viewModel = viewModel,
-                                textColor = textColor,
-                                textAlpha = textAlpha,
-                                songToPlay = songToPlay,
-                                isPlayingProvider = { viewModel.isPlaying.value }
-                            )
-
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            // ── Glassmorphic Controls Card ───────────────────────────────────────
+                            // ── Glassmorphic Controls Card (with seekbar) ───────────────────────
                             val isPlaying by viewModel.isPlaying.collectAsState()
 
                             Box(
@@ -765,11 +754,26 @@ fun ArcNowPlayingScreen(
                                     )
                                     .padding(horizontal = 20.dp, vertical = 18.dp)
                             ) {
-                                Row(
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
+                                    // ── Wave Seekbar ──────────────────────────────────────
+                                    ScrubberAndTimer(
+                                        viewModel = viewModel,
+                                        textColor = textColor,
+                                        textAlpha = textAlpha,
+                                        songToPlay = songToPlay,
+                                        isPlayingProvider = { viewModel.isPlaying.value }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                     // Far Left — Favorite toggle
                                     IconButton(
                                         onClick = {
@@ -850,8 +854,9 @@ fun ArcNowPlayingScreen(
                                     }
                                 }
                             }
+                        }
 
-                            Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
 
                         }
                     }
