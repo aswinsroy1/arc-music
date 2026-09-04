@@ -53,6 +53,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 
 
 import android.graphics.drawable.BitmapDrawable
@@ -737,7 +738,7 @@ fun ArcNowPlayingScreen(
                                 Spacer(modifier = Modifier.size(40.dp))
                             }
 
-                            Spacer(modifier = Modifier.height(32.dp))
+                            Spacer(modifier = Modifier.height(32.dp + (LocalConfiguration.current.screenHeightDp.dp * 0.1f)))
 
                             // ── Glassmorphic Controls Card (with seekbar) ───────────────────────
                             val isPlaying by viewModel.isPlaying.collectAsState()
