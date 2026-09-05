@@ -709,12 +709,76 @@ fun ArcNowPlayingScreen(
                         ) {
 
                             // ── Centered Track Info ──────────────────────────────────────────────
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth()
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // More button on the left to balance the layout
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = songToPlay?.title ?: "Unknown",
+                                        style = MaterialTheme.typography.displaySmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 26.sp
+                                        ),
+                                        color = textColor,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                    if (false /* songToPlay?.isExplicit == true */) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        com.aeswox.arcmusic.ExplicitBadge()
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = songToPlay?.artist ?: "Unknown",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = textColor.copy(alpha = textAlpha),
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(40.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .clickable {
+                                            songToPlay?.let { track ->
+                                                viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (songToPlay?.isFavorite == true)
+                                            Icons.Default.Favorite
+                                        else
+                                            Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Favorite",
+                                        tint = if (songToPlay?.isFavorite == true)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            textColor.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                FormatBadges(songToPlay = songToPlay, textColor = textColor)
+
+                                Spacer(modifier = Modifier.width(16.dp))
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -723,59 +787,19 @@ fun ArcNowPlayingScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.MoreVert,
+                                        imageVector = com.aeswox.arcmusic.ui.components.LucideMoreHorizontal,
                                         contentDescription = "More",
                                         tint = textColor.copy(alpha = 0.6f),
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
-
-                                // Title + artist centered in the remaining space
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Text(
-                                            text = songToPlay?.title ?: "Unknown",
-                                            style = MaterialTheme.typography.displaySmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 26.sp
-                                            ),
-                                            color = textColor,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                        )
-                                        if (false /* songToPlay?.isExplicit == true */) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            com.aeswox.arcmusic.ExplicitBadge()
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = songToPlay?.artist ?: "Unknown",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = textColor.copy(alpha = textAlpha),
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                // Placeholder spacer to mirror the More button width so title stays centered
-                                Spacer(modifier = Modifier.size(40.dp))
                             }
-
-                            Spacer(modifier = Modifier.height(40.dp))
-                            
-                            FormatBadges(songToPlay = songToPlay, textColor = textColor)
                             
                             Spacer(modifier = Modifier.height(40.dp))
 
                             // ── Glassmorphic Controls Card (with seekbar) ───────────────────────
                             val isPlaying by viewModel.isPlaying.collectAsState()
+                            val repeatMode by viewModel.repeatMode.collectAsState()
 
                             Box(
                                 modifier = Modifier
@@ -809,25 +833,21 @@ fun ArcNowPlayingScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                    // Far Left — Favorite toggle
+                                    // Far Left — Repeat toggle
                                     IconButton(
-                                        onClick = {
-                                            songToPlay?.let { track ->
-                                                viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
-                                            }
-                                        },
+                                        onClick = { viewModel.toggleRepeatMode() },
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (songToPlay?.isFavorite == true)
-                                                Icons.Default.Favorite
+                                            imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
+                                                Icons.Rounded.RepeatOne
                                             else
-                                                Icons.Outlined.FavoriteBorder,
-                                            contentDescription = "Favorite",
-                                            tint = if (songToPlay?.isFavorite == true)
-                                                MaterialTheme.colorScheme.primary
+                                                Icons.Rounded.Repeat,
+                                            contentDescription = "Repeat",
+                                            tint = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_OFF)
+                                                textColor.copy(alpha = 0.5f)
                                             else
-                                                textColor,
+                                                MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }

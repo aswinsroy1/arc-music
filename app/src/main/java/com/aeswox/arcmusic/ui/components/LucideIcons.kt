@@ -91,4 +91,45 @@ val LucideSettings: ImageVector
         return _settings!!
     }
 
+val LucideMoreHorizontal: ImageVector
+    get() {
+        if (_moreHorizontal != null) {
+            return _moreHorizontal!!
+        }
+        _moreHorizontal = ImageVector.Builder(
+            name = "LucideMoreHorizontal",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color(0xFF000000)),
+                fillAlpha = 1.0f,
+                stroke = SolidColor(Color(0xFF000000)),
+                strokeAlpha = 1.0f,
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+                strokeLineMiter = 4.0f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(12f, 12f)
+                arcToRelative(1f, 1f, 0f, true, false, 0f, 2f)
+                arcToRelative(1f, 1f, 0f, false, false, 0f, -2f)
+                close()
+                moveTo(19f, 12f)
+                arcToRelative(1f, 1f, 0f, true, false, 0f, 2f)
+                arcToRelative(1f, 1f, 0f, false, false, 0f, -2f)
+                close()
+                moveTo(5f, 12f)
+                arcToRelative(1f, 1f, 0f, true, false, 0f, 2f)
+                arcToRelative(1f, 1f, 0f, false, false, 0f, -2f)
+                close()
+            }
+        }.build()
+        return _moreHorizontal!!
+    }
+
 private var _settings: ImageVector? = null
+private var _moreHorizontal: ImageVector? = null
