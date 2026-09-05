@@ -226,10 +226,41 @@ fun LosslessLogo(modifier: Modifier = Modifier, color: Color) {
 
 
 
-@OptIn(ExperimentalMaterial3Api::class)
-
 @Composable
+fun FormatBadges(songToPlay: Track?, textColor: Color, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val codec = songToPlay?.codec?.lowercase() ?: ""
+        val path = songToPlay?.filePath?.lowercase() ?: ""
+        val isAtmos = codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3") || (path.endsWith(".m4a") && codec.contains("ec-3"))
 
+        if (isAtmos) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
+                contentDescription = "Dolby Atmos",
+                modifier = Modifier.height(14.dp),
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(textColor)
+            )
+        } else {
+            val isLosslessCodec = codec.contains("flac") || codec.contains("alac") || codec.contains("ape") || codec.contains("dsd") || path.endsWith(".flac") || path.endsWith(".wav") || codec.contains("wav")
+            if (isLosslessCodec) {
+                val bitDepth = songToPlay?.bitDepth ?: 16
+                val sampleRateKhz = (songToPlay?.sampleRate ?: 0) / 1000f
+                if (bitDepth >= 24 || sampleRateKhz >= 48f) {
+                    HiResLogo(color = textColor)
+                } else if (bitDepth >= 16) {
+                    LosslessLogo(color = textColor)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun ArcNowPlayingScreen(
 
     tintTransparency: Float,
@@ -737,7 +768,11 @@ fun ArcNowPlayingScreen(
                                 Spacer(modifier = Modifier.size(40.dp))
                             }
 
-                            Spacer(modifier = Modifier.height(110.dp))
+                            Spacer(modifier = Modifier.height(40.dp))
+                            
+                            FormatBadges(songToPlay = songToPlay, textColor = textColor)
+                            
+                            Spacer(modifier = Modifier.height(40.dp))
 
                             // ── Glassmorphic Controls Card (with seekbar) ───────────────────────
                             val isPlaying by viewModel.isPlaying.collectAsState()
@@ -1477,7 +1512,6 @@ fun ScrubberAndTimer(
     textColor: Color,
     textAlpha: Float,
     songToPlay: Track?,
-    showBadges: Boolean = true,
     isPlayingProvider: (() -> Boolean)? = null
 ) {
     val currentPosition by viewModel.currentPosition.collectAsState()
@@ -1658,37 +1692,7 @@ fun ScrubberAndTimer(
             style = MaterialTheme.typography.labelMedium,
             color = textColor.copy(alpha = textAlpha)
         )
-        // Format Badges
-        if (showBadges) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val codec = songToPlay?.codec?.lowercase() ?: ""
-                val path = songToPlay?.filePath?.lowercase() ?: ""
-                val isAtmos = codec.contains("eac3") || codec.contains("ac3") || path.endsWith(".eac3") || path.endsWith(".ac3") || (path.endsWith(".m4a") && codec.contains("ec-3"))
 
-                if (isAtmos) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_dolby_atmos),
-                        contentDescription = "Dolby Atmos",
-                        modifier = Modifier.height(14.dp),
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(textColor)
-                    )
-                } else {
-                    val isLosslessCodec = codec.contains("flac") || codec.contains("alac") || codec.contains("ape") || codec.contains("dsd") || path.endsWith(".flac") || path.endsWith(".wav") || codec.contains("wav")
-                    if (isLosslessCodec) {
-                        val bitDepth = songToPlay?.bitDepth ?: 16
-                        val sampleRateKhz = (songToPlay?.sampleRate ?: 0) / 1000f
-                        if (bitDepth >= 24 || sampleRateKhz >= 48f) {
-                            HiResLogo(color = textColor)
-                        } else if (bitDepth >= 16) {
-                            LosslessLogo(color = textColor)
-                        }
-                    }
-                }
-            }
-        }
 
         Text(
             text = formatDuration(duration),
@@ -1963,8 +1967,7 @@ fun ArcLyricsContent(
                         viewModel  = viewModel,
                         textColor  = textColor,
                         textAlpha  = 0.7f,
-                        songToPlay = songToPlay,
-                        showBadges = false
+                        songToPlay = songToPlay
                     )
 
                     Spacer(modifier = Modifier.height(40.dp))
