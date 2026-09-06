@@ -739,19 +739,52 @@ fun ArcNowPlayingScreen(
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
-                                    .background(textColor.copy(alpha = 0.08f))
-                                    .border(
-                                        width = 1.dp,
-                                        color = textColor.copy(alpha = 0.12f),
-                                        shape = RoundedCornerShape(32.dp)
-                                    )
-                                    .padding(horizontal = 20.dp, vertical = 26.dp)
-                            ) {
-                                Column(
+                                }
+                                
+                                Spacer(modifier = Modifier.height(40.dp))
+                                
+                                Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
+                                    FormatBadges(songToPlay = songToPlay, textColor = textColor)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Persistent Glassmorphic Controls Card ───────────────────────
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                val isPlaying by viewModel.isPlaying.collectAsState()
+                val repeatMode by viewModel.repeatMode.collectAsState()
+                val shuffleEnabled by viewModel.shuffleModeEnabled.collectAsState()
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(textColor.copy(alpha = 0.08f))
+                        .border(
+                            width = 1.dp,
+                            color = textColor.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(32.dp)
+                        )
+                        .padding(horizontal = 20.dp, vertical = 26.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
@@ -1902,7 +1935,6 @@ fun ArcLyricsContent(
                         )
                     )
             )
-        }
         }
     }
 }
