@@ -1462,7 +1462,7 @@ fun FadeLyricLine(
                     val progress = (distance / maxDistance).coerceIn(0f, 1f)
                     
                     val maxScaleForState = if (isActive) 1f else fadeScaleCeiling
-                    val maxAlphaForState = if (isActive) 1f else 0.6f
+                    val maxAlphaForState = if (isActive) 1f else 0.5f
                     
                     val targetScale = if (distanceSizing) {
                         when {
@@ -1474,8 +1474,8 @@ fun FadeLyricLine(
                     }
                     
                     val targetAlpha = when {
-                        progress < 0.2f -> 1f - (progress * 2.0f)
-                        else -> 0.6f - ((progress - 0.2f) * fadeSteepness) // Fades to 0 right before the controls
+                        progress < 0.2f -> 1f - (progress * 2.5f)
+                        else -> 0.5f - ((progress - 0.2f) * fadeSteepness) // Fades to 0 right before the controls
                     }.coerceIn(0.0f, maxAlphaForState)
                     
                     scaleX = targetScale
@@ -1501,9 +1501,9 @@ fun FadeLyricLine(
                         val timeUntilWord = syncedWord.time - currentPosition
                         if (timeUntilWord < 250) {
                             val progress = 1f - (timeUntilWord / 250f)
-                            0.7f + (progress * 0.3f)
+                            0.6f + (progress * 0.4f)
                         } else {
-                            0.7f // Unsung words stay dim on the active line
+                            0.6f // Unsung words stay dim on the active line
                         }
                     }
                 }
@@ -2077,6 +2077,7 @@ fun LyricLine(
         }
     }
 }
+
 
 
 
