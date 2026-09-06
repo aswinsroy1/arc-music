@@ -749,50 +749,7 @@ fun ArcNowPlayingScreen(
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .clickable {
-                                            songToPlay?.let { track ->
-                                                viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = if (songToPlay?.isFavorite == true)
-                                            Icons.Default.Favorite
-                                        else
-                                            Icons.Outlined.FavoriteBorder,
-                                        contentDescription = "Favorite",
-                                        tint = if (songToPlay?.isFavorite == true)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            textColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(16.dp))
-
                                 FormatBadges(songToPlay = songToPlay, textColor = textColor)
-
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .clickable { showOptionsSheet = true },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = com.aeswox.arcmusic.ui.components.LucideMoreHorizontal,
-                                        contentDescription = "More",
-                                        tint = textColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
                             }
                             
                             Spacer(modifier = Modifier.height(40.dp))
@@ -811,12 +768,60 @@ fun ArcNowPlayingScreen(
                                         color = textColor.copy(alpha = 0.12f),
                                         shape = RoundedCornerShape(32.dp)
                                     )
-                                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                                    .padding(horizontal = 20.dp, vertical = 26.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(CircleShape)
+                                                .clickable {
+                                                    songToPlay?.let { track ->
+                                                        viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
+                                                    }
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (songToPlay?.isFavorite == true)
+                                                    Icons.Default.Favorite
+                                                else
+                                                    Icons.Outlined.FavoriteBorder,
+                                                contentDescription = "Favorite",
+                                                tint = if (songToPlay?.isFavorite == true)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    textColor.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(CircleShape)
+                                                .clickable { showOptionsSheet = true },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = com.aeswox.arcmusic.ui.components.LucideMoreHorizontal,
+                                                contentDescription = "More",
+                                                tint = textColor.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
                                     // ── Wave Seekbar ──────────────────────────────────────
                                     ScrubberAndTimer(
                                         viewModel = viewModel,
