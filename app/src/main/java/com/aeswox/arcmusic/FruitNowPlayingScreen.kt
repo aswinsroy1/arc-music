@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+﻿@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.*
@@ -95,7 +95,6 @@ import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.animations.LocalJigglePhysicsSettings
 import com.aeswox.arcmusic.ui.components.*
-import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import com.aeswox.arcmusic.data.model.SyncedLine
 import androidx.compose.ui.graphics.luminance
 
@@ -470,7 +469,7 @@ fun FruitNowPlayingScreen(
                         bottomStrip.recycle()
 
                         // If the bottom strip is very bright (near-white artwork edge),
-                        // force a neutral grey so white controls stay legible — same
+                        // force a neutral grey so white controls stay legible â€” same
                         // approach Apple Music uses for bright artworks.
                         if (avgColor.luminance() > 0.65f) {
                             isWhiteArtwork = true
@@ -506,7 +505,7 @@ fun FruitNowPlayingScreen(
 
 
 
-            // Sharp image in the top half, fading out at the bottom — with optional canvas overlay
+            // Sharp image in the top half, fading out at the bottom â€” with optional canvas overlay
 
             Box(
                 modifier = Modifier
@@ -533,7 +532,7 @@ fun FruitNowPlayingScreen(
                         )
                     }
             ) {
-                // Static album art — always visible as base/fallback
+                // Static album art â€” always visible as base/fallback
                 AsyncImage(
 
                     model = imageUrl,
@@ -545,7 +544,7 @@ fun FruitNowPlayingScreen(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Canvas artwork player — crossfades in over the static art
+                // Canvas artwork player â€” crossfades in over the static art
                 val activeCanvasUrl = canvasUrl
                 if (canvasEnabled && activeCanvasUrl != null) {
                     com.aeswox.arcmusic.ui.components.CanvasArtworkPlayer(
@@ -1522,7 +1521,7 @@ fun CustomListIconFruit(color: Color, modifier: Modifier = Modifier) {
  * FADE style: renders a single lyric line with:
  *  - Bold weight on every word (active and inactive alike)
  *  - Inactive lines: opacity-only dimming, ZERO text blur
- *  - Active line: cumulative word-fill — every word whose [SyncedWord.time] <=
+ *  - Active line: cumulative word-fill â€” every word whose [SyncedWord.time] <=
  *    [currentPositionMsProvider] stays bright and never reverts for the
  *    duration of that line. Words not yet reached are dim.
  *  - Inactive lines' opacity animates smoothly with the existing 350ms tween.
@@ -1621,7 +1620,7 @@ fun FadeLyricLineFruit(
                 )
             }
         } else {
-            // No word timing — plain text words, all at full alpha (line controls dimming).
+            // No word timing â€” plain text words, all at full alpha (line controls dimming).
             plainWords.forEach { word ->
                 Text(
                     text = word,
@@ -1669,7 +1668,7 @@ fun ScrubberAndTimerFruit(
         if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
     }
 
-    // Animate wave phase — continuously advances when playing
+    // Animate wave phase â€” continuously advances when playing
     val infiniteTransition = rememberInfiniteTransition(label = "wavePhase")
     val wavePhase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -1755,7 +1754,7 @@ fun ScrubberAndTimerFruit(
             val steps = clampedWidth.toInt().coerceAtLeast(2)
 
             // Top-edge Y for a given x along the played region.
-            // Amplitude is tapered: sin(π·t) envelope so the wave fades in from
+            // Amplitude is tapered: sin(Ï€Â·t) envelope so the wave fades in from
             // the left and tapers back to flat approaching the thumb.
             // The wave only goes UPWARD from baselineTopY (never below it).
             fun waveTopY(x: Float, phaseOffset: Float): Float {
@@ -1768,7 +1767,7 @@ fun ScrubberAndTimerFruit(
                 return baselineTopY - amp * sinVal
             }
 
-            // --- Layer 2 (shadow) — phase-shifted, dimmer ---
+            // --- Layer 2 (shadow) â€” phase-shifted, dimmer ---
             val path2 = Path()
             path2.moveTo(0f, bottomY)
             for (i in 0..steps) {
@@ -1868,7 +1867,7 @@ fun ScrubberAndTimerFruit(
  * Lyrics content for Fruit style.
  *
  * Rendered directly inside the main now-playing Box so every element is
- * part of the SAME composition — not a separate screen. The [lyricsFraction]
+ * part of the SAME composition â€” not a separate screen. The [lyricsFraction]
  * (0 = normal, 1 = lyrics) is passed in from the parent and drives the
  * alpha of the entire layer. This gives a true cross-fade/morph feel.
  *
@@ -1895,23 +1894,15 @@ fun FruitLyricsContent(
     val rawSongToPlay = currentlyPlayingEntity ?: randomPicks.firstOrNull()
     val songToPlay    = libraryTracks.find { it.id == rawSongToPlay?.id } ?: rawSongToPlay
 
-    // imageUrl is passed in from the parent — no need to re-derive it here
+    // imageUrl is passed in from the parent â€” no need to re-derive it here
 
-    // ── Lyrics data ──────────────────────────────────────────────────────────
+    // â”€â”€ Lyrics data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     val lyricsData             by viewModel.lyricsUiState.collectAsState()
-    val lyricsDisplayStyle     by viewModel.lyricsDisplayStyle.collectAsState()
-    val lyricsShowControls     by viewModel.lyricsShowControls.collectAsState()
-    val lyricsFadeSteepness    by viewModel.lyricsFadeSteepness.collectAsState()
-    val lyricsFadeScaleCeiling by viewModel.lyricsFadeScaleCeiling.collectAsState()
-    val lyricsFadeDistanceSizing by viewModel.lyricsFadeDistanceSizing.collectAsState()
-    val lyricsBlurRadius       by viewModel.lyricsBlurRadius.collectAsState()
-    val lyricsBlurDimming      by viewModel.lyricsBlurDimming.collectAsState()
-
-    val rawSyncedLines = lyricsData?.synced
+val rawSyncedLines = lyricsData?.synced
     val plainLines     = lyricsData?.plain
     val duration       by viewModel.duration.collectAsState()
 
-    // Enrich synced lines: insert "● ● ●" placeholders for long gaps (same as Fruit screen)
+    // Enrich synced lines: insert "â— â— â—" placeholders for long gaps (same as Fruit screen)
     val syncedLines = remember(rawSyncedLines, duration) {
         if (rawSyncedLines.isNullOrEmpty()) return@remember null
         val enriched     = mutableListOf<SyncedLine>()
@@ -1936,7 +1927,7 @@ fun FruitLyricsContent(
         syncedLines?.map { it.line } ?: plainLines ?: listOf("No lyrics available")
     }
 
-    // ── Active-line tracking ─────────────────────────────────────────────────
+    // â”€â”€ Active-line tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     var activeLineIndex by remember { mutableIntStateOf(0) }
     var activeWordIndex by remember { mutableIntStateOf(0) }
 
@@ -1968,7 +1959,7 @@ fun FruitLyricsContent(
     val activeLineIndexProvider = remember { { activeLineIndex } }
     val activeWordIndexProvider = remember { { activeWordIndex } }
 
-    // ── Scroll state ─────────────────────────────────────────────────────────
+    // â”€â”€ Scroll state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     val listState = rememberLazyListState()
 
     LaunchedEffect(activeLineIndex) {
@@ -1988,11 +1979,9 @@ fun FruitLyricsContent(
     val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor
                             else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
-
-    val listSpacing   = if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) 42.dp else 28.dp
-    val bottomPadding = if (lyricsShowControls) 300.dp else 120.dp
-
-    // The entire lyrics layer uses lyricsFraction for alpha — this is what makes
+    val listSpacing = 42.dp
+    val bottomPadding = 300.dp
+    // The entire lyrics layer uses lyricsFraction for alpha â€” this is what makes
     // the transition feel like elements morphing in place, not a new screen fading in.
     Box(modifier = Modifier
         .fillMaxSize()
@@ -2000,7 +1989,7 @@ fun FruitLyricsContent(
     ) {
 
 
-        // ── Lyrics list ──────────────────────────────────────────────────────
+        // â”€â”€ Lyrics list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -2019,39 +2008,22 @@ fun FruitLyricsContent(
                     else
                         line.split(" ")
                 }
-                if (lyricsDisplayStyle == LyricsDisplayStyle.FADE) {
-                    FadeLyricLineFruit(
-                        lineIndex               = lineIndex,
-                        syncedLine              = syncedLines?.getOrNull(lineIndex),
-                        plainWords              = words,
-                        activeLineIndexProvider = activeLineIndexProvider,
-                        currentPositionProvider = { currentPositionState.value },
-                        listState               = listState,
-                        textColor               = textColor,
-                        fadeSteepness           = lyricsFadeSteepness,
-                        fadeScaleCeiling        = lyricsFadeScaleCeiling,
-                        distanceSizing          = lyricsFadeDistanceSizing
-                    )
-                } else {
-                    LyricLineFruit(
-                        line                   = line,
-                        words                  = words,
-                        lineIndex              = lineIndex,
-                        activeLineIndexProvider = activeLineIndexProvider,
-                        activeWordIndexProvider = activeWordIndexProvider,
-                        textColor              = textColor,
-                        blurRadiusMax          = lyricsBlurRadius,
-                        blurDimming            = lyricsBlurDimming
-                    )
-                }
+                FadeLyricLineFruit(
+                    lineIndex               = lineIndex,
+                    syncedLine              = syncedLines?.getOrNull(lineIndex),
+                    plainWords              = words,
+                    activeLineIndexProvider = activeLineIndexProvider,
+                    currentPositionProvider = { currentPositionState.value },
+                    listState               = listState,
+                    textColor               = textColor
+                )
             }
         }
 
 
 
-        // ── Docked bottom controls (spring entry) ────────────────────────────
-        if (lyricsShowControls) {
-            Box(
+        // â”€â”€ Docked bottom controls (spring entry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
@@ -2182,7 +2154,6 @@ fun FruitLyricsContent(
             }
         }
     }
-}
 
 
 @Composable
@@ -2349,4 +2320,6 @@ fun LyricLineFruit(
         }
     }
 }
+
+
 

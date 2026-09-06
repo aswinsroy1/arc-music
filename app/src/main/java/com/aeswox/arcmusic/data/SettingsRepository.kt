@@ -44,13 +44,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
     private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
     private val NOW_PLAYING_STYLE_KEY = stringPreferencesKey("now_playing_style")
-    private val LYRICS_DISPLAY_STYLE_KEY = stringPreferencesKey("lyrics_display_style")
-    private val LYRICS_SHOW_CONTROLS_KEY = booleanPreferencesKey("lyrics_show_controls")
-    private val LYRICS_FADE_STEEPNESS_KEY = floatPreferencesKey("lyrics_fade_steepness")
-    private val LYRICS_FADE_SCALE_CEILING_KEY = floatPreferencesKey("lyrics_fade_scale_ceiling")
-    private val LYRICS_FADE_DISTANCE_SIZING_KEY = booleanPreferencesKey("lyrics_fade_distance_sizing")
-    private val LYRICS_BLUR_RADIUS_KEY = floatPreferencesKey("lyrics_blur_radius")
-    private val LYRICS_BLUR_DIMMING_KEY = floatPreferencesKey("lyrics_blur_dimming")
+
     private val CANVAS_ENABLED_KEY = booleanPreferencesKey("canvas_enabled")
     private val CANVAS_CACHE_LIMIT_MB_KEY = intPreferencesKey("canvas_cache_limit_mb")
     private val HERO_CARD_PLAYING_STATE_ENABLED_KEY = booleanPreferencesKey("hero_card_playing_state_enabled")
@@ -94,50 +88,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             else     -> ThemeMode.System
         }
     }
-
-    /**
-     * Persisted lyrics display style. Emits [LyricsDisplayStyle.FADE] by default
-     * (first-run and any unrecognised value), so new installs and users who have
-     * not yet chosen get the lighter FADE style automatically.
-     */
-    val lyricsDisplayStyle: Flow<LyricsDisplayStyle> = context.dataStore.data.map { preferences ->
-        when (preferences[LYRICS_DISPLAY_STYLE_KEY]) {
-            "distance_blur" -> LyricsDisplayStyle.DISTANCE_BLUR
-            else            -> LyricsDisplayStyle.FADE
-        }
-    }
-
     val nowPlayingStyle: Flow<NowPlayingStyle> = context.dataStore.data.map { preferences ->
         when (preferences[NOW_PLAYING_STYLE_KEY]) {
             "fruit" -> NowPlayingStyle.FRUIT
             else    -> NowPlayingStyle.ARC
         }
     }
-
-    val lyricsShowControls: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_SHOW_CONTROLS_KEY] ?: true
-    }
-    
-    val lyricsFadeSteepness: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_FADE_STEEPNESS_KEY] ?: 1.0f
-    }
-    
-    val lyricsFadeScaleCeiling: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_FADE_SCALE_CEILING_KEY] ?: 0.85f
-    }
-    
-    val lyricsFadeDistanceSizing: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_FADE_DISTANCE_SIZING_KEY] ?: false
-    }
-    
-    val lyricsBlurRadius: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_BLUR_RADIUS_KEY] ?: 10f
-    }
-
-    val lyricsBlurDimming: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_BLUR_DIMMING_KEY] ?: 0.28f
-    }
-
     val canvasEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[CANVAS_ENABLED_KEY] ?: true
     }
@@ -321,47 +277,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit { it[COIL_DISK_CACHE_LIMIT_MB_KEY] = value }
     }
 
-    suspend fun setLyricsDisplayStyle(style: LyricsDisplayStyle) {
-        context.dataStore.edit {
-            it[LYRICS_DISPLAY_STYLE_KEY] = when (style) {
-                LyricsDisplayStyle.FADE          -> "fade"
-                LyricsDisplayStyle.DISTANCE_BLUR -> "distance_blur"
-            }
-        }
-    }
 
-    suspend fun setNowPlayingStyle(style: NowPlayingStyle) {
-        context.dataStore.edit {
-            it[NOW_PLAYING_STYLE_KEY] = when (style) {
-                NowPlayingStyle.ARC   -> "arc"
-                NowPlayingStyle.FRUIT -> "fruit"
-            }
-        }
-    }
-
-    suspend fun setLyricsShowControls(show: Boolean) {
-        context.dataStore.edit { preferences -> preferences[LYRICS_SHOW_CONTROLS_KEY] = show }
-    }
-
-    suspend fun setLyricsFadeSteepness(steepness: Float) {
-        context.dataStore.edit { preferences -> preferences[LYRICS_FADE_STEEPNESS_KEY] = steepness }
-    }
-
-    suspend fun setLyricsFadeScaleCeiling(ceiling: Float) {
-        context.dataStore.edit { preferences -> preferences[LYRICS_FADE_SCALE_CEILING_KEY] = ceiling }
-    }
-
-    suspend fun setLyricsFadeDistanceSizing(enabled: Boolean) {
-        context.dataStore.edit { preferences -> preferences[LYRICS_FADE_DISTANCE_SIZING_KEY] = enabled }
-    }
-
-    suspend fun setLyricsBlurRadius(radius: Float) {
-        context.dataStore.edit { preferences -> preferences[LYRICS_BLUR_RADIUS_KEY] = radius }
-    }
-
-    suspend fun setLyricsBlurDimming(dimming: Float) {
-        context.dataStore.edit { preferences -> preferences[LYRICS_BLUR_DIMMING_KEY] = dimming }
-    }
 
     suspend fun setCanvasEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
@@ -384,6 +300,15 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setHeroCardIncludeArtistsAndAlbums(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HERO_CARD_INCLUDE_ARTISTS_ALBUMS_KEY] = enabled
+        }
+    }
+
+    suspend fun setNowPlayingStyle(style: NowPlayingStyle) {
+        context.dataStore.edit {
+            it[NOW_PLAYING_STYLE_KEY] = when (style) {
+                NowPlayingStyle.ARC   -> "arc"
+                NowPlayingStyle.FRUIT -> "fruit"
+            }
         }
     }
 }

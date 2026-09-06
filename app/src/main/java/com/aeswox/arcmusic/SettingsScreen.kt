@@ -33,7 +33,6 @@ import com.aeswox.arcmusic.ui.components.*
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.lazy.items
-import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import com.aeswox.arcmusic.data.model.NowPlayingStyle
 import com.aeswox.arcmusic.db.entities.Playlist
 
@@ -45,7 +44,6 @@ fun SettingsScreen(
     themeMode: ThemeMode,
     heroCardPlayingStateEnabled: Boolean,
     nowPlayingStyle: NowPlayingStyle,
-    lyricsDisplayStyle: LyricsDisplayStyle,
     lastFmApiKey: String?,
     fanartTvApiKey: String?,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -53,7 +51,6 @@ fun SettingsScreen(
     heroCardIncludeArtistsAndAlbums: Boolean = false,
     onHeroCardIncludeArtistsAndAlbumsChange: (Boolean) -> Unit,
     onNowPlayingStyleChange: (NowPlayingStyle) -> Unit,
-    onLyricsDisplayStyleChange: (LyricsDisplayStyle) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
     coilDiskCacheLimitMb: Int,
@@ -65,7 +62,6 @@ fun SettingsScreen(
     onNavigateToEqualizer: () -> Unit,
     onNavigateToMediaManagement: () -> Unit,
     onNavigateToNowPlayingStyleSettings: () -> Unit,
-    onNavigateToLyricStyleSettings: () -> Unit,
     onNavigateToCanvasSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     onScanMediaStore: () -> Unit = {},
@@ -291,33 +287,7 @@ fun SettingsScreen(
                                 }
                             }
                         )
-                        SettingsItem(
-                            icon = Icons.Outlined.MusicNote,
-                            text = "Lyrics style",
-                            onClick = onNavigateToLyricStyleSettings,
-                            showArrow = true,
-                            trailingContent = {
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
-                                        ),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    LyricsStyleChip(
-                                        label = "Fade",
-                                        selected = lyricsDisplayStyle == LyricsDisplayStyle.FADE,
-                                        onClick = { onLyricsDisplayStyleChange(LyricsDisplayStyle.FADE) }
-                                    )
-                                    LyricsStyleChip(
-                                        label = "Blur",
-                                        selected = lyricsDisplayStyle == LyricsDisplayStyle.DISTANCE_BLUR,
-                                        onClick = { onLyricsDisplayStyleChange(LyricsDisplayStyle.DISTANCE_BLUR) }
-                                    )
-                                }
-                            }
-                        )
+
                         SettingsItem(
                             icon = Icons.Outlined.PlayCircle,
                             text = "Canvas",

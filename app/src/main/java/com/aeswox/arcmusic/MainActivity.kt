@@ -765,7 +765,6 @@ class MainActivity : ComponentActivity() {
                             val lastFmApiKey by viewModel.lastFmApiKey.collectAsState()
                             val fanartTvApiKey by viewModel.fanartTvApiKey.collectAsState()
                             val coilDiskCacheLimitMb by viewModel.coilDiskCacheLimitMb.collectAsState()
-                            val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
                             val heroCardPlayingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
                             val heroCardIncludeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
                             
@@ -789,11 +788,9 @@ class MainActivity : ComponentActivity() {
                                     onHeroCardIncludeArtistsAndAlbumsChange = { viewModel.setHeroCardIncludeArtistsAndAlbums(it) },
                                     nowPlayingStyle = nowPlayingStyle,
                                     onNowPlayingStyleChange = { viewModel.setNowPlayingStyle(it) },
-                                    lyricsDisplayStyle = lyricsDisplayStyle,
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
-                                    onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
                                     coilDiskCacheLimitMb = coilDiskCacheLimitMb,
@@ -804,7 +801,6 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToEqualizer = { navController.navigate("equalizer") },
                                     onNavigateToMediaManagement = { navController.navigate("media_management") },
                                     onNavigateToNowPlayingStyleSettings = { navController.navigate("now_playing_style_settings") },
-                                    onNavigateToLyricStyleSettings = { navController.navigate("lyrics_style_settings") },
                                     onNavigateToCanvasSettings = { navController.navigate("canvas_settings") },
                                     onNavigateBack = { navController.popBackStack() },
                                     onScanMediaStore = {
@@ -898,41 +894,6 @@ class MainActivity : ComponentActivity() {
                                     lightThemeForNowPlaying = lightThemeForNowPlaying,
                                     onLightThemeForNowPlayingChange = { viewModel.setLightThemeForNowPlaying(it) },
 
-                                    onNavigateBack = { navController.popBackStack() }
-                                )
-                            }
-                        }
-                        composable(
-                            route = "lyrics_style_settings",
-                            enterTransition = { NavTransitions.DetailEnter },
-                            exitTransition = { NavTransitions.DetailExit },
-                            popEnterTransition = { NavTransitions.DetailPopEnter },
-                            popExitTransition = { NavTransitions.DetailPopExit }
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                                val lyricsDisplayStyle by viewModel.lyricsDisplayStyle.collectAsState()
-                                val lyricsShowControls by viewModel.lyricsShowControls.collectAsState()
-                                val lyricsFadeSteepness by viewModel.lyricsFadeSteepness.collectAsState()
-                                val lyricsFadeScaleCeiling by viewModel.lyricsFadeScaleCeiling.collectAsState()
-                                val lyricsFadeDistanceSizing by viewModel.lyricsFadeDistanceSizing.collectAsState()
-                                val lyricsBlurRadius by viewModel.lyricsBlurRadius.collectAsState()
-                                val lyricsBlurDimming by viewModel.lyricsBlurDimming.collectAsState()
-
-                                LyricStyleScreen(
-                                    lyricsDisplayStyle = lyricsDisplayStyle,
-                                    onLyricsDisplayStyleChange = { viewModel.setLyricsDisplayStyle(it) },
-                                    lyricsShowControls = lyricsShowControls,
-                                    onLyricsShowControlsChange = { viewModel.setLyricsShowControls(it) },
-                                    lyricsFadeSteepness = lyricsFadeSteepness,
-                                    onLyricsFadeSteepnessChange = { viewModel.setLyricsFadeSteepness(it) },
-                                    lyricsFadeScaleCeiling = lyricsFadeScaleCeiling,
-                                    onLyricsFadeScaleCeilingChange = { viewModel.setLyricsFadeScaleCeiling(it) },
-                                    lyricsFadeDistanceSizing = lyricsFadeDistanceSizing,
-                                    onLyricsFadeDistanceSizingChange = { viewModel.setLyricsFadeDistanceSizing(it) },
-                                    lyricsBlurRadius = lyricsBlurRadius,
-                                    onLyricsBlurRadiusChange = { viewModel.setLyricsBlurRadius(it) },
-                                    lyricsBlurDimming = lyricsBlurDimming,
-                                    onLyricsBlurDimmingChange = { viewModel.setLyricsBlurDimming(it) },
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }

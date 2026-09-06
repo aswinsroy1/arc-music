@@ -1763,34 +1763,8 @@ class MusicViewModel @Inject constructor(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 250
     )
 
-    /** Which lyrics rendering style the user has selected. Defaults to [LyricsDisplayStyle.FADE]. */
-    val lyricsDisplayStyle: StateFlow<LyricsDisplayStyle> = settingsRepository.lyricsDisplayStyle.stateIn(
-        viewModelScope,
-        SharingStarted.Eagerly,
-        LyricsDisplayStyle.FADE
-    )
-
     val nowPlayingStyle: StateFlow<NowPlayingStyle> = settingsRepository.nowPlayingStyle.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), NowPlayingStyle.ARC
-    )
-
-    val lyricsShowControls: StateFlow<Boolean> = settingsRepository.lyricsShowControls.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), true
-    )
-    val lyricsFadeSteepness: StateFlow<Float> = settingsRepository.lyricsFadeSteepness.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), 1.2f
-    )
-    val lyricsFadeScaleCeiling: StateFlow<Float> = settingsRepository.lyricsFadeScaleCeiling.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), 0.85f
-    )
-    val lyricsFadeDistanceSizing: StateFlow<Boolean> = settingsRepository.lyricsFadeDistanceSizing.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), true
-    )
-    val lyricsBlurRadius: StateFlow<Float> = settingsRepository.lyricsBlurRadius.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), 10f
-    )
-    val lyricsBlurDimming: StateFlow<Float> = settingsRepository.lyricsBlurDimming.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), 0.28f
     )
 
     val minSongDurationSec = settingsRepository.minSongDurationSec.stateIn(
@@ -1817,36 +1791,8 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setCoilDiskCacheLimitMb(value) }
     }
 
-    fun setLyricsDisplayStyle(style: LyricsDisplayStyle) {
-        viewModelScope.launch { settingsRepository.setLyricsDisplayStyle(style) }
-    }
-
     fun setNowPlayingStyle(style: NowPlayingStyle) {
         viewModelScope.launch { settingsRepository.setNowPlayingStyle(style) }
-    }
-
-    fun setLyricsShowControls(show: Boolean) {
-        viewModelScope.launch { settingsRepository.setLyricsShowControls(show) }
-    }
-
-    fun setLyricsFadeSteepness(steepness: Float) {
-        viewModelScope.launch { settingsRepository.setLyricsFadeSteepness(steepness) }
-    }
-
-    fun setLyricsFadeScaleCeiling(ceiling: Float) {
-        viewModelScope.launch { settingsRepository.setLyricsFadeScaleCeiling(ceiling) }
-    }
-
-    fun setLyricsFadeDistanceSizing(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setLyricsFadeDistanceSizing(enabled) }
-    }
-
-    fun setLyricsBlurRadius(radius: Float) {
-        viewModelScope.launch { settingsRepository.setLyricsBlurRadius(radius) }
-    }
-
-    fun setLyricsBlurDimming(dimming: Float) {
-        viewModelScope.launch { settingsRepository.setLyricsBlurDimming(dimming) }
     }
 
     // ── Canvas ────────────────────────────────────────────────────────────────
