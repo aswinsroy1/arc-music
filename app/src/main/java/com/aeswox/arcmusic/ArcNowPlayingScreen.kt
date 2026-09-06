@@ -1625,12 +1625,16 @@ fun ScrubberAndTimer(
         //   waveMaxAmp:     extra height the wave crests add above the baseline top
         // The bottom edge is always flat; the top edge undulates.
         val baselineHeightPx = seekbarBaselineHeight.dp.toPx()
-        val waveMaxAmpPx = seekbarWaveMaxAmp.dp.toPx()
-        val totalMaxHeight = baselineHeightPx + waveMaxAmpPx
+        val defaultWaveMaxAmpPx = seekbarWaveMaxAmp.dp.toPx()
+        val totalMaxHeight = baselineHeightPx + defaultWaveMaxAmpPx
 
         // Center everything vertically in the canvas
         val bottomY = (h + totalMaxHeight) / 2f  // flat bottom edge of the track
         val baselineTopY = bottomY - baselineHeightPx  // top of the solid baseline (= trough of wave)
+
+        // Scale the max amplitude based on progress up to 15%
+        val ampScale = (progress / 0.15f).coerceIn(0f, 1f)
+        val waveMaxAmpPx = defaultWaveMaxAmpPx * ampScale
 
         // Frequency: physical cycle length
         val cycleLengthPx = seekbarCycleLength.dp.toPx()
