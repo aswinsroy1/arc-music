@@ -740,16 +740,6 @@ fun ArcNowPlayingScreen(
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
-                                
-                                Spacer(modifier = Modifier.height(40.dp))
-                                
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    FormatBadges(songToPlay = songToPlay, textColor = textColor)
-                                }
                             }
                         }
                     }
@@ -778,57 +768,66 @@ fun ArcNowPlayingScreen(
                             color = textColor.copy(alpha = 0.12f),
                             shape = RoundedCornerShape(32.dp)
                         )
-                        .padding(horizontal = 20.dp, vertical = 26.dp)
+                        .padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 26.dp)
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(32.dp)
-                                                .clip(CircleShape)
-                                                .clickable {
-                                                    songToPlay?.let { track ->
-                                                        viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
-                                                    }
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = if (songToPlay?.isFavorite == true)
-                                                    Icons.Default.Favorite
-                                                else
-                                                    Icons.Outlined.FavoriteBorder,
-                                                contentDescription = "Favorite",
-                                                tint = if (songToPlay?.isFavorite == true)
-                                                    MaterialTheme.colorScheme.primary
-                                                else
-                                                    textColor.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(20.dp)
-                                            )
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        ) {
+                            // Favorite
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        songToPlay?.let { track ->
+                                            viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
                                         }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (songToPlay?.isFavorite == true)
+                                        Icons.Default.Favorite
+                                    else
+                                        Icons.Outlined.FavoriteBorder,
+                                    contentDescription = "Favorite",
+                                    tint = if (songToPlay?.isFavorite == true)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        textColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
 
-                                        Box(
-                                            modifier = Modifier
-                                                .size(32.dp)
-                                                .clip(CircleShape)
-                                                .clickable { showOptionsSheet = true },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = com.aeswox.arcmusic.ui.components.LucideMoreHorizontal,
-                                                contentDescription = "More",
-                                                tint = textColor.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
+                            // Format Badges (Centered)
+                            Box(
+                                modifier = Modifier.align(Alignment.Center)
+                            ) {
+                                FormatBadges(songToPlay = songToPlay, textColor = textColor)
+                            }
+
+                            // More
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .clickable { showOptionsSheet = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = com.aeswox.arcmusic.ui.components.LucideMoreHorizontal,
+                                    contentDescription = "More",
+                                    tint = textColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
 
                                     Spacer(modifier = Modifier.height(14.dp))
 
