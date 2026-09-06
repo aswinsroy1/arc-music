@@ -1544,6 +1544,13 @@ fun FadeLyricLineFruit(
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
 
+    val targetFontSize = if (isActive) baseFontSize.value else baseFontSize.value - 4f
+    val lineFontSize by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = targetFontSize,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 350),
+        label = "fontSize"
+    )
+
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -1614,7 +1621,7 @@ fun FadeLyricLineFruit(
                     text = syncedWord.word,
                     color = textColor.copy(alpha = wordAlpha),
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = baseFontSize,
+                        fontSize = lineFontSize.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -1626,7 +1633,7 @@ fun FadeLyricLineFruit(
                     text = word,
                     color = textColor,
                     style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = baseFontSize,
+                        fontSize = lineFontSize.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -2320,6 +2327,7 @@ fun LyricLineFruit(
         }
     }
 }
+
 
 
 
