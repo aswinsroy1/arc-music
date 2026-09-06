@@ -664,20 +664,13 @@ fun ArcNowPlayingScreen(
         
 
         // Content
-
-        Column(
-
+        Box(
             modifier = Modifier
-
                 .fillMaxSize()
-
                 .systemBarsPadding()
-
         ) {
-
-            // Top Bar removed as requested
             
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 AnimatedContent(
                     targetState = showLyrics,
                     transitionSpec = {
@@ -688,81 +681,64 @@ fun ArcNowPlayingScreen(
                             )
                         )
                     },
-                    label = "LyricsSwap"
+                    label = "LyricsSwap",
+                    modifier = Modifier.fillMaxSize()
                 ) { isLyrics ->
                     if (isLyrics) {
-                        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
-                            ArcLyricsContent(
-                                lyricsFraction = 1f,
-                                textColor = textColor,
-                                isDarkTheme = isDarkTheme,
-                                accentColor = accentColor,
-                                isWhiteArtwork = isWhiteArtwork,
-                                imageUrl = imageUrl,
-                                onDismiss = { showLyrics = false },
-                                onOptionsClick = { showOptionsSheet = true }
-                            )
-                        }
+                        ArcLyricsContent(
+                            lyricsFraction = 1f,
+                            textColor = textColor,
+                            isDarkTheme = isDarkTheme,
+                            accentColor = accentColor,
+                            isWhiteArtwork = isWhiteArtwork,
+                            imageUrl = imageUrl,
+                            onDismiss = { showLyrics = false }
+                        )
                     } else {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomCenter
                         ) {
-
-                            // ── Centered Track Info ──────────────────────────────────────────────
                             Column(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                                    .padding(bottom = 270.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+
+                                // ── Centered Track Info ──────────────────────────────────────────────
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = songToPlay?.title ?: "Unknown",
+                                            style = MaterialTheme.typography.displaySmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 26.sp
+                                            ),
+                                            color = textColor,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                        if (false /* songToPlay?.isExplicit == true */) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            com.aeswox.arcmusic.ExplicitBadge()
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = songToPlay?.title ?: "Unknown",
-                                        style = MaterialTheme.typography.displaySmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 26.sp
-                                        ),
-                                        color = textColor,
+                                        text = songToPlay?.artist ?: "Unknown",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = textColor.copy(alpha = textAlpha),
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
-                                    if (false /* songToPlay?.isExplicit == true */) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        com.aeswox.arcmusic.ExplicitBadge()
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = songToPlay?.artist ?: "Unknown",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = textColor.copy(alpha = textAlpha),
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(40.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                FormatBadges(songToPlay = songToPlay, textColor = textColor)
-                            }
-                            
-                            Spacer(modifier = Modifier.height(40.dp))
-
-                            // ── Glassmorphic Controls Card (with seekbar) ───────────────────────
-                            val isPlaying by viewModel.isPlaying.collectAsState()
-                            val repeatMode by viewModel.repeatMode.collectAsState()
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(32.dp))
                                     .background(textColor.copy(alpha = 0.08f))
                                     .border(
                                         width = 1.dp,
@@ -916,12 +892,6 @@ fun ArcNowPlayingScreen(
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        }
-                    }
-                }
             }
         }
 
@@ -1750,8 +1720,7 @@ fun ArcLyricsContent(
     accentColor: Color = Color(0xFFB28D84),
     isWhiteArtwork: Boolean = false,
     imageUrl: String = "",
-    onDismiss: () -> Unit = {},
-    onOptionsClick: () -> Unit = {}
+    onDismiss: () -> Unit = {}
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
     val currentlyPlayingEntity by viewModel.currentlyPlaying.collectAsState()
@@ -1915,12 +1884,13 @@ fun ArcLyricsContent(
 
 
 
-        // ── Docked bottom controls (spring entry) ────────────────────────────
+        // ── Docked bottom controls background (for fading out lyrics) ────────────────────────────
         if (lyricsShowControls) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    .height(260.dp)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -1931,171 +1901,8 @@ fun ArcLyricsContent(
                             )
                         )
                     )
-                    .navigationBarsPadding()
-                    .padding(top = 56.dp, bottom = 28.dp, start = 24.dp, end = 24.dp)
-            ) {
-                val isPlayingArc by viewModel.isPlaying.collectAsState()
-                val repeatMode by viewModel.repeatMode.collectAsState()
-                val shuffleEnabled by viewModel.shuffleModeEnabled.collectAsState()
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(32.dp))
-                        .background(textColor.copy(alpha = 0.08f))
-                        .border(
-                            width = 1.dp,
-                            color = textColor.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(32.dp)
-                        )
-                        .padding(horizontal = 20.dp, vertical = 26.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .clickable {
-                                        songToPlay?.let { track ->
-                                            viewModel.toggleFavorite(listOf(track.id), !track.isFavorite)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (songToPlay?.isFavorite == true)
-                                        Icons.Default.Favorite
-                                    else
-                                        Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Favorite",
-                                    tint = if (songToPlay?.isFavorite == true)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        textColor.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .clickable { onOptionsClick() },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = com.aeswox.arcmusic.ui.components.LucideMoreHorizontal,
-                                    contentDescription = "More",
-                                    tint = textColor.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // ── Wave Seekbar ──────────────────────────────────────
-                        ScrubberAndTimer(
-                            viewModel = viewModel,
-                            textColor = textColor,
-                            textAlpha = 0.7f,
-                            songToPlay = songToPlay,
-                            isPlayingProvider = { viewModel.isPlaying.value }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Far Left — Repeat toggle
-                            IconButton(
-                                onClick = { viewModel.toggleRepeatMode() },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
-                                        Icons.Rounded.RepeatOne
-                                    else
-                                        Icons.Rounded.Repeat,
-                                    contentDescription = "Repeat",
-                                    tint = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_OFF)
-                                        textColor.copy(alpha = 0.5f)
-                                    else
-                                        MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            // Previous
-                            IconButton(
-                                onClick = { viewModel.skipToPrevious() },
-                                modifier = Modifier.size(52.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.FastRewind,
-                                    contentDescription = "Previous",
-                                    tint = textColor,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-
-                            // Play / Pause — larger tap target
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clickable { viewModel.togglePlayPause() },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
-                                    isPlaying = isPlayingArc,
-                                    tint = textColor,
-                                    modifier = Modifier.size(46.dp)
-                                )
-                            }
-
-                            // Next
-                            IconButton(
-                                onClick = { viewModel.skipToNext() },
-                                modifier = Modifier.size(52.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.FastForward,
-                                    contentDescription = "Next",
-                                    tint = textColor,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-
-                            // Far Right — Shuffle
-                            IconButton(
-                                onClick = { viewModel.toggleShuffleMode() },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Shuffle,
-                                    contentDescription = "Shuffle",
-                                    tint = if (shuffleEnabled)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        textColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            )
+        }
         }
     }
 }
