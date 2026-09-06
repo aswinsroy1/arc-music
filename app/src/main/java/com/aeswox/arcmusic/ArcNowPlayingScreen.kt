@@ -703,7 +703,7 @@ fun ArcNowPlayingScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 24.dp)
-                                    .padding(bottom = 270.dp),
+                                    .padding(bottom = 330.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
 
