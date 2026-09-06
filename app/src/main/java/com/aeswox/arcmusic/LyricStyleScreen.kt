@@ -171,9 +171,9 @@ fun LyricStyleScreen(
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Button(
                                     onClick = { 
-                                        onLyricsFadeSteepnessChange(1.2f)
+                                        onLyricsFadeSteepnessChange(1.0f)
                                         onLyricsFadeScaleCeilingChange(0.85f)
-                                        onLyricsFadeDistanceSizingChange(true)
+                                        onLyricsFadeDistanceSizingChange(false)
                                     },
                                     modifier = Modifier.align(Alignment.CenterHorizontally)
                                 ) {

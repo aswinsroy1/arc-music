@@ -1435,9 +1435,9 @@ fun FadeLyricLine(
     currentPositionProvider: () -> Long,
     listState: androidx.compose.foundation.lazy.LazyListState,
     textColor: Color,
-    fadeSteepness: Float = 1.2f,
+    fadeSteepness: Float = 1.0f,
     fadeScaleCeiling: Float = 0.85f,
-    distanceSizing: Boolean = true,
+    distanceSizing: Boolean = false,
     baseFontSize: androidx.compose.ui.unit.TextUnit = 32.sp
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }

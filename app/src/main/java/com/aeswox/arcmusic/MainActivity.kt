@@ -1889,9 +1889,9 @@ fun WordSyncedLyrics(
                         currentPositionProvider = { currentPositionState.value },
                         listState = listState,
                         textColor = textColor,
-                        fadeSteepness = 1.2f,
+                        fadeSteepness = 1.0f,
                         fadeScaleCeiling = 0.85f,
-                        distanceSizing = true,
+                        distanceSizing = false,
                         baseFontSize = 24.sp
                     )
                 }

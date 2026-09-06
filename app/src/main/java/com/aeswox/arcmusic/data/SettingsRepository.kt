@@ -119,7 +119,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     
     val lyricsFadeSteepness: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_FADE_STEEPNESS_KEY] ?: 1.2f
+        preferences[LYRICS_FADE_STEEPNESS_KEY] ?: 1.0f
     }
     
     val lyricsFadeScaleCeiling: Flow<Float> = context.dataStore.data.map { preferences ->
@@ -127,7 +127,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     
     val lyricsFadeDistanceSizing: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[LYRICS_FADE_DISTANCE_SIZING_KEY] ?: true
+        preferences[LYRICS_FADE_DISTANCE_SIZING_KEY] ?: false
     }
     
     val lyricsBlurRadius: Flow<Float> = context.dataStore.data.map { preferences ->
