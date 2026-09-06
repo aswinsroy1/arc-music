@@ -1632,8 +1632,8 @@ fun ScrubberAndTimer(
         val bottomY = (h + totalMaxHeight) / 2f  // flat bottom edge of the track
         val baselineTopY = bottomY - baselineHeightPx  // top of the solid baseline (= trough of wave)
 
-        // Scale the max amplitude based on progress up to 15%
-        val ampScale = (progress / 0.15f).coerceIn(0f, 1f)
+        // Scale the max amplitude: flat until 5%, gradually ramping up to 15%
+        val ampScale = ((progress - 0.05f) / 0.10f).coerceIn(0f, 1f)
         val waveMaxAmpPx = defaultWaveMaxAmpPx * ampScale
 
         // Frequency: physical cycle length
