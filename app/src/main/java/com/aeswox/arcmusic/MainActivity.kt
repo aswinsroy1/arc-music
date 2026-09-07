@@ -1196,6 +1196,7 @@ fun MusicHomeScreen(
     val isLibraryLoaded by viewModel.isLibraryLoaded.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val isPlayerExpanded by viewModel.isPlayerExpanded.collectAsState()
 
     // Bottom padding is provided by MainActivity now
 
