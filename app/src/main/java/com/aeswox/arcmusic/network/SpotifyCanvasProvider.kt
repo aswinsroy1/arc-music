@@ -30,10 +30,6 @@ class SpotifyCanvasProvider @Inject constructor() {
     private var cachedToken: String? = null
     private var tokenExpiryMs: Long = 0L
 
-    private var totpSecret: ByteArray? = null
-    private var totpVersion: String = "19"
-    private var lastSecretFetchTime: Long = 0L
-
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 
     suspend fun getCanvasUrl(title: String, artist: String, spDcCookie: String): String? = withContext(Dispatchers.IO) {
@@ -58,21 +54,14 @@ class SpotifyCanvasProvider @Inject constructor() {
             return cachedToken
         }
 
-        awaitTotpSecrets()
-
-        val serverTime = fetchServerTime(spDcCookie)
-        val localTime = System.currentTimeMillis()
-
-        val totpLocal = generateTOTP(localTime, totpSecret!!)
-        val totpServer = generateTOTP((serverTime / 30) * 30000, totpSecret!!)
-
-        val url = "https://open.spotify.com/api/token?reason=init&productType=mobile-web-player&totp=$totpLocal&totpVer=$totpVersion&totpServer=$totpServer"
+        val url = "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
 
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", userAgent)
-            .header("Origin", "https://open.spotify.com/")
+            .header("Origin", "https://open.spotify.com")
             .header("Referer", "https://open.spotify.com/")
+            .header("App-Platform", "WebPlayer")
             .header("Cookie", "sp_dc=$spDcCookie")
             .build()
 
@@ -91,100 +80,6 @@ class SpotifyCanvasProvider @Inject constructor() {
             Log.e("SpotifyCanvas", "Failed to fetch access token", e)
             null
         }
-    }
-
-    private suspend fun fetchServerTime(spDcCookie: String): Long {
-        val request = Request.Builder()
-            .url("https://open.spotify.com/api/server-time")
-            .header("User-Agent", userAgent)
-            .header("Origin", "https://open.spotify.com/")
-            .header("Referer", "https://open.spotify.com/")
-            .header("Cookie", "sp_dc=$spDcCookie")
-            .build()
-
-        return try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return System.currentTimeMillis()
-                val body = response.body?.string() ?: return System.currentTimeMillis()
-                val json = JSONObject(body)
-                val timeSec = json.optLong("serverTime", 0L)
-                if (timeSec > 0) timeSec * 1000 else System.currentTimeMillis()
-            }
-        } catch (e: Exception) {
-            System.currentTimeMillis()
-        }
-    }
-
-    private suspend fun awaitTotpSecrets() {
-        val now = System.currentTimeMillis()
-        if (totpSecret != null && now - lastSecretFetchTime < 3600_000) return
-
-        val secretsUrl = "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/refs/heads/main/secrets/secretDict.json"
-        val request = Request.Builder().url(secretsUrl).build()
-
-        try {
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val body = response.body?.string() ?: return@use
-                    val json = JSONObject(body)
-                    var maxVersion = 0
-                    for (key in json.keys()) {
-                        val ver = key.toIntOrNull() ?: 0
-                        if (ver > maxVersion) maxVersion = ver
-                    }
-                    if (maxVersion > 0) {
-                        totpVersion = maxVersion.toString()
-                        val arr = json.getJSONArray(totpVersion)
-                        totpSecret = decodeTotpSecret(arr)
-                        lastSecretFetchTime = now
-                        return
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("SpotifyCanvas", "Failed to fetch TOTP secrets", e)
-        }
-
-        // Fallback
-        if (totpSecret == null) {
-            val fallbackData = intArrayOf(99, 111, 47, 88, 49, 56, 118, 65, 52, 67, 50, 104, 117, 101, 55, 94, 95, 75, 94, 49, 69, 36, 85, 64, 74, 60)
-            totpSecret = decodeTotpSecret(fallbackData)
-            totpVersion = "19"
-        }
-    }
-
-    private fun decodeTotpSecret(arr: JSONArray): ByteArray {
-        val ints = IntArray(arr.length())
-        for (i in 0 until arr.length()) {
-            ints[i] = arr.getInt(i)
-        }
-        return decodeTotpSecret(ints)
-    }
-
-    private fun decodeTotpSecret(arr: IntArray): ByteArray {
-        val sb = StringBuilder()
-        for (i in arr.indices) {
-            val v = arr[i] xor ((i % 33) + 9)
-            sb.append(v.toChar())
-        }
-        return sb.toString().toByteArray(Charsets.UTF_8)
-    }
-
-    private fun generateTOTP(timeMs: Long, secret: ByteArray): String {
-        val timeStep = timeMs / 30000
-        val data = ByteBuffer.allocate(8).putLong(timeStep).array()
-        val mac = Mac.getInstance("HmacSHA1")
-        mac.init(SecretKeySpec(secret, "HmacSHA1"))
-        val hash = mac.doFinal(data)
-        
-        val offset = hash[hash.size - 1].toInt() and 0xF
-        val binary = ((hash[offset].toInt() and 0x7F) shl 24) or
-                     ((hash[offset + 1].toInt() and 0xFF) shl 16) or
-                     ((hash[offset + 2].toInt() and 0xFF) shl 8) or
-                     (hash[offset + 3].toInt() and 0xFF)
-                     
-        val otp = binary % 1000000
-        return String.format("%06d", otp)
     }
 
     private suspend fun resolveTrackId(title: String, artist: String, token: String): String? {
