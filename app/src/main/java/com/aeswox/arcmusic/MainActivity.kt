@@ -298,6 +298,7 @@ class MainActivity : ComponentActivity() {
                                     isVisible = isMiniPlayerVisible && currentlyPlaying != null && currentRoute != "onboarding",
                                     onExpand = { viewModel.setPlayerExpanded(true) },
                                     onCollapse = { viewModel.setPlayerExpanded(false) },
+                                    onSwipeUp = { navController.navigate("queue") },
                                     onMiniPlayerDismiss = { 
                                         viewModel.setMiniPlayerVisible(false)
                                         viewModel.pause()

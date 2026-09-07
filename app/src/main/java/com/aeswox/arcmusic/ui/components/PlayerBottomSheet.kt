@@ -38,6 +38,7 @@ fun PlayerBottomSheet(
     isVisible: Boolean = true,
     onExpand: () -> Unit,
     onCollapse: () -> Unit,
+    onSwipeUp: (() -> Unit)? = null,
     onMiniPlayerDismiss: () -> Unit,
     miniPlayerHeight: Dp = 80.dp,
     bottomOffset: Dp = 88.dp, // Default bottom navigation height approx
@@ -118,7 +119,7 @@ fun PlayerBottomSheet(
             orientation = Orientation.Vertical,
             state = rememberDraggableState { delta ->
                 dragOffset = (dragOffset + delta).coerceIn(
-                    minimumValue = expandedOffset - targetOffset,
+                    minimumValue = if (isExpanded) -with(density) { 150.dp.toPx() } else expandedOffset - targetOffset,
                     maximumValue = screenHeightPx - targetOffset
                 )
             },
@@ -127,6 +128,8 @@ fun PlayerBottomSheet(
                 if (isExpanded) {
                     if (currentOffset > collapsedOffset * 0.3f || velocity > 1000f) {
                         onCollapse()
+                    } else if (currentOffset < -with(density) { 50.dp.toPx() } || velocity < -1000f) {
+                        onSwipeUp?.invoke()
                     }
                 } else {
                     if (currentOffset > collapsedOffset + with(density) { 40.dp.toPx() } || velocity > 1000f) {

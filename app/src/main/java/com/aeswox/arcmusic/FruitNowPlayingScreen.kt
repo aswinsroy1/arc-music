@@ -368,41 +368,6 @@ fun FruitNowPlayingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .pointerInput(Unit) {
-
-                var totalDrag = 0f
-
-                detectVerticalDragGestures(
-
-                    onDragStart = { totalDrag = 0f },
-
-                    onDragEnd = {
-
-                        if (totalDrag < -100) {
-
-                            onNavigateToQueue()
-
-                        } else if (totalDrag > 100) {
-
-                            // In lyrics mode swipe-down dismisses lyrics; otherwise exits the screen
-                            if (showLyrics) showLyrics = false else onNavigateBack()
-
-                        }
-
-                    },
-
-                    onVerticalDrag = { change, dragAmount ->
-
-                        change.consume()
-
-                        totalDrag += dragAmount
-
-                    }
-
-                )
-
-            }
-
     ) {
 
         
