@@ -1220,7 +1220,7 @@ fun MusicHomeScreen(
     val permissionsState = rememberMultiplePermissionsState(permissions = permissionsList)
     
     androidx.activity.compose.BackHandler(
-        enabled = showCreatePlaylistFlow || isLibrarySelectionMode || selectedGenre != null || currentTab != 0
+        enabled = !isPlayerExpanded && (showCreatePlaylistFlow || isLibrarySelectionMode || selectedGenre != null || currentTab != 0)
     ) {
         when {
             showCreatePlaylistFlow -> onShowCreatePlaylistFlowChange(false)

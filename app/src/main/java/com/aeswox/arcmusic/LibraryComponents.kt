@@ -70,7 +70,8 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
     val selectedItems = remember { mutableStateListOf<String>() }
     val isSelectionMode = selectedItems.isNotEmpty()
     
-    androidx.activity.compose.BackHandler(enabled = isSelectionMode) {
+    val isPlayerExpanded by viewModel.isPlayerExpanded.collectAsState()
+    androidx.activity.compose.BackHandler(enabled = isSelectionMode && !isPlayerExpanded) {
         selectedItems.clear()
     }
     
@@ -888,17 +889,23 @@ fun LibraryMainSection(
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
+                        val allItems = when (tabName) {
+                            "Playlists" -> sortedPlaylists.map { "playlist_${it.id}" }
+                            "Albums" -> sortedAlbums.map { "album_${it.id}" }
+                            "Artists" -> sortedArtists.map { "artist_${it.id}" }
+                            "Tracks" -> sortedTracks.map { "track_${it.id}" }
+                            else -> emptyList()
+                        }
+                        val allSelected = allItems.isNotEmpty() && allItems.all { selectedItems.contains(it) }
+
                         TextButton(onClick = { 
-                            val allItems = when (tabName) {
-                                "Playlists" -> sortedPlaylists.map { "playlist_${it.id}" }
-                                "Albums" -> sortedAlbums.map { "album_${it.id}" }
-                                "Artists" -> sortedArtists.map { "artist_${it.id}" }
-                                "Tracks" -> sortedTracks.map { "track_${it.id}" }
-                                else -> emptyList()
+                            if (allSelected) {
+                                onClearSelection()
+                            } else {
+                                onSelectAll(allItems)
                             }
-                            onSelectAll(allItems)
                         }) {
-                            Text("Select all", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                            Text(if (allSelected) "Select none" else "Select all", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 } else {
