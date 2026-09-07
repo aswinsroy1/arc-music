@@ -1,4 +1,4 @@
-﻿@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.*
@@ -345,6 +345,7 @@ fun FruitNowPlayingScreen(
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
 
     val canvasUrl by viewModel.canvasUrl.collectAsState()
+    val canvasSource by viewModel.canvasSource.collectAsState()
     val canvasEnabled by viewModel.canvasEnabled.collectAsState()
     val canvasLoading by viewModel.canvasLoading.collectAsState()
     val canvasNotFound by viewModel.canvasNotFound.collectAsState()
@@ -581,12 +582,31 @@ fun FruitNowPlayingScreen(
                             )
                         } else if (canvasNotFound) {
                             Icon(
-                                imageVector = Icons.Outlined.VideocamOff,
-                                contentDescription = "Canvas Unavailable",
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.White
+                                imageVector = Icons.Outlined.MusicOff,
+                                contentDescription = "Canvas Not Found",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
+                    }
+                }
+
+                // Temporary testing badge for canvas source
+                if (canvasEnabled && activeCanvasUrl != null && canvasSource != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (canvasSource == "spotify") "Spotify Canvas" else "Apple Canvas",
+                            color = if (canvasSource == "spotify") Color(0xFF1DB954) else Color(0xFFFA243C),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

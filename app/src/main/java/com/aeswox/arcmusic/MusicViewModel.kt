@@ -1816,6 +1816,9 @@ class MusicViewModel @Inject constructor(
     private val _canvasUrl = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val canvasUrl: StateFlow<String?> = _canvasUrl
 
+    private val _canvasSource = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val canvasSource: StateFlow<String?> = _canvasSource
+
     private val _canvasLoading = kotlinx.coroutines.flow.MutableStateFlow(false)
     val canvasLoading: StateFlow<Boolean> = _canvasLoading
 
@@ -1829,6 +1832,7 @@ class MusicViewModel @Inject constructor(
         android.util.Log.d("CanvasFetch", "fetchCanvasForTrack called for: $title - $artist")
         canvasFetchJob?.cancel()
         _canvasUrl.value = null
+        _canvasSource.value = null
         _canvasNotFound.value = false
         if (!canvasEnabled.value) return
         canvasFetchJob = viewModelScope.launch {
@@ -1841,6 +1845,7 @@ class MusicViewModel @Inject constructor(
                 val url = result?.first
                 android.util.Log.d("CanvasFetch", "Fetched url: $url from ${result?.second}")
                 _canvasUrl.value = url
+                _canvasSource.value = result?.second
             } catch (e: Exception) {
                 android.util.Log.e("CanvasFetch", "Error fetching url", e)
             } finally {
@@ -1858,7 +1863,7 @@ class MusicViewModel @Inject constructor(
 
     fun setCanvasEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setCanvasEnabled(enabled) }
-        if (!enabled) { _canvasUrl.value = null; canvasFetchJob?.cancel() }
+        if (!enabled) { _canvasUrl.value = null; _canvasSource.value = null; canvasFetchJob?.cancel() }
     }
 
     fun setCanvasPriority(priority: String) {
