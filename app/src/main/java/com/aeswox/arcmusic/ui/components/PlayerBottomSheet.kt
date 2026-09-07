@@ -128,7 +128,7 @@ fun PlayerBottomSheet(
                 if (isExpanded) {
                     if (currentOffset > collapsedOffset * 0.3f || velocity > 1000f) {
                         onCollapse()
-                    } else if (currentOffset < -with(density) { 50.dp.toPx() } || velocity < -1000f) {
+                    } else if (currentOffset < -with(density) { 50.dp.toPx() } || (currentOffset <= 0f && velocity < -1000f)) {
                         onSwipeUp?.invoke()
                     }
                 } else {
