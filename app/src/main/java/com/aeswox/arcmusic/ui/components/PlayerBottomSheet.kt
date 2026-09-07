@@ -2,6 +2,7 @@ package com.aeswox.arcmusic.ui.components
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -57,9 +58,10 @@ fun PlayerBottomSheet(
 
         val targetOffset = if (isExpanded) expandedOffset else collapsedOffset
 
+        val isDragging = dragOffset != 0f
         val animatedOffset by animateFloatAsState(
             targetValue = targetOffset + dragOffset,
-            animationSpec = spring(
+            animationSpec = if (isDragging) snap() else spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessLow
             ),
