@@ -26,7 +26,8 @@ import javax.inject.Inject
 class CanvasFetchService : Service() {
 
     @Inject lateinit var musicRepository: MusicRepository
-    @Inject lateinit var canvasProvider: AppleMusicCanvasProvider
+    @Inject lateinit var settingsRepository: com.aeswox.arcmusic.data.SettingsRepository
+    @Inject lateinit var canvasCoordinator: com.aeswox.arcmusic.network.CanvasCoordinator
     @Inject lateinit var canvasCacheManager: CanvasCacheManager
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -55,6 +56,9 @@ class CanvasFetchService : Service() {
 
     @OptIn(UnstableApi::class)
     private suspend fun processCanvases() {
+        val priority = settingsRepository.canvasPriority.first()
+        val spDcCookie = settingsRepository.spotifySpDcCookie.first()
+        
         val tracks = musicRepository.getAllTracks().first()
         val total = tracks.size
         var current = 0
@@ -66,7 +70,8 @@ class CanvasFetchService : Service() {
             if (track.canvasUrl != null) continue
 
             try {
-                val url = canvasProvider.getCanvasUrl(track.title, track.artist, track.album)
+                val result = canvasCoordinator.getCanvasUrl(track.title, track.artist, track.album, priority, spDcCookie)
+                val url = result?.first
                 if (url != null) {
                     musicRepository.updateCanvasUrl(track.id, url, System.currentTimeMillis())
                     

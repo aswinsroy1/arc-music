@@ -200,7 +200,7 @@ class MusicViewModel @Inject constructor(
     private val odesliService: com.aeswox.arcmusic.data.network.OdesliService,
     private val musicBrainzService: com.aeswox.arcmusic.data.network.MusicBrainzService,
     private val mediaScannerManager: com.aeswox.arcmusic.db.MediaScannerManager,
-    private val canvasProvider: com.aeswox.arcmusic.network.AppleMusicCanvasProvider,
+    private val canvasCoordinator: com.aeswox.arcmusic.network.CanvasCoordinator,
     val canvasCacheManager: com.aeswox.arcmusic.network.CanvasCacheManager
 ) : ViewModel() {
 
@@ -1801,6 +1801,14 @@ class MusicViewModel @Inject constructor(
         viewModelScope, SharingStarted.WhileSubscribed(5000), true
     )
 
+    val canvasPriority: StateFlow<String> = settingsRepository.canvasPriority.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), "apple"
+    )
+
+    val spotifySpDcCookie: StateFlow<String?> = settingsRepository.spotifySpDcCookie.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), null
+    )
+
     val canvasCacheLimitMb: StateFlow<Int> = settingsRepository.canvasCacheLimitMb.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 250
     )
@@ -1827,8 +1835,11 @@ class MusicViewModel @Inject constructor(
             android.util.Log.d("CanvasFetch", "Job started, fetching url...")
             _canvasLoading.value = true
             try {
-                val url = canvasProvider.getCanvasUrl(title, artist, album)
-                android.util.Log.d("CanvasFetch", "Fetched url: $url")
+                val priority = canvasPriority.value
+                val spDcCookie = spotifySpDcCookie.value
+                val result = canvasCoordinator.getCanvasUrl(title, artist, album, priority, spDcCookie)
+                val url = result?.first
+                android.util.Log.d("CanvasFetch", "Fetched url: $url from ${result?.second}")
                 _canvasUrl.value = url
             } catch (e: Exception) {
                 android.util.Log.e("CanvasFetch", "Error fetching url", e)
@@ -1848,6 +1859,14 @@ class MusicViewModel @Inject constructor(
     fun setCanvasEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setCanvasEnabled(enabled) }
         if (!enabled) { _canvasUrl.value = null; canvasFetchJob?.cancel() }
+    }
+
+    fun setCanvasPriority(priority: String) {
+        viewModelScope.launch { settingsRepository.setCanvasPriority(priority) }
+    }
+
+    fun setSpotifySpDcCookie(cookie: String) {
+        viewModelScope.launch { settingsRepository.setSpotifySpDcCookie(cookie) }
     }
 
     fun setCanvasCacheLimitMb(limit: Int) {
