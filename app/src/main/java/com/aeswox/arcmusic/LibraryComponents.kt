@@ -157,7 +157,8 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
             },
             onClearSelection = { selectedItems.clear() },
             onSelectAll = { items -> 
-                // TODO implement select all properly
+                selectedItems.clear()
+                selectedItems.addAll(items)
             },
             deleteTrigger = deleteTrigger,
             renameTrigger = renameTrigger,
@@ -887,7 +888,16 @@ fun LibraryMainSection(
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = { onSelectAll(emptyList()) }) {
+                        TextButton(onClick = { 
+                            val allItems = when (tabName) {
+                                "Playlists" -> sortedPlaylists.map { "playlist_${it.id}" }
+                                "Albums" -> sortedAlbums.map { "album_${it.id}" }
+                                "Artists" -> sortedArtists.map { "artist_${it.id}" }
+                                "Tracks" -> sortedTracks.map { "track_${it.id}" }
+                                else -> emptyList()
+                            }
+                            onSelectAll(allItems)
+                        }) {
                             Text("Select all", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
