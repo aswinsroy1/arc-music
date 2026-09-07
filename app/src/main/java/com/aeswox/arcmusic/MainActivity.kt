@@ -298,7 +298,7 @@ class MainActivity : ComponentActivity() {
                                     isVisible = isMiniPlayerVisible && currentlyPlaying != null && currentRoute != "onboarding",
                                     onExpand = { viewModel.setPlayerExpanded(true) },
                                     onCollapse = { viewModel.setPlayerExpanded(false) },
-                                    onSwipeUp = { navController.navigate("queue") },
+                                    onSwipeUp = { viewModel.setPlayerViewState(PlayerViewState.QUEUE) },
                                     onMiniPlayerDismiss = { 
                                         viewModel.setMiniPlayerVisible(false)
                                         viewModel.pause()
@@ -329,10 +329,12 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     nowPlayingContent = {
-                                        androidx.activity.compose.BackHandler(
-                                            enabled = isPlayerExpanded
-                                        ) {
-                                            viewModel.setPlayerExpanded(false)
+                                        androidx.compose.runtime.key(isPlayerExpanded) {
+                                            androidx.activity.compose.BackHandler(
+                                                enabled = isPlayerExpanded
+                                            ) {
+                                                viewModel.setPlayerExpanded(false)
+                                            }
                                         }
                                         when (nowPlayingStyle) {
                                             com.aeswox.arcmusic.data.model.NowPlayingStyle.ARC -> {
@@ -733,22 +735,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         // Removed now_playing composable
-                        composable(
-                            route = "queue",
-                            enterTransition = { NavTransitions.SheetEnter },
-                            exitTransition = { NavTransitions.SheetExit },
-                            popEnterTransition = { NavTransitions.SheetPopEnter },
-                            popExitTransition = { NavTransitions.SheetPopExit }
-                        ) {
-                            QueueScreen(
-                                onNavigateBack = { navController.popBackStack() },
-                                onNavigateToLibrary = { 
-                                    navController.navigate("home") { 
-                                        popUpTo("home") { inclusive = false } 
-                                    } 
-                                }
-                            )
-                        }
+
                         composable(
                             route = "settings",
                             enterTransition = { NavTransitions.SheetEnter },

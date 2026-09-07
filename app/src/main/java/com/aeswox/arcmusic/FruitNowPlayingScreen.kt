@@ -278,7 +278,7 @@ fun FruitNowPlayingScreen(
 
     var showDeviceSheet by remember { mutableStateOf(false) }
 
-    var showLyrics by remember { mutableStateOf(false) }
+    val playerViewState by viewModel.playerViewState.collectAsState()
 
     
 
@@ -324,8 +324,10 @@ fun FruitNowPlayingScreen(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    androidx.activity.compose.BackHandler(enabled = showLyrics) {
-        showLyrics = false
+    androidx.compose.runtime.key(playerViewState) {
+        androidx.activity.compose.BackHandler(enabled = playerViewState == PlayerViewState.LYRICS || playerViewState == PlayerViewState.QUEUE) {
+            viewModel.setPlayerViewState(PlayerViewState.ARTWORK)
+        }
     }
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
@@ -334,7 +336,7 @@ fun FruitNowPlayingScreen(
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.88f else 0.0f,
+        targetValue = if (playerViewState == PlayerViewState.LYRICS) 0.88f else 0.0f,
         animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
     )
@@ -478,7 +480,7 @@ fun FruitNowPlayingScreen(
                     .fillMaxWidth()
                     .aspectRatio(0.9f)
                     .clip(RoundedCornerShape(32.dp))
-                    .clickable { showLyrics = true }
+                    .clickable { viewModel.setPlayerViewState(PlayerViewState.LYRICS) }
                     .graphicsLayer {
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
@@ -612,7 +614,7 @@ fun FruitNowPlayingScreen(
             
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                 AnimatedContent(
-                    targetState = showLyrics,
+                    targetState = playerViewState,
                     transitionSpec = {
                         (fadeIn() togetherWith fadeOut()).using(
                             SizeTransform(
@@ -622,21 +624,31 @@ fun FruitNowPlayingScreen(
                         )
                     },
                     label = "LyricsSwap"
-                ) { isLyrics ->
-                    if (isLyrics) {
-                        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
-                            FruitLyricsContent(
-                                lyricsFraction = 1f,
+                ) { state ->
+                    when (state) {
+                        PlayerViewState.LYRICS -> {
+                            Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
+                                FruitLyricsContent(
+                                    lyricsFraction = 1f,
+                                    textColor = textColor,
+                                    isDarkTheme = isDarkTheme,
+                                    accentColor = accentColor,
+                                    isWhiteArtwork = isWhiteArtwork,
+                                    imageUrl = imageUrl,
+                                    onDismiss = { viewModel.setPlayerViewState(PlayerViewState.ARTWORK) }
+                                )
+                            }
+                        }
+                        PlayerViewState.QUEUE -> {
+                            ArcQueueContent(
                                 textColor = textColor,
                                 isDarkTheme = isDarkTheme,
                                 accentColor = accentColor,
-                                isWhiteArtwork = isWhiteArtwork,
-                                imageUrl = imageUrl,
-                                onDismiss = { showLyrics = false }
+                                onDismiss = { viewModel.setPlayerViewState(PlayerViewState.ARTWORK) }
                             )
                         }
-                    } else {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                        PlayerViewState.ARTWORK -> {
+                            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
 
 
                     // Title and Actions
@@ -986,10 +998,10 @@ fun FruitNowPlayingScreen(
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
-
-                        }
-                    }
-                }
+                        } // Close Column
+                        } // Close PlayerViewState.ARTWORK
+                    } // Close when
+                } // Close AnimatedContent lambda
             }
         }
 

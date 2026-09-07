@@ -232,6 +232,13 @@ class MusicViewModel @Inject constructor(
     val genreTopAlbums: StateFlow<List<Album>>
     val genreTopArtists: StateFlow<List<Artist>>
     
+    private val _playerViewState = MutableStateFlow(PlayerViewState.ARTWORK)
+    val playerViewState: StateFlow<PlayerViewState> = _playerViewState.asStateFlow()
+
+    fun setPlayerViewState(state: PlayerViewState) {
+        _playerViewState.value = state
+    }
+    
     private val _healthState = MutableStateFlow(CollectionHealthState())
     val healthState: StateFlow<CollectionHealthState> = _healthState.asStateFlow()
     
@@ -655,6 +662,16 @@ class MusicViewModel @Inject constructor(
             if (tracks.isNotEmpty()) {
                 setCurrentlyPlaying(tracks.first(), tracks)
             }
+        }
+    }
+
+    fun playTrack(track: Track) {
+        setCurrentlyPlaying(track)
+    }
+
+    fun playTracks(tracks: List<Track>, startIndex: Int = 0) {
+        if (tracks.isNotEmpty()) {
+            setCurrentlyPlaying(tracks[startIndex], tracks)
         }
     }
 

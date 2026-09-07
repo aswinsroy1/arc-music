@@ -309,7 +309,7 @@ fun ArcNowPlayingScreen(
 
     var showDeviceSheet by remember { mutableStateOf(false) }
 
-    var showLyrics by remember { mutableStateOf(false) }
+    val playerViewState by viewModel.playerViewState.collectAsState()
 
     
 
@@ -355,8 +355,10 @@ fun ArcNowPlayingScreen(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    androidx.activity.compose.BackHandler(enabled = showLyrics) {
-        showLyrics = false
+    androidx.compose.runtime.key(playerViewState) {
+        androidx.activity.compose.BackHandler(enabled = playerViewState == PlayerViewState.LYRICS || playerViewState == PlayerViewState.QUEUE) {
+            viewModel.setPlayerViewState(PlayerViewState.ARTWORK)
+        }
     }
 
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
@@ -365,7 +367,7 @@ fun ArcNowPlayingScreen(
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.88f else 0.0f,
+        targetValue = if (playerViewState == PlayerViewState.LYRICS) 0.88f else 0.0f,
         animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
     )
@@ -509,7 +511,7 @@ fun ArcNowPlayingScreen(
                     .fillMaxWidth()
                     .aspectRatio(0.9f)
                     .clip(RoundedCornerShape(32.dp))
-                    .clickable { showLyrics = true }
+                    .clickable { viewModel.setPlayerViewState(PlayerViewState.LYRICS) }
                     .graphicsLayer {
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
@@ -636,7 +638,7 @@ fun ArcNowPlayingScreen(
             
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 AnimatedContent(
-                    targetState = showLyrics,
+                    targetState = playerViewState,
                     transitionSpec = {
                         (fadeIn() togetherWith fadeOut()).using(
                             SizeTransform(
@@ -647,18 +649,28 @@ fun ArcNowPlayingScreen(
                     },
                     label = "LyricsSwap",
                     modifier = Modifier.fillMaxSize()
-                ) { isLyrics ->
-                    if (isLyrics) {
-                        ArcLyricsContent(
-                            lyricsFraction = 1f,
-                            textColor = textColor,
-                            isDarkTheme = isDarkTheme,
-                            accentColor = accentColor,
-                            isWhiteArtwork = isWhiteArtwork,
-                            imageUrl = imageUrl,
-                            onDismiss = { showLyrics = false }
-                        )
-                    } else {
+                ) { state ->
+                    when (state) {
+                        PlayerViewState.LYRICS -> {
+                            ArcLyricsContent(
+                                lyricsFraction = 1f,
+                                textColor = textColor,
+                                isDarkTheme = isDarkTheme,
+                                accentColor = accentColor,
+                                isWhiteArtwork = isWhiteArtwork,
+                                imageUrl = imageUrl,
+                                onDismiss = { viewModel.setPlayerViewState(PlayerViewState.ARTWORK) }
+                            )
+                        }
+                        PlayerViewState.QUEUE -> {
+                            ArcQueueContent(
+                                textColor = textColor,
+                                isDarkTheme = isDarkTheme,
+                                accentColor = accentColor,
+                                onDismiss = { viewModel.setPlayerViewState(PlayerViewState.ARTWORK) }
+                            )
+                        }
+                        PlayerViewState.ARTWORK -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.BottomCenter
@@ -887,9 +899,10 @@ fun ArcNowPlayingScreen(
                                     }
                                 }
                             }
-                        }
-            }
-        }
+                        } // Close outer Column
+                        } // Close Box inside ARTWORK
+                        } // Close PlayerViewState.ARTWORK
+                    } // Close when
 
         if (showSleepTimerDialog) {
 

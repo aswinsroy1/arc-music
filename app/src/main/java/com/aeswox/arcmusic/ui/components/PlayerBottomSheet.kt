@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,22 +53,29 @@ fun PlayerBottomSheet(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val screenHeightPx = constraints.maxHeight.toFloat()
 
-        var dragOffset by remember { mutableFloatStateOf(0f) }
-
         val collapsedOffset = screenHeightPx - with(density) { (bottomOffset + miniPlayerHeight).toPx() }
         val expandedOffset = 0f
 
+        val sheetOffsetAnimatable = remember { androidx.compose.animation.core.Animatable(collapsedOffset) }
+        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
         val targetOffset = if (isExpanded) expandedOffset else collapsedOffset
 
-        val isDragging = dragOffset != 0f
-        val animatedOffset by animateFloatAsState(
-            targetValue = targetOffset + dragOffset,
-            animationSpec = if (isDragging) snap() else spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "sheetOffset"
-        )
+        androidx.compose.runtime.LaunchedEffect(isExpanded, screenHeightPx, bottomOffset) {
+            sheetOffsetAnimatable.animateTo(
+                targetValue = targetOffset,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+        }
+
+        val animatedOffset = sheetOffsetAnimatable.value
+        val isDragging = false
+
+        // Track max downward displacement during this drag gesture
+        var maxDownwardDrag by remember { mutableFloatStateOf(0f) }
 
         // 0.0f = fully collapsed, 1.0f = fully expanded
         val expansionFraction = ((collapsedOffset - animatedOffset) / collapsedOffset).coerceIn(0f, 1f)
@@ -118,27 +126,43 @@ fun PlayerBottomSheet(
         val dragModifier = Modifier.draggable(
             orientation = Orientation.Vertical,
             state = rememberDraggableState { delta ->
-                dragOffset = (dragOffset + delta).coerceIn(
-                    minimumValue = if (isExpanded) -with(density) { 150.dp.toPx() } else expandedOffset - targetOffset,
-                    maximumValue = screenHeightPx - targetOffset
-                )
-            },
-            onDragStopped = { velocity ->
-                val currentOffset = targetOffset + dragOffset
-                if (isExpanded) {
-                    if (currentOffset > collapsedOffset * 0.3f || velocity > 1000f) {
-                        onCollapse()
-                    } else if (currentOffset < -with(density) { 50.dp.toPx() } || (currentOffset <= 0f && velocity < -1000f)) {
-                        onSwipeUp?.invoke()
-                    }
-                } else {
-                    if (currentOffset > collapsedOffset + with(density) { 40.dp.toPx() } || velocity > 1000f) {
-                        onMiniPlayerDismiss()
-                    } else if (currentOffset < collapsedOffset * 0.7f || velocity < -1000f) {
-                        onExpand()
+                coroutineScope.launch {
+                    val newOffset = (sheetOffsetAnimatable.value + delta).coerceIn(
+                        minimumValue = expandedOffset - with(density) { 150.dp.toPx() },
+                        maximumValue = screenHeightPx
+                    )
+                    sheetOffsetAnimatable.snapTo(newOffset)
+                    if (newOffset > targetOffset) {
+                        maxDownwardDrag = maxOf(maxDownwardDrag, newOffset - targetOffset)
                     }
                 }
-                dragOffset = 0f
+            },
+            onDragStarted = {
+                maxDownwardDrag = 0f
+            },
+            onDragStopped = { velocity ->
+                coroutineScope.launch {
+                    val currentOffset = sheetOffsetAnimatable.value
+                    if (isExpanded) {
+                        if (currentOffset > collapsedOffset * 0.3f || velocity > 1000f) {
+                            onCollapse()
+                        } else if (maxDownwardDrag < with(density) { 10.dp.toPx() } && (currentOffset < expandedOffset - with(density) { 50.dp.toPx() } || (currentOffset <= expandedOffset && velocity < -1000f))) {
+                            // Only trigger swipe up if we haven't dragged downwards significantly
+                            onSwipeUp?.invoke()
+                            sheetOffsetAnimatable.animateTo(expandedOffset, spring())
+                        } else {
+                            sheetOffsetAnimatable.animateTo(expandedOffset, spring())
+                        }
+                    } else {
+                        if (currentOffset > collapsedOffset + with(density) { 40.dp.toPx() } || velocity > 1000f) {
+                            onMiniPlayerDismiss()
+                        } else if (currentOffset < collapsedOffset * 0.7f || velocity < -1000f) {
+                            onExpand()
+                        } else {
+                            sheetOffsetAnimatable.animateTo(collapsedOffset, spring())
+                        }
+                    }
+                }
             }
         )
 
@@ -149,7 +173,7 @@ fun PlayerBottomSheet(
 
         // Keep the sheet in composition while partially or fully visible, including
         // during the exit animation (visibilityProgress > 0.01f catches the tail of it).
-        if (isVisible || isExpanded || dragOffset != 0f || visibilityProgress > 0.01f) {
+        if (isVisible || isExpanded || sheetOffsetAnimatable.value != targetOffset || visibilityProgress > 0.01f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -184,7 +208,7 @@ fun PlayerBottomSheet(
                             .zIndex(if (expansionFraction < 0.5f) 1f else 0f)
                             .graphicsLayer { alpha = (1f - expansionFraction * 2.5f).coerceIn(0f, 1f) }
                             .clip(sheetShape)
-                            .clickable(enabled = expansionFraction < 0.15f && dragOffset == 0f) {
+                            .clickable(enabled = expansionFraction < 0.15f && sheetOffsetAnimatable.value == targetOffset) {
                                 onExpand()
                             }
                     ) {
