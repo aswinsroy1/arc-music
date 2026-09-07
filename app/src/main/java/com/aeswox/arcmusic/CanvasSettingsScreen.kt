@@ -27,10 +27,6 @@ import dev.chrisbanes.haze.hazeChild
 fun CanvasSettingsScreen(
     canvasEnabled: Boolean,
     onCanvasEnabledChange: (Boolean) -> Unit,
-    canvasPriority: String,
-    onCanvasPriorityChange: (String) -> Unit,
-    spotifySpDcCookie: String,
-    onSpotifySpDcCookieChange: (String) -> Unit,
     cacheLimitMb: Int,
     onCacheLimitMbChange: (Int) -> Unit,
     currentCacheSizeMb: Long,
@@ -59,73 +55,6 @@ fun CanvasSettingsScreen(
                             )
                         },
                         showArrow = false
-                    )
-                    
-                    var showPriorityMenu by remember { mutableStateOf(false) }
-                    SettingsItem(
-                        icon = Icons.Outlined.Storage,
-                        text = "Provider Priority",
-                        trailingText = if (canvasPriority == "spotify") "Spotify" else "Apple Music",
-                        onClick = { showPriorityMenu = true },
-                        showArrow = false
-                    )
-                    DropdownMenu(
-                        expanded = showPriorityMenu,
-                        onDismissRequest = { showPriorityMenu = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Apple Music First") },
-                            onClick = {
-                                onCanvasPriorityChange("apple")
-                                showPriorityMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Spotify First") },
-                            onClick = {
-                                onCanvasPriorityChange("spotify")
-                                showPriorityMenu = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            item {
-                SettingsGroup(title = "SPOTIFY AUTHENTICATION") {
-                    var showCookieDialog by remember { mutableStateOf(false) }
-                    
-                    if (showCookieDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showCookieDialog = false },
-                            title = { Text("Spotify SP_DC Cookie") },
-                            text = {
-                                Column {
-                                    Text("Spotify Canvas requires your personal session cookie to authenticate. Open Spotify Web Player in a desktop browser, log in, open Developer Tools (F12) -> Application -> Cookies, and copy the value for 'sp_dc'.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    OutlinedTextField(
-                                        value = spotifySpDcCookie,
-                                        onValueChange = { onSpotifySpDcCookieChange(it) },
-                                        label = { Text("Cookie Value") },
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showCookieDialog = false }) {
-                                    Text("Save")
-                                }
-                            }
-                        )
-                    }
-
-                    SettingsItem(
-                        icon = Icons.Outlined.Storage,
-                        text = "SP_DC Cookie",
-                        trailingText = if (spotifySpDcCookie.isNotBlank()) "Configured" else "Not set",
-                        onClick = { showCookieDialog = true },
-                        showArrow = true
                     )
                 }
             }

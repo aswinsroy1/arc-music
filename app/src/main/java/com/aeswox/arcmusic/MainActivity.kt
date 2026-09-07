@@ -1020,8 +1020,6 @@ class MainActivity : ComponentActivity() {
                             popExitTransition = { NavTransitions.DetailPopExit }
                         ) {
                             val canvasEnabled by viewModel.canvasEnabled.collectAsState()
-                            val canvasPriority by viewModel.canvasPriority.collectAsState()
-                            val spotifySpDcCookie by viewModel.spotifySpDcCookie.collectAsState()
                             val canvasCacheLimitMb by viewModel.canvasCacheLimitMb.collectAsState()
                             
                             // We trigger a re-check of cache size when the screen opens
@@ -1035,10 +1033,6 @@ class MainActivity : ComponentActivity() {
                                 CanvasSettingsScreen(
                                     canvasEnabled = canvasEnabled,
                                     onCanvasEnabledChange = { viewModel.setCanvasEnabled(it) },
-                                    canvasPriority = canvasPriority,
-                                    onCanvasPriorityChange = { viewModel.setCanvasPriority(it) },
-                                    spotifySpDcCookie = spotifySpDcCookie ?: "",
-                                    onSpotifySpDcCookieChange = { viewModel.setSpotifySpDcCookie(it) },
                                     cacheLimitMb = canvasCacheLimitMb,
                                     onCacheLimitMbChange = { viewModel.setCanvasCacheLimitMb(it) },
                                     currentCacheSizeMb = currentCacheSizeMb,

@@ -47,8 +47,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     private val CANVAS_ENABLED_KEY = booleanPreferencesKey("canvas_enabled")
     private val CANVAS_CACHE_LIMIT_MB_KEY = intPreferencesKey("canvas_cache_limit_mb")
-    private val CANVAS_PRIORITY_KEY = stringPreferencesKey("canvas_priority")
-    private val SPOTIFY_SP_DC_COOKIE_KEY = stringPreferencesKey("spotify_sp_dc_cookie")
     private val HERO_CARD_PLAYING_STATE_ENABLED_KEY = booleanPreferencesKey("hero_card_playing_state_enabled")
     private val HERO_CARD_INCLUDE_ARTISTS_ALBUMS_KEY = booleanPreferencesKey("hero_card_include_artists_albums")
 
@@ -98,14 +96,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     val canvasEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[CANVAS_ENABLED_KEY] ?: true
-    }
-
-    val canvasPriority: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[CANVAS_PRIORITY_KEY] ?: "apple"
-    }
-
-    val spotifySpDcCookie: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[SPOTIFY_SP_DC_COOKIE_KEY]
     }
 
     val canvasCacheLimitMb: Flow<Int> = context.dataStore.data.map { preferences ->
@@ -292,22 +282,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setCanvasEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[CANVAS_ENABLED_KEY] = enabled
-        }
-    }
-
-    suspend fun setCanvasPriority(priority: String) {
-        context.dataStore.edit { preferences ->
-            preferences[CANVAS_PRIORITY_KEY] = priority
-        }
-    }
-
-    suspend fun setSpotifySpDcCookie(cookie: String) {
-        context.dataStore.edit { preferences ->
-            if (cookie.isBlank()) {
-                preferences.remove(SPOTIFY_SP_DC_COOKIE_KEY)
-            } else {
-                preferences[SPOTIFY_SP_DC_COOKIE_KEY] = cookie.trim()
-            }
         }
     }
 
