@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic.data
+package com.aeswox.arcmusic.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
@@ -65,6 +65,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val SEEKBAR_THUMB_RADIUS_KEY = floatPreferencesKey("seekbar_thumb_radius")
     private val SEEKBAR_UNPLAYED_STROKE_KEY = floatPreferencesKey("seekbar_unplayed_stroke")
     private val SEEKBAR_BLOOM_DURATION_KEY = floatPreferencesKey("seekbar_bloom_duration")
+    private val AUTOPLAY_ENABLED_KEY = booleanPreferencesKey("autoplay_enabled")
 
 
     val hasCompletedOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -309,6 +310,16 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 NowPlayingStyle.ARC   -> "arc"
                 NowPlayingStyle.FRUIT -> "fruit"
             }
+        }
+    }
+
+    val autoplayEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AUTOPLAY_ENABLED_KEY] ?: false
+    }
+
+    suspend fun setAutoplayEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTOPLAY_ENABLED_KEY] = enabled
         }
     }
 }

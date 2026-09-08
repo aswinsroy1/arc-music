@@ -1,4 +1,4 @@
-package com.aeswox.arcmusic
+﻿package com.aeswox.arcmusic
 
 import com.aeswox.arcmusic.sharing.ReceiveScreen
 import com.aeswox.arcmusic.sharing.ShareScreen
@@ -298,7 +298,7 @@ class MainActivity : ComponentActivity() {
                                     isVisible = isMiniPlayerVisible && currentlyPlaying != null && currentRoute != "onboarding",
                                     onExpand = { viewModel.setPlayerExpanded(true) },
                                     onCollapse = { viewModel.setPlayerExpanded(false) },
-                                    onSwipeUp = { navController.navigate("queue") },
+                                    onSwipeUp = null, // Queue is now in-screen inside ArcNowPlayingScreen
                                     onMiniPlayerDismiss = { 
                                         viewModel.setMiniPlayerVisible(false)
                                         viewModel.pause()
@@ -342,10 +342,7 @@ class MainActivity : ComponentActivity() {
                                                     glowIntensity = glowIntensity,
                                                     isDarkTheme = false,
                                                     onNavigateBack = { viewModel.setPlayerExpanded(false) },
-                                                    onNavigateToQueue = { 
-                                                        viewModel.setPlayerExpanded(false)
-                                                        navController.navigate("queue") 
-                                                    },
+                                                     onNavigateToQueue = {}, // Handled in-screen
                                                     onNavigateToAlbum = { albumId -> 
                                                         viewModel.setPlayerExpanded(false)
                                                         navController.navigate("album_details/$albumId") 
@@ -371,10 +368,7 @@ class MainActivity : ComponentActivity() {
                                                     glowIntensity = glowIntensity,
                                                     isDarkTheme = !lightThemeForNowPlaying,
                                                     onNavigateBack = { viewModel.setPlayerExpanded(false) },
-                                                    onNavigateToQueue = { 
-                                                        viewModel.setPlayerExpanded(false)
-                                                        navController.navigate("queue") 
-                                                    },
+                                                     onNavigateToQueue = {}, // Handled in-screen
                                                     onNavigateToAlbum = { albumId -> 
                                                         viewModel.setPlayerExpanded(false)
                                                         navController.navigate("album_details/$albumId") 
@@ -479,7 +473,7 @@ class MainActivity : ComponentActivity() {
                                         onNavigateToPlaylistDetails = { playlistId -> navController.navigate("playlist_details/$playlistId") },
                                         onNavigateToArtistDetails = { artistId -> navController.navigate("artist_details/$artistId") },
                                         onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") },
-                                        onNavigateToQueue = { navController.navigate("queue") },
+                                         onNavigateToQueue = {}, // Queue is now in-screen inside now playing
                                         onNavigateToEditMetadata = { trackId -> navController.navigate("edit_metadata/$trackId?readOnly=true") },
                                         onNavigateToReceive = { navController.navigate("receive") },
                                         viewModel = viewModel
@@ -732,23 +726,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        // Removed now_playing composable
-                        composable(
-                            route = "queue",
-                            enterTransition = { NavTransitions.SheetEnter },
-                            exitTransition = { NavTransitions.SheetExit },
-                            popEnterTransition = { NavTransitions.SheetPopEnter },
-                            popExitTransition = { NavTransitions.SheetPopExit }
-                        ) {
-                            QueueScreen(
-                                onNavigateBack = { navController.popBackStack() },
-                                onNavigateToLibrary = { 
-                                    navController.navigate("home") { 
-                                        popUpTo("home") { inclusive = false } 
-                                    } 
-                                }
-                            )
-                        }
+                        // Queue is now an in-screen panel inside ArcNowPlayingScreen
                         composable(
                             route = "settings",
                             enterTransition = { NavTransitions.SheetEnter },

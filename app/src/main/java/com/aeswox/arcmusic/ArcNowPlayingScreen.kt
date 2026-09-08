@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+﻿@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.*
@@ -311,6 +311,8 @@ fun ArcNowPlayingScreen(
 
     var showLyrics by remember { mutableStateOf(false) }
 
+    var showQueue by remember { mutableStateOf(false) }
+
     
 
     val deviceVolume by viewModel.deviceVolume.collectAsState()
@@ -359,13 +361,17 @@ fun ArcNowPlayingScreen(
         showLyrics = false
     }
 
+    androidx.activity.compose.BackHandler(enabled = showQueue) {
+        showQueue = false
+    }
+
     var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
     var isWhiteArtwork by remember { mutableStateOf(false) } // true when artwork bottom is near-white
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.88f else 0.0f,
+        targetValue = if (showLyrics || showQueue) 0.88f else 0.0f,
         animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
     )
@@ -635,8 +641,13 @@ fun ArcNowPlayingScreen(
         ) {
             
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                val queueState = when {
+                    showLyrics -> "lyrics"
+                    showQueue  -> "queue"
+                    else       -> "normal"
+                }
                 AnimatedContent(
-                    targetState = showLyrics,
+                    targetState = queueState,
                     transitionSpec = {
                         (fadeIn() togetherWith fadeOut()).using(
                             SizeTransform(
@@ -645,64 +656,68 @@ fun ArcNowPlayingScreen(
                             )
                         )
                     },
-                    label = "LyricsSwap",
+                    label = "ContentSwap",
                     modifier = Modifier.fillMaxSize()
-                ) { isLyrics ->
-                    if (isLyrics) {
-                        ArcLyricsContent(
-                            lyricsFraction = 1f,
-                            textColor = textColor,
-                            isDarkTheme = isDarkTheme,
-                            accentColor = accentColor,
-                            isWhiteArtwork = isWhiteArtwork,
-                            imageUrl = imageUrl,
-                            onDismiss = { showLyrics = false }
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.BottomCenter
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp)
-                                    .padding(bottom = 330.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                ) { state ->
+                    when (state) {
+                        "lyrics" -> {
+                            ArcLyricsContent(
+                                lyricsFraction = 1f,
+                                textColor = textColor,
+                                isDarkTheme = isDarkTheme,
+                                accentColor = accentColor,
+                                isWhiteArtwork = isWhiteArtwork,
+                                imageUrl = imageUrl,
+                                onDismiss = { showLyrics = false }
+                            )
+                        }
+                        "queue" -> {
+                            ArcQueueContent(
+                                textColor = textColor,
+                                accentColor = accentColor,
+                                onDismiss = { showQueue = false }
+                            )
+                        }
+                        else -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.BottomCenter
                             ) {
-
-                                // â”€â”€ Centered Track Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                 Column(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                        .padding(bottom = 330.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = songToPlay?.title ?: "Unknown",
+                                                style = MaterialTheme.typography.displaySmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 26.sp
+                                                ),
+                                                color = textColor,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = songToPlay?.title ?: "Unknown",
-                                            style = MaterialTheme.typography.displaySmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 26.sp
-                                            ),
-                                            color = textColor,
+                                            text = songToPlay?.artist ?: "Unknown",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = textColor.copy(alpha = textAlpha),
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
-                                        if (false /* songToPlay?.isExplicit == true */) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            com.aeswox.arcmusic.ExplicitBadge()
-                                        }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = songToPlay?.artist ?: "Unknown",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = textColor.copy(alpha = textAlpha),
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
                                 }
                             }
                         }
@@ -885,6 +900,27 @@ fun ArcNowPlayingScreen(
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Queue access row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = { showQueue = true },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.QueueMusic,
+                                        contentDescription = "Up Next",
+                                        tint = if (showQueue) MaterialTheme.colorScheme.primary else textColor.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
@@ -2054,3 +2090,322 @@ fun LyricLine(
 
 
 
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ArcQueueContent — in-screen queue overlay (mirrors ArcLyricsContent style)
+// ──────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun ArcQueueContent(
+    textColor: Color,
+    accentColor: Color,
+    onDismiss: () -> Unit
+) {
+    val viewModel: MusicViewModel = hiltViewModel()
+    val queue by viewModel.currentQueue.collectAsState()
+    val currentIndex by viewModel.currentQueueIndex.collectAsState()
+    val songToPlay by viewModel.currentlyPlaying.collectAsState()
+    val shuffleEnabled by viewModel.shuffleModeEnabled.collectAsState()
+    val repeatMode by viewModel.repeatMode.collectAsState()
+    val autoplayEnabled by viewModel.autoplayEnabled.collectAsState()
+    val randomPicks by viewModel.randomPicks.collectAsState()
+
+    val upNextTracks = if (currentIndex >= 0 && currentIndex < queue.size) {
+        queue.drop(currentIndex + 1)
+    } else {
+        emptyList()
+    }
+
+    val listState = rememberLazyListState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {},
+                    onDragCancel = {},
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        if (dragAmount > 12f) onDismiss()
+                    }
+                )
+            }
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 300.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+        ) {
+            // ── Currently Playing ─────────────────────────────────────────────
+            item {
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        text = "Playing Now",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = textColor.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(bottom = 12.dp, top = 8.dp)
+                    )
+                    songToPlay?.let { track ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(accentColor.copy(alpha = 0.18f))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(textColor.copy(alpha = 0.08f))
+                            ) {
+                                AsyncImage(
+                                    model = track.artworkUri ?: track.albumId?.let { "content://media/external/audio/albumart/$it" },
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = track.title,
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = textColor,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = track.artist,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textColor.copy(alpha = 0.6f),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ── Repeat / Shuffle / Autoplay pills ───────────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Repeat pill
+                        val repeatActive = repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (repeatActive) accentColor.copy(alpha = 0.35f)
+                                    else textColor.copy(alpha = 0.08f)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (repeatActive) accentColor.copy(alpha = 0.6f) else textColor.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { viewModel.toggleRepeatMode() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
+                                        Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                                    contentDescription = "Repeat",
+                                    tint = if (repeatActive) accentColor else textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Repeat",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = if (repeatActive) accentColor else textColor.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                        // Shuffle pill
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (shuffleEnabled) accentColor.copy(alpha = 0.35f)
+                                    else textColor.copy(alpha = 0.08f)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (shuffleEnabled) accentColor.copy(alpha = 0.6f) else textColor.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { viewModel.toggleShuffleMode() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Shuffle,
+                                    contentDescription = "Shuffle",
+                                    tint = if (shuffleEnabled) accentColor else textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Shuffle",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = if (shuffleEnabled) accentColor else textColor.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                        // Autoplay pill
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (autoplayEnabled) accentColor.copy(alpha = 0.35f)
+                                    else textColor.copy(alpha = 0.08f)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (autoplayEnabled) accentColor.copy(alpha = 0.6f) else textColor.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { viewModel.toggleAutoplay() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AllInclusive,
+                                    contentDescription = "Autoplay",
+                                    tint = if (autoplayEnabled) accentColor else textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Autoplay",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = if (autoplayEnabled) accentColor else textColor.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
+            // ── Up Next header ────────────────────────────────────────────────
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Up Next",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = textColor,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "${upNextTracks.size} songs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textColor.copy(alpha = 0.45f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            // ── Queue tracks ──────────────────────────────────────────────────
+            if (upNextTracks.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No upcoming songs",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor.copy(alpha = 0.4f)
+                        )
+                    }
+                }
+            } else {
+                itemsIndexed(upNextTracks) { idx, track ->
+                    QueueItemRow(
+                        index = currentIndex + 1 + idx,
+                        track = track,
+                        isDragHandleVisible = true,
+                        textColor = textColor,
+                        onClick = { viewModel.skipToQueueItem(currentIndex + 1 + idx) },
+                        onMove = { delta ->
+                            viewModel.moveQueueItem(currentIndex + 1 + idx, currentIndex + 1 + idx + delta)
+                        }
+                    )
+                }
+            }
+
+            // ── Autoplay suggestions ──────────────────────────────────────────
+            if (autoplayEnabled && randomPicks.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AllInclusive,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Autoplay — Next Up",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = textColor
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                itemsIndexed(randomPicks.take(10)) { idx, track ->
+                    QueueItemRow(
+                        index = idx,
+                        track = track,
+                        isDragHandleVisible = false,
+                        textColor = textColor.copy(alpha = 0.7f),
+                        onClick = {
+                            viewModel.addSelectedItemsToQueue(listOf(track.id), false)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}

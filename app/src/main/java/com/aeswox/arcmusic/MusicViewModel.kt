@@ -1,4 +1,4 @@
-package com.aeswox.arcmusic
+﻿package com.aeswox.arcmusic
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -63,7 +63,7 @@ data class GenreStatEntry(
  * @param weeklyMinutesByDay  7 entries (Mon..Sun of current week), 0 if no plays that day.
  * @param topArtists  Ranked by approximate listening time.
  * @param topGenres  Ranked by library track count (not listening time).
- * @param nightOwlMinutesByHour  24 values of total minutes per hour-of-day — null if < 30 play events.
+ * @param nightOwlMinutesByHour  24 values of total minutes per hour-of-day â€” null if < 30 play events.
  */
 data class ListeningStatsData(
     val totalMinutes: Long,
@@ -175,7 +175,7 @@ data class CollectionGrowthData(
     val missingTracksCards: List<GrowthCard.MissingTracks>,
     val newSongCards: List<GrowthCard.NewSong>,
     val trendingCards: List<GrowthCard.Trending>,
-    /** True when at least one artist qualifies — either favorited or in the top-listened set. */
+    /** True when at least one artist qualifies â€” either favorited or in the top-listened set. */
     val hasQualifyingArtists: Boolean
 )
 
@@ -360,9 +360,9 @@ class MusicViewModel @Inject constructor(
                 // refreshArtistGrowthData handles staleness checks internally, so we don't forceRefresh here
                 repository.refreshArtistGrowthData(artist, apiKey, forceRefresh = false)
             }
-            // Trending: genre-biased chart tracks — gated on Last.fm key, same staleness policy
+            // Trending: genre-biased chart tracks â€” gated on Last.fm key, same staleness policy
             if (!apiKey.isNullOrBlank()) {
-                // Derive user top genres from the track library directly — listeningStats is
+                // Derive user top genres from the track library directly â€” listeningStats is
                 // not yet initialized at this point in the first init block.
                 val userGenres = repository.getTopGenresFromLibrary(limit = 5)
                 repository.refreshTrendingData(apiKey, userGenres)
@@ -1293,7 +1293,7 @@ class MusicViewModel @Inject constructor(
 
     fun loadCollectionGrowth() {
         if (_growthState.value is CollectionGrowthUiState.Loading) {
-            // Already loading or will load — avoid duplicate triggers
+            // Already loading or will load â€” avoid duplicate triggers
         }
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _growthState.value = CollectionGrowthUiState.Loading
@@ -1481,7 +1481,7 @@ class MusicViewModel @Inject constructor(
                     return@combine CollectionHealthState()
                 }
 
-                // Calculate duplicates (Group by title + artist, then fuzzy duration ±5s)
+                // Calculate duplicates (Group by title + artist, then fuzzy duration Â±5s)
                 val duplicateGroups = tracks.groupBy { "${it.title.lowercase()}_${it.artist.lowercase()}" }
                     .filter { it.value.size > 1 }
                     .map { entry -> 
@@ -1592,7 +1592,7 @@ class MusicViewModel @Inject constructor(
         }
     }
 
-    /** Persisted theme preference — reads from DataStore on first subscription. */
+    /** Persisted theme preference â€” reads from DataStore on first subscription. */
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -1795,11 +1795,22 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setNowPlayingStyle(style) }
     }
 
-    // ── Canvas ────────────────────────────────────────────────────────────────
+    // â”€â”€ Canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     val canvasEnabled: StateFlow<Boolean> = settingsRepository.canvasEnabled.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), true
     )
+
+    // Autoplay
+    val autoplayEnabled: StateFlow<Boolean> = settingsRepository.autoplayEnabled.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), false
+    )
+
+    fun toggleAutoplay() {
+        viewModelScope.launch {
+            settingsRepository.setAutoplayEnabled(!autoplayEnabled.value)
+        }
+    }
 
     val canvasCacheLimitMb: StateFlow<Int> = settingsRepository.canvasCacheLimitMb.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 250
@@ -1875,7 +1886,7 @@ class MusicViewModel @Inject constructor(
 
 
     // ---------------------------------------------------------------------------
-    // Stats computation — pure function, called inside combine() on IO thread.
+    // Stats computation â€” pure function, called inside combine() on IO thread.
     // ---------------------------------------------------------------------------
 
     private fun getEffectivePlayedMs(ph: PlayHistory, track: Track?): Long {
@@ -1919,7 +1930,7 @@ class MusicViewModel @Inject constructor(
         // Only show the trend if we have actual history in the *prior* week
         val prevWeekHistory = history.filter { it.timestamp in prevWeekStart until thisWeekStart }
         val weekOverWeekPct: Int? = if (prevWeekHistory.isEmpty()) {
-            null // Not enough history yet — hide the line
+            null // Not enough history yet â€” hide the line
         } else {
             val prevWeekMs = prevWeekHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
             if (prevWeekMs == 0L) null
@@ -1953,7 +1964,7 @@ class MusicViewModel @Inject constructor(
             val playedMin = getEffectivePlayedMs(ph, track) / 60_000L
             artistMinutes[artist] = (artistMinutes[artist] ?: 0L) + playedMin
         }
-        // Build artist entries — photoUri comes from the Artists table via libraryArtists,
+        // Build artist entries â€” photoUri comes from the Artists table via libraryArtists,
         // but since we only have Track here, we leave photoUri null (placeholder shown in UI).
         val topArtists = artistMinutes.entries
             .sortedByDescending { it.value }
