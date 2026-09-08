@@ -119,7 +119,7 @@ fun PlayerBottomSheet(
             orientation = Orientation.Vertical,
             state = rememberDraggableState { delta ->
                 dragOffset = (dragOffset + delta).coerceIn(
-                    minimumValue = if (isExpanded) -with(density) { 150.dp.toPx() } else expandedOffset - targetOffset,
+                    minimumValue = if (isExpanded && onSwipeUp != null) -with(density) { 150.dp.toPx() } else if (isExpanded) 0f else expandedOffset - targetOffset,
                     maximumValue = screenHeightPx - targetOffset
                 )
             },
