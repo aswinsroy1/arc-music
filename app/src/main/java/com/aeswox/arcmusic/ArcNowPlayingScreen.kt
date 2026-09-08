@@ -1,4 +1,4 @@
-﻿@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.*
@@ -649,12 +649,34 @@ fun ArcNowPlayingScreen(
                 AnimatedContent(
                     targetState = queueState,
                     transitionSpec = {
-                        (fadeIn() togetherWith fadeOut()).using(
-                            SizeTransform(
-                                clip = false,
-                                sizeAnimationSpec = { _, _ -> spring(dampingRatio = 0.99f, stiffness = 400f) }
+                        val goingToOverlay = targetState == "lyrics" || targetState == "queue"
+                        val comingFromOverlay = initialState == "lyrics" || initialState == "queue"
+                        when {
+                            // normal → lyrics/queue: slide up from bottom + fade in
+                            goingToOverlay -> (
+                                slideInVertically(
+                                    animationSpec = spring(dampingRatio = 0.88f, stiffness = 280f),
+                                    initialOffsetY = { (it * 0.45f).toInt() }
+                                ) + fadeIn(animationSpec = tween(280))
+                            ) togetherWith (
+                                fadeOut(animationSpec = tween(180))
                             )
-                        )
+                            // lyrics/queue → normal: slide down + fade out
+                            comingFromOverlay -> (
+                                fadeIn(animationSpec = tween(180))
+                            ) togetherWith (
+                                slideOutVertically(
+                                    animationSpec = spring(dampingRatio = 0.99f, stiffness = 380f),
+                                    targetOffsetY = { (it * 0.35f).toInt() }
+                                ) + fadeOut(animationSpec = tween(220))
+                            )
+                            // lyrics ↔ queue: cross-fade
+                            else -> (
+                                fadeIn(animationSpec = tween(200))
+                            ) togetherWith (
+                                fadeOut(animationSpec = tween(200))
+                            )
+                        }.using(SizeTransform(clip = false))
                     },
                     label = "ContentSwap",
                     modifier = Modifier.fillMaxSize()
