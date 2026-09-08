@@ -826,21 +826,18 @@ fun ArcNowPlayingScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                    // Far Left â€” Repeat toggle
+                                    // Far Left — Lyrics
                                     IconButton(
-                                        onClick = { viewModel.toggleRepeatMode() },
+                                        onClick = { showLyrics = true },
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
-                                                Icons.Rounded.RepeatOne
+                                            imageVector = Icons.Rounded.Lyrics,
+                                            contentDescription = "Lyrics",
+                                            tint = if (showLyrics)
+                                                MaterialTheme.colorScheme.primary
                                             else
-                                                Icons.Rounded.Repeat,
-                                            contentDescription = "Repeat",
-                                            tint = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_OFF)
-                                                textColor.copy(alpha = 0.5f)
-                                            else
-                                                MaterialTheme.colorScheme.primary,
+                                                textColor.copy(alpha = 0.6f),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -885,42 +882,21 @@ fun ArcNowPlayingScreen(
                                         )
                                     }
 
-                                    // Far Right â€” Shuffle
+                                    // Far Right — Queue
                                     IconButton(
-                                        onClick = { viewModel.toggleShuffleMode() },
+                                        onClick = { showQueue = true },
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Shuffle,
-                                            contentDescription = "Shuffle",
-                                            tint = if (shuffleEnabled)
+                                            imageVector = Icons.Default.QueueMusic,
+                                            contentDescription = "Up Next",
+                                            tint = if (showQueue)
                                                 MaterialTheme.colorScheme.primary
                                             else
-                                                textColor,
+                                                textColor.copy(alpha = 0.6f),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Queue access row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = { showQueue = true },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.QueueMusic,
-                                        contentDescription = "Up Next",
-                                        tint = if (showQueue) MaterialTheme.colorScheme.primary else textColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
                                 }
                             }
                         }
