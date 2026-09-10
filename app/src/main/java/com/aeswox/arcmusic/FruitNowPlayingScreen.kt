@@ -1005,9 +1005,9 @@ fun FruitNowPlayingScreen(
 
                 onDismiss = { showSleepTimerDialog = false },
 
-                onStart = { minute ->
+                onStart = { minute, finishCurrentSong ->
 
-                    viewModel.startSleepTimer(minute)
+                    viewModel.startSleepTimer(minute, finishCurrentSong)
 
                     showSleepTimerDialog = false
 

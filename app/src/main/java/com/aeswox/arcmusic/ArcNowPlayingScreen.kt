@@ -937,9 +937,9 @@ fun ArcNowPlayingScreen(
 
                 onDismiss = { showSleepTimerDialog = false },
 
-                onStart = { minute ->
+                onStart = { minute, finishCurrentSong ->
 
-                    viewModel.startSleepTimer(minute)
+                    viewModel.startSleepTimer(minute, finishCurrentSong)
 
                     showSleepTimerDialog = false
 
@@ -1107,6 +1107,8 @@ fun ArcNowPlayingScreen(
 
                     Triple(if (songToPlay?.isFavorite == true) Icons.Default.Favorite else Icons.Default.FavoriteBorder, if (songToPlay?.isFavorite == true) "Remove from favorites" else "Add to favorites", false),
 
+                    Triple(Icons.Outlined.Bedtime, "Sleep timer", false),
+
                     Triple(Icons.Default.Album, "Go to album", false),
 
                     Triple(Icons.Default.Person, "Go to artist", false),
@@ -1134,6 +1136,10 @@ fun ArcNowPlayingScreen(
                                 if (title == "Add to playlist") {
 
                                     showAddToPlaylistSheet = true
+
+                                } else if (title == "Sleep timer") {
+
+                                    showSleepTimerDialog = true
 
                                 } else if (title == "Add to favorites" || title == "Remove from favorites") {
 

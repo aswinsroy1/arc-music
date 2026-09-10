@@ -33,7 +33,7 @@ fun SleepTimerSheet(
     timeLeft: Long,
     pauseWhenSongEnd: Boolean,
     onDismiss: () -> Unit,
-    onStart: (Int) -> Unit,
+    onStart: (Int, Boolean) -> Unit,
     onClear: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -47,6 +47,7 @@ fun SleepTimerSheet(
     
     var customHours by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0) / 60) }
     var customMins by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0) % 60) }
+    var finishCurrentSong by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -318,6 +319,36 @@ fun SleepTimerSheet(
                 }
             }
 
+            if (isCustomView || selectedPreset != -1) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                        .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Finish current song",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "When the timer ends, pause after this song.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = finishCurrentSong,
+                        onCheckedChange = { finishCurrentSong = it }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             // Action Button
@@ -325,7 +356,7 @@ fun SleepTimerSheet(
                 JellyButton(
                     onClick = { 
                         val totalMins = customHours * 60 + customMins
-                        if (totalMins > 0) onStart(totalMins) 
+                        if (totalMins > 0) onStart(totalMins, finishCurrentSong)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -360,7 +391,7 @@ fun SleepTimerSheet(
                 }
             } else {
                 JellyButton(
-                    onClick = { onStart(selectedPreset) },
+                    onClick = { onStart(selectedPreset, finishCurrentSong) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

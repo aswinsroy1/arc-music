@@ -31,7 +31,7 @@ class SleepTimerManager(
         player.addListener(this)
     }
 
-    fun start(minute: Int) {
+    fun start(minute: Int, finishCurrentSong: Boolean = false) {
         sleepTimerJob?.cancel()
         sleepTimerJob = null
         if (minute == -1) {
@@ -45,7 +45,13 @@ class SleepTimerManager(
                 if (delayTime > 0) {
                     delay(delayTime)
                 }
-                fadeOutAndPause()
+                if (finishCurrentSong) {
+                    // Let the track that is already playing finish, then pause before
+                    // automatic playback advances to the next item.
+                    _pauseWhenSongEnd.value = true
+                } else {
+                    fadeOutAndPause()
+                }
                 _triggerTime.value = -1L
             }
         }

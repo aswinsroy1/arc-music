@@ -787,8 +787,8 @@ class MusicViewModel @Inject constructor(
         musicPlayerConnection.setDeviceVolume(volume)
     }
     
-    fun startSleepTimer(minute: Int) {
-        musicPlayerConnection.sleepTimerManager?.start(minute)
+    fun startSleepTimer(minute: Int, finishCurrentSong: Boolean = false) {
+        musicPlayerConnection.sleepTimerManager?.start(minute, finishCurrentSong)
     }
 
     fun fetchLyricsForTrack(context: android.content.Context, track: Track) {
