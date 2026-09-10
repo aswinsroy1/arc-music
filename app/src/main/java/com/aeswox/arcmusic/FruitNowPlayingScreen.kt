@@ -46,6 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
 
 import androidx.compose.ui.unit.dp
 
@@ -1523,6 +1528,35 @@ fun FadeLyricLineFruit(
     )
     val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
 
+    // â”€â”€ Pre-measure at ACTIVE size to lock line count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // This prevents the jarring reflow when a line expands from 1â†’2 lines on
+    // activation. We measure the full text at the active font size and use the
+    // resulting lineCount as minLines for both active and inactive renders, so
+    // the vertical space is always reserved and the transition is invisible.
+    val textMeasurer = rememberTextMeasurer()
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val fullText = remember(plainWords) { plainWords.joinToString(" ") }
+
+    // Available width = screen width minus LazyColumn's start+end padding (28dp each)
+    val availableWidthPx = remember(configuration.screenWidthDp, density) {
+        with(density) { (configuration.screenWidthDp.dp - 56.dp).toPx().toInt().coerceAtLeast(1) }
+    }
+
+    val activeLineCount = remember(fullText, baseFontSize, availableWidthPx) {
+        val result = textMeasurer.measure(
+            text = fullText,
+            style = TextStyle(
+                fontSize = baseFontSize,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = (baseFontSize.value * 1.25f).sp
+            ),
+            constraints = Constraints(maxWidth = availableWidthPx)
+        )
+        result.lineCount.coerceAtLeast(1)
+    }
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1574,19 +1608,21 @@ fun FadeLyricLineFruit(
                     fontWeight = fontWeight,
                     lineHeight = (lineFontSize * 1.25f).sp
                 ),
-                softWrap = true
+                softWrap = true,
+                minLines = activeLineCount
             )
         } else {
             // Plain text â€” single Text with natural wrapping
             Text(
-                text = plainWords.joinToString(" "),
+                text = fullText,
                 color = textColor,
                 style = MaterialTheme.typography.displayMedium.copy(
                     fontSize = lineFontSize.sp,
                     fontWeight = fontWeight,
                     lineHeight = (lineFontSize * 1.25f).sp
                 ),
-                softWrap = true
+                softWrap = true,
+                minLines = activeLineCount
             )
         }
     }
