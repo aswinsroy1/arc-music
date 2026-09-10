@@ -1849,7 +1849,7 @@ val rawSyncedLines = lyricsData?.synced
             if (visibleItem != null && visibleItem.offset != 0) {
                 listState.animateScrollBy(
                     value = visibleItem.offset.toFloat(),
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                    animationSpec = spring(dampingRatio = 0.88f, stiffness = 70f)
                 )
             } else {
                 listState.animateScrollToItem(activeLineIndex)

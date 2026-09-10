@@ -1776,20 +1776,28 @@ fun WordSyncedLyrics(
     }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // The hero lyric viewport is intentionally compact. Keep the active line
+    // below its clipped top edge rather than aligning its glyphs at y = 0.
+    val heroLineAnchorOffset = with(androidx.compose.ui.platform.LocalDensity.current) {
+        22.dp.roundToPx()
+    }
 
     LaunchedEffect(activeLineIndex) {
         if (linesToRender.isNotEmpty() && activeLineIndex in linesToRender.indices) {
             val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == activeLineIndex }
-            if (visibleItem != null && visibleItem.offset != 0) {
+            if (visibleItem != null && visibleItem.offset != heroLineAnchorOffset) {
                 listState.animateScrollBy(
-                    value = visibleItem.offset.toFloat(),
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 220,
-                        easing = androidx.compose.animation.core.FastOutSlowInEasing
+                    value = (visibleItem.offset - heroLineAnchorOffset).toFloat(),
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = 0.88f,
+                        stiffness = 70f
                     )
                 )
             } else {
-                listState.animateScrollToItem(activeLineIndex)
+                listState.animateScrollToItem(
+                    index = activeLineIndex,
+                    scrollOffset = -heroLineAnchorOffset
+                )
             }
         }
     }
@@ -1801,7 +1809,7 @@ fun WordSyncedLyrics(
         androidx.compose.foundation.lazy.LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth().height(100.dp),
-            contentPadding = PaddingValues(top = 10.dp, bottom = 40.dp),
+            contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp),
             userScrollEnabled = false
         ) {
             items(
