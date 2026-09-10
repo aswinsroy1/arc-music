@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+﻿@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.*
@@ -43,6 +43,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 
 import androidx.compose.ui.unit.dp
 
@@ -1491,7 +1494,6 @@ fun CustomListIconFruit(color: Color, modifier: Modifier = Modifier) {
  *    duration of that line. Words not yet reached are dim.
  *  - Inactive lines' opacity animates smoothly with the existing 350ms tween.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FadeLyricLineFruit(
     lineIndex: Int,
@@ -1504,106 +1506,88 @@ fun FadeLyricLineFruit(
     fadeSteepness: Float = 1.0f,
     fadeScaleCeiling: Float = 0.85f,
     distanceSizing: Boolean = false,
-    baseFontSize: androidx.compose.ui.unit.TextUnit = 32.sp
+    baseFontSize: androidx.compose.ui.unit.TextUnit = 26.sp
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
 
+    // Active line is larger and heavier; inactive is smaller and lighter
     val targetFontSize = if (isActive) baseFontSize.value else baseFontSize.value - 4f
     val lineFontSize by androidx.compose.animation.core.animateFloatAsState(
         targetValue = targetFontSize,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 350),
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = 0.85f,
+            stiffness = 300f
+        ),
         label = "fontSize"
     )
+    val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
 
-    FlowRow(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .graphicsLayer {
                 val layoutInfo = listState.layoutInfo
                 val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == lineIndex }
-                
+
                 if (itemInfo != null) {
                     val viewportHeight = layoutInfo.viewportSize.height.toFloat()
-                    
-                    // In LazyColumn, itemInfo.offset is 0 when the item is perfectly aligned with the viewport start
-                    // (which happens automatically when animateScrollToItem is called, placing it right below the top content padding).
-                    // Therefore, the item is perfectly at the focal point when its offset is 0.
                     val distance = kotlin.math.abs(itemInfo.offset).toFloat()
-                    
                     val maxDistance = viewportHeight * 0.5f
                     val progress = (distance / maxDistance).coerceIn(0f, 1f)
-                    
-                    val maxScaleForState = if (isActive) 1f else fadeScaleCeiling
-                    val maxAlphaForState = if (isActive) 1f else 0.5f
-                    
-                    val targetScale = if (distanceSizing) {
-                        when {
-                            progress < 0.1f -> 1f - (progress * 1.5f)
-                            else -> fadeScaleCeiling - ((progress - 0.1f) * 0.4f)
-                        }.coerceIn(0.4f, maxScaleForState)
-                    } else {
-                        1f
-                    }
-                    
-                    val targetAlpha = when {
+
+                    // Three-tier alpha: active=1.0, near-inactive=0.38, far-inactive fades toward 0
+                    alpha = when {
                         isActive -> 1f
-                        progress < 0.2f -> 1f - (progress * 2.5f)
-                        else -> 0.5f - ((progress - 0.2f) * fadeSteepness) // Fades to 0 right before the controls
-                    }.coerceIn(0.0f, maxAlphaForState)
-                    
-                    scaleX = targetScale
-                    scaleY = targetScale
-                    alpha = targetAlpha
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) // Scale from left-center
+                        progress < 0.15f -> 0.38f
+                        else -> (0.38f - ((progress - 0.15f) / 0.85f) * 0.38f).coerceAtLeast(0f)
+                    }
                 } else {
                     alpha = 0f
                 }
-            },
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            }
     ) {
         val words = syncedLine?.words
         if (!words.isNullOrEmpty()) {
-            // Word-timed path: continuous interpolated fill driven by exact timestamp.
-            words.forEach { syncedWord ->
-                val wordAlpha = when {
-                    !isActive -> 1f   // Inactive lines handled purely by lineAlpha fade
-                    currentPosition >= syncedWord.time -> 1f // Already sung -> full brightness
-                    else -> {
-                        // Smoothly light up over the 250ms before the word's exact start time
-                        val timeUntilWord = syncedWord.time - currentPosition
-                        if (timeUntilWord < 250) {
-                            val progress = 1f - (timeUntilWord / 250f)
-                            0.6f + (progress * 0.4f)
-                        } else {
-                            0.6f // Unsung words stay dim on the active line
+            // Word-timed path: single AnnotatedString for natural kerning & wrapping.
+            val annotated = buildAnnotatedString {
+                words.forEachIndexed { i, syncedWord ->
+                    val wordAlpha = when {
+                        !isActive -> 1f
+                        currentPosition >= syncedWord.time -> 1f
+                        else -> {
+                            val timeUntilWord = syncedWord.time - currentPosition
+                            if (timeUntilWord < 300) 0.55f + ((1f - timeUntilWord / 300f) * 0.45f)
+                            else 0.55f
                         }
                     }
+                    withStyle(SpanStyle(color = textColor.copy(alpha = wordAlpha))) {
+                        append(syncedWord.word)
+                    }
+                    if (i < words.lastIndex) append(" ")
                 }
-                
-                Text(
-                    text = syncedWord.word,
-                    color = textColor.copy(alpha = wordAlpha),
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = lineFontSize.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
             }
+            Text(
+                text = annotated,
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontSize = lineFontSize.sp,
+                    fontWeight = fontWeight,
+                    lineHeight = (lineFontSize * 1.25f).sp
+                ),
+                softWrap = true
+            )
         } else {
-            // No word timing â€” plain text words, all at full alpha (line controls dimming).
-            plainWords.forEach { word ->
-                Text(
-                    text = word,
-                    color = textColor,
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = lineFontSize.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
+            // Plain text â€” single Text with natural wrapping
+            Text(
+                text = plainWords.joinToString(" "),
+                color = textColor,
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontSize = lineFontSize.sp,
+                    fontWeight = fontWeight,
+                    lineHeight = (lineFontSize * 1.25f).sp
+                ),
+                softWrap = true
+            )
         }
     }
 }
@@ -1949,7 +1933,7 @@ val rawSyncedLines = lyricsData?.synced
     val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor
                             else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
-    val listSpacing = 42.dp
+    val listSpacing = 20.dp
     val bottomPadding = 300.dp
     // The entire lyrics layer uses lyricsFraction for alpha â€” this is what makes
     // the transition feel like elements morphing in place, not a new screen fading in.
