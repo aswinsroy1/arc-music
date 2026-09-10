@@ -40,10 +40,14 @@ class PlaybackService : MediaSessionService() {
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this, extractorsFactory)
             
         val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this)
+        // NOTE: Audio offload MUST remain disabled when audio effects (EQ, BassBoost, Virtualizer)
+        // are in use. Offload routes audio directly to hardware, bypassing the software DSP chain
+        // entirely — effects are attached but receive no audio. This caused EQ to silently do
+        // nothing on devices like Motorola Edge 60.
         trackSelector.parameters = trackSelector.buildUponParameters()
             .setAudioOffloadPreferences(
                 androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.Builder()
-                    .setAudioOffloadMode(androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED)
+                    .setAudioOffloadMode(androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED)
                     .build()
             )
             .build()
