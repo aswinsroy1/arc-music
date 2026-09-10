@@ -1765,12 +1765,7 @@ fun WordSyncedLyrics(
         viewModel.currentPlaybackPosition.collect { pos ->
             if (!syncedLines.isNullOrEmpty()) {
                 val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
-                val newLineIndex = if (lastMatchIndex >= 0) {
-                    val matchTime = syncedLines[lastMatchIndex].time
-                    syncedLines.indexOfFirst { it.time == matchTime }
-                } else {
-                    0
-                }
+                val newLineIndex = lastMatchIndex.coerceAtLeast(0)
                 if (activeLineIndex != newLineIndex) {
                     activeLineIndex = newLineIndex
                 }
@@ -1788,9 +1783,9 @@ fun WordSyncedLyrics(
             if (visibleItem != null && visibleItem.offset != 0) {
                 listState.animateScrollBy(
                     value = visibleItem.offset.toFloat(),
-                    animationSpec = androidx.compose.animation.core.spring<Float>(
-                        dampingRatio = 0.95f, // very subtle bounce
-                        stiffness = 50f // smooth and slow
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = 220,
+                        easing = androidx.compose.animation.core.FastOutSlowInEasing
                     )
                 )
             } else {

@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.Tag
+import org.jaudiotagger.audio.mp4.Mp4TagReader
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -62,10 +64,10 @@ class LyricsRepositoryImpl @Inject constructor(
             val file = File(track.filePath)
             if (!file.exists()) return null
 
-            val audioFile = AudioFileIO.read(file)
-            val tag = audioFile.tag ?: return null
+            val tag = readEmbeddedTag(file) ?: return null
 
-            // Try SYLT (Synchronized) or USLT (Unsynchronized)
+            // FieldKey.LYRICS maps to MP4's ©lyr atom as well as the lyric fields
+            // used by the other supported audio containers.
             val lyricsString = tag.getFirst(FieldKey.LYRICS)
             if (!lyricsString.isNullOrBlank()) {
                 val parsed = LyricsUtils.parseLyrics(lyricsString)
@@ -75,6 +77,29 @@ class LyricsRepositoryImpl @Inject constructor(
             Log.w("Lyrics", "Failed to read embedded lyrics: ${e.message}")
         }
         return null
+    }
+
+    /**
+     * Reads MP4 tags without first parsing the audio sample entry. Dolby Atmos
+     * M4A files use E-AC-3/JOC (ec-3/dec3), which jaudiotagger's generic MP4
+     * audio-header reader does not understand even though its tag reader can
+     * still read the file's metadata atoms.
+     */
+    private fun readEmbeddedTag(file: File): Tag? {
+        val isMp4Container = file.extension.equals("m4a", ignoreCase = true) ||
+            file.extension.equals("m4b", ignoreCase = true) ||
+            file.extension.equals("mp4", ignoreCase = true)
+
+        if (isMp4Container) {
+            try {
+                return Mp4TagReader().read(file.toPath())
+            } catch (e: Exception) {
+                // Keep the previous reader as a fallback for unusual MP4 layouts.
+                Log.w("Lyrics", "MP4 tag-only read failed for ${file.name}: ${e.message}")
+            }
+        }
+
+        return AudioFileIO.read(file).tag
     }
 
     private fun loadLocalFileLyrics(track: Track): Lyrics? {
@@ -160,8 +185,7 @@ class LyricsRepositoryImpl @Inject constructor(
         try {
             val file = File(track.filePath)
             if (file.exists()) {
-                val audioFile = AudioFileIO.read(file)
-                val tag = audioFile.tag
+                val tag = readEmbeddedTag(file)
                 if (tag != null) {
                     val lyricsString = tag.getFirst(FieldKey.LYRICS)
                     if (!lyricsString.isNullOrBlank()) return@withContext true

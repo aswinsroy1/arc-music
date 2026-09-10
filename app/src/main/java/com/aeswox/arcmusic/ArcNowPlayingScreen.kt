@@ -1486,6 +1486,7 @@ fun FadeLyricLine(
                     }
                     
                     val targetAlpha = when {
+                        isActive -> 1f
                         progress < 0.2f -> 1f - (progress * 2.5f)
                         else -> 0.5f - ((progress - 0.2f) * fadeSteepness) // Fades to 0 right before the controls
                     }.coerceIn(0.0f, maxAlphaForState)
@@ -1818,10 +1819,7 @@ val rawSyncedLines = lyricsData?.synced
         viewModel.currentPlaybackPosition.collect { pos ->
             if (!syncedLines.isNullOrEmpty()) {
                 val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
-                val newLineIndex = if (lastMatchIndex >= 0) {
-                    val matchTime = syncedLines[lastMatchIndex].time
-                    syncedLines.indexOfFirst { it.time == matchTime }
-                } else 0
+                val newLineIndex = lastMatchIndex.coerceAtLeast(0)
                 if (activeLineIndex != newLineIndex) activeLineIndex = newLineIndex
                 if (newLineIndex in syncedLines.indices) {
                     val line = syncedLines[newLineIndex]
@@ -1851,7 +1849,7 @@ val rawSyncedLines = lyricsData?.synced
             if (visibleItem != null && visibleItem.offset != 0) {
                 listState.animateScrollBy(
                     value = visibleItem.offset.toFloat(),
-                    animationSpec = spring(dampingRatio = 0.75f, stiffness = 50f)
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
                 )
             } else {
                 listState.animateScrollToItem(activeLineIndex)
