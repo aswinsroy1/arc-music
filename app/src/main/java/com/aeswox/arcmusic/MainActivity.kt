@@ -1627,13 +1627,18 @@ fun HeroSection(
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
                 )
 
+                val midStop by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isNowPlayingMode) 0.6f else 0.35f,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 0.0f to MaterialTheme.colorScheme.surface.copy(alpha = topAlpha),
-                                0.6f to MaterialTheme.colorScheme.surface.copy(alpha = midAlpha),
+                                midStop to MaterialTheme.colorScheme.surface.copy(alpha = midAlpha),
                                 1.0f to MaterialTheme.colorScheme.surface
                             )
                         )
