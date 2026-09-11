@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic
+package com.aeswox.arcmusic
 
 import com.aeswox.arcmusic.sharing.ReceiveScreen
 import com.aeswox.arcmusic.sharing.ShareScreen
@@ -161,7 +161,11 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         setContent {
-            val viewModel: MusicViewModel = hiltViewModel()
+            var showIntro by remember { mutableStateOf(true) }
+            if (showIntro) {
+                com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(onFinished = { showIntro = false })
+            } else {
+                val viewModel: MusicViewModel = hiltViewModel()
             val themeMode by viewModel.themeMode.collectAsState()
             val isLibraryLoaded by viewModel.isLibraryLoaded.collectAsState()
             val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
@@ -1135,6 +1139,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
             }
         }
     }

@@ -78,6 +78,10 @@ class PlaybackService : MediaSessionService() {
         }
             
         mediaSession = MediaSession.Builder(this, player).build()
+
+        val notificationProvider = androidx.media3.session.DefaultMediaNotificationProvider.Builder(this).build()
+        notificationProvider.setSmallIcon(com.aeswox.arcmusic.R.drawable.ic_notification)
+        setMediaNotificationProvider(notificationProvider)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {

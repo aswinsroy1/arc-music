@@ -105,7 +105,7 @@ class CanvasFetchService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Fetching Canvases")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_popup_sync)
+            .setSmallIcon(com.aeswox.arcmusic.R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()

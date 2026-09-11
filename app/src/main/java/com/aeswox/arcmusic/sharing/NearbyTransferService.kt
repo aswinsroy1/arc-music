@@ -40,7 +40,7 @@ class NearbyTransferService : Service() {
         val notification = NotificationCompat.Builder(this, "nearby_transfer")
             .setContentTitle("Transferring Media")
             .setContentText("Transfer in progress...")
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(com.aeswox.arcmusic.R.drawable.ic_notification)
             .setProgress(100, progress, progress == 0)
             .setOngoing(true)
             .build()

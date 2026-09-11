@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fully transparent 1x1 placeholder. The system SplashScreen API shows android:icon
+     by default the moment installSplashScreen() is called — the only way to suppress
+     that automatic icon and get a plain black screen (so our own Compose animation is
+     the first thing drawn) is to explicitly point windowSplashScreenAnimatedIcon at
+     something invisible, which is what this is for. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <size android:width="1dp" android:height="1dp" />
+    <solid android:color="@android:color/transparent" />
+</shape>
