@@ -1,4 +1,4 @@
-﻿@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.aeswox.arcmusic
 
 import androidx.compose.animation.*
@@ -1543,10 +1543,11 @@ fun FadeLyricLineFruit(
         with(density) { (configuration.screenWidthDp.dp - 56.dp).toPx().toInt().coerceAtLeast(1) }
     }
 
-    val activeLineCount = remember(fullText, baseFontSize, availableWidthPx) {
+    val displayMediumStyle = MaterialTheme.typography.displayMedium
+    val activeLineCount = remember(fullText, baseFontSize, availableWidthPx, displayMediumStyle) {
         val result = textMeasurer.measure(
             text = fullText,
-            style = TextStyle(
+            style = displayMediumStyle.copy(
                 fontSize = baseFontSize,
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = (baseFontSize.value * 1.25f).sp

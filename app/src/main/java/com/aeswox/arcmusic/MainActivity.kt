@@ -92,6 +92,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1714,48 +1721,39 @@ fun HeroSection(
 }
 
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun WordSyncedLyrics(
-    modifier: Modifier = Modifier.fillMaxSize(),
+    modifier: Modifier = Modifier.fillMaxWidth(),
     textColor: Color = Color.White,
     alignment: Alignment = Alignment.Center,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(8.dp, Alignment.Start)
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
     val lyricsData by viewModel.lyricsUiState.collectAsState()
 
     val rawSyncedLines = lyricsData?.synced
-    val plainLines  = lyricsData?.plain
-    val duration by viewModel.duration.collectAsState()
+    val plainLines     = lyricsData?.plain
+    val duration       by viewModel.duration.collectAsState()
 
     val syncedLines = remember(rawSyncedLines, duration) {
         if (rawSyncedLines.isNullOrEmpty()) return@remember null
-        val enriched = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
-        val gapThreshold = 10000
-        if (rawSyncedLines.first().time > gapThreshold) {
-            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "● ● ●"))
-        }
+        val enriched     = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
+        val gapThreshold = 10_000
+        if (rawSyncedLines.first().time > gapThreshold)
+            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "\u25CF \u25CF \u25CF"))
         for (i in 0 until rawSyncedLines.size - 1) {
             enriched.add(rawSyncedLines[i])
-            val currentLineTime = rawSyncedLines[i].time
-            val nextLineTime = rawSyncedLines[i+1].time
-            if (nextLineTime - currentLineTime > gapThreshold) {
-                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = currentLineTime + 5000, line = "● ● ●"))
-            }
+            if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines[i].time + 5000, line = "\u25CF \u25CF \u25CF"))
         }
-        if (rawSyncedLines.isNotEmpty()) {
-            enriched.add(rawSyncedLines.last())
-            val lastTime = rawSyncedLines.last().time
-            if (duration > 0 && (duration - lastTime) > gapThreshold) {
-                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = lastTime + 5000, line = "● ● ●"))
-            }
-        }
+        enriched.add(rawSyncedLines.last())
+        if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
+            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines.last().time + 5000, line = "\u25CF \u25CF \u25CF"))
         enriched.toList()
     }
 
     val linesToRender = remember(syncedLines, plainLines) {
-        syncedLines?.map { it.line } ?: plainLines ?: listOf("â™ª")
+        syncedLines?.map { it.line } ?: plainLines ?: listOf("\u266A")
     }
 
     var activeLineIndex by remember { mutableIntStateOf(0) }
@@ -1764,83 +1762,91 @@ fun WordSyncedLyrics(
     LaunchedEffect(syncedLines) {
         viewModel.currentPlaybackPosition.collect { pos ->
             if (!syncedLines.isNullOrEmpty()) {
-                val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
-                val newLineIndex = lastMatchIndex.coerceAtLeast(0)
-                if (activeLineIndex != newLineIndex) {
-                    activeLineIndex = newLineIndex
-                }
+                val idx = syncedLines.indexOfLast { it.time <= pos }.coerceAtLeast(0)
+                if (activeLineIndex != idx) activeLineIndex = idx
             } else {
                 activeLineIndex = 0
             }
         }
     }
 
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    // The hero lyric viewport is intentionally compact. Keep the active line
-    // below its clipped top edge rather than aligning its glyphs at y = 0.
-    val heroLineAnchorOffset = with(androidx.compose.ui.platform.LocalDensity.current) {
-        22.dp.roundToPx()
+    // Active-line text and word timing
+    val activeSyncedLine = syncedLines?.getOrNull(activeLineIndex)
+    val activeLineText   = linesToRender.getOrElse(activeLineIndex) { "" }
+    val currentPosition  = currentPositionState.value
+
+    // Hero font size
+    val heroFontSize = 20.sp
+
+    // Pre-measure at active font size so the Box height never jumps
+    // even when a long line wraps to 2 or 3 lines.
+    val textMeasurer     = rememberTextMeasurer()
+    val configuration    = LocalConfiguration.current
+    val density          = LocalDensity.current
+    val availableWidthPx = remember(configuration.screenWidthDp, density) {
+        with(density) { (configuration.screenWidthDp.dp - 48.dp).toPx().toInt().coerceAtLeast(1) }
+    }
+    val activeLineCount = remember(activeLineText, heroFontSize, availableWidthPx) {
+        textMeasurer.measure(
+            text = activeLineText,
+            style = TextStyle(
+                fontSize   = heroFontSize,
+                fontWeight = FontWeight.Bold,
+                lineHeight = (heroFontSize.value * 1.3f).sp
+            ),
+            constraints = Constraints(maxWidth = availableWidthPx)
+        ).lineCount.coerceAtLeast(1)
     }
 
-    LaunchedEffect(activeLineIndex) {
-        if (linesToRender.isNotEmpty() && activeLineIndex in linesToRender.indices) {
-            val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == activeLineIndex }
-            if (visibleItem != null && visibleItem.offset != heroLineAnchorOffset) {
-                listState.animateScrollBy(
-                    value = (visibleItem.offset - heroLineAnchorOffset).toFloat(),
-                    animationSpec = androidx.compose.animation.core.spring(
-                        dampingRatio = 0.88f,
-                        stiffness = 70f
-                    )
-                )
-            } else {
-                listState.animateScrollToItem(
-                    index = activeLineIndex,
-                    scrollOffset = -heroLineAnchorOffset
-                )
-            }
-        }
-    }
-
-    Box(
-        modifier = modifier,
-        contentAlignment = alignment
-    ) {
-        androidx.compose.foundation.lazy.LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxWidth().height(100.dp),
-            contentPadding = PaddingValues(top = 22.dp, bottom = 40.dp),
-            userScrollEnabled = false
-        ) {
-            items(
-                count = linesToRender.size,
-                key = { index -> index }
-            ) { lineIndex ->
-                val words = remember(lineIndex, syncedLines, linesToRender) {
-                    if (!syncedLines.isNullOrEmpty() && !syncedLines[lineIndex].words.isNullOrEmpty()) {
-                        syncedLines[lineIndex].words!!.map { it.word }
-                    } else {
-                        linesToRender[lineIndex].split(" ")
+    // Build annotated string with per-word timing when available
+    val words = activeSyncedLine?.words
+    val annotated = remember(activeLineText, words, currentPosition, textColor) {
+        if (!words.isNullOrEmpty()) {
+            buildAnnotatedString {
+                words.forEachIndexed { i, sw ->
+                    val alpha = when {
+                        currentPosition >= sw.time -> 1f
+                        else -> {
+                            val until = sw.time - currentPosition
+                            if (until < 300) 0.55f + ((1f - until / 300f) * 0.45f) else 0.55f
+                        }
                     }
-                }
-
-                Box(modifier = Modifier.padding(horizontal = if (alignment == Alignment.Center) 24.dp else 0.dp)) {
-                    com.aeswox.arcmusic.FadeLyricLine(
-                        lineIndex = lineIndex,
-                        syncedLine = syncedLines?.getOrNull(lineIndex),
-                        plainWords = words,
-                        activeLineIndexProvider = { activeLineIndex },
-                        currentPositionProvider = { currentPositionState.value },
-                        listState = listState,
-                        textColor = textColor,
-                        fadeSteepness = 1.0f,
-                        fadeScaleCeiling = 0.85f,
-                        distanceSizing = false,
-                        baseFontSize = 24.sp
-                    )
+                    withStyle(SpanStyle(color = textColor.copy(alpha = alpha))) { append(sw.word) }
+                    if (i < words.lastIndex) append(" ")
                 }
             }
+        } else {
+            buildAnnotatedString { withStyle(SpanStyle(color = textColor)) { append(activeLineText) } }
         }
+    }
+
+    // Crossfade between lines. Only the active line is ever rendered,
+    // so previous/next lines can never bleed into the card viewport.
+    androidx.compose.animation.AnimatedContent(
+        targetState = Pair(annotated, activeLineCount),
+        transitionSpec = {
+            (androidx.compose.animation.fadeIn(
+                animationSpec = androidx.compose.animation.core.tween(300)
+            ) togetherWith androidx.compose.animation.fadeOut(
+                animationSpec = androidx.compose.animation.core.tween(200)
+            ))
+        },
+        label = "HeroLyricLine",
+        modifier = modifier
+    ) { (text, lineCount) ->
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize   = heroFontSize,
+                fontWeight = FontWeight.Bold,
+                lineHeight = (heroFontSize.value * 1.3f).sp
+            ),
+            minLines = lineCount,
+            maxLines = lineCount,
+            softWrap = true,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
