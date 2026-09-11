@@ -1754,35 +1754,6 @@ fun HeroSection(
     }
 }
 
-
-@Composable
-fun HeroLyricWord(
-    word: String,
-    isHighlighted: Boolean,
-    textColor: Color,
-    baseFontSize: Float = 20f
-) {
-    val wordAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isHighlighted) 1f else 0.55f,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
-        label = "wordAlpha"
-    )
-    val wordFontSize by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isHighlighted) baseFontSize + 2f else baseFontSize,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
-        label = "wordFontSize"
-    )
-
-    Text(
-        text = word,
-        color = textColor.copy(alpha = wordAlpha),
-        style = MaterialTheme.typography.bodyLarge.copy(
-            fontSize = wordFontSize.sp,
-            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium
-        )
-    )
-}
-
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun WordSyncedLyrics(
@@ -1821,7 +1792,7 @@ fun WordSyncedLyrics(
 
     var activeLineIndex by remember { mutableIntStateOf(0) }
     var activeWordIndex by remember { mutableIntStateOf(0) }
-    val currentPositionState = viewModel.currentPlaybackPosition.collectAsState()
+    val currentPosition by viewModel.currentPlaybackPosition.collectAsState()
 
     LaunchedEffect(syncedLines) {
         viewModel.currentPlaybackPosition.collect { pos ->
@@ -1904,14 +1875,43 @@ fun WordSyncedLyrics(
                 horizontalArrangement = horizontalArrangement,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                words.forEachIndexed { wordIndex, word ->
-                    val isHighlighted = (idx == activeLineIndex && activeWordIndex == wordIndex) || currentSyncedLine?.words.isNullOrEmpty()
-                    HeroLyricWord(
-                        word = word,
-                        isHighlighted = isHighlighted,
-                        textColor = textColor,
-                        baseFontSize = heroFontSize
-                    )
+                val words = currentSyncedLine?.words
+                if (words.isNullOrEmpty()) {
+                    val plainWords = lineText.split(" ")
+                    plainWords.forEach { word ->
+                        Text(
+                            text = word,
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = heroFontSize.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                } else {
+                    words.forEach { sw ->
+                        val wordAlpha = when {
+                            currentPosition >= sw.time -> 1f
+                            else -> {
+                                val timeUntilWord = sw.time - currentPosition
+                                if (timeUntilWord < 250) {
+                                    val progress = 1f - (timeUntilWord / 250f)
+                                    0.55f + (progress * 0.45f)
+                                } else {
+                                    0.55f
+                                }
+                            }
+                        }
+                        
+                        Text(
+                            text = sw.word,
+                            color = textColor.copy(alpha = wordAlpha),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = heroFontSize.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
             
