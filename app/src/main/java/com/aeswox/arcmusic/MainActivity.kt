@@ -170,6 +170,18 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.Dark -> true
             }
 
+            androidx.compose.runtime.LaunchedEffect(themeMode) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    val uiModeManager = getSystemService(android.app.UiModeManager::class.java)
+                    val newMode = when (themeMode) {
+                        ThemeMode.System -> android.app.UiModeManager.MODE_NIGHT_AUTO
+                        ThemeMode.Light -> android.app.UiModeManager.MODE_NIGHT_NO
+                        ThemeMode.Dark -> android.app.UiModeManager.MODE_NIGHT_YES
+                    }
+                    uiModeManager.setApplicationNightMode(newMode)
+                }
+            }
+
             var showIntro by remember { mutableStateOf(true) }
             if (showIntro) {
                 androidx.compose.runtime.LaunchedEffect(Unit) {
