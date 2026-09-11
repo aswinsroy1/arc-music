@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -52,14 +53,18 @@ fun AnimatedSplashScreen(
         onFinished()
     }
 
+    val isDark = isSystemInDarkTheme()
+    val bgColor = if (isDark) Color.Black else Color.White
+    val arcColor = if (isDark) Color.White else Color.Black
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(bgColor),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(120.dp)) {
-            drawArcMark(sweepFraction = progress.value)
+            drawArcMark(sweepFraction = progress.value, arcColor = arcColor)
         }
     }
 }
@@ -69,7 +74,7 @@ fun AnimatedSplashScreen(
  * on a 108-unit design grid, scaled to fill the Canvas. sweepFraction 0..1 controls
  * how much of the arc has been "drawn" so far.
  */
-private fun DrawScope.drawArcMark(sweepFraction: Float) {
+private fun DrawScope.drawArcMark(sweepFraction: Float, arcColor: Color) {
     if (sweepFraction <= 0f) return
 
     val gridSize = 108f
@@ -116,7 +121,7 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
         for (p in innerPoints.reversed()) lineTo(p.x, p.y)
         close()
     }
-    drawPath(path, color = Color.White)
+    drawPath(path, color = arcColor)
 
     // Rounded cap at the trailing (fixed) start of the stroke, matching the static
     // icon's rounded terminal. The leading/growing end is left as a flat cut while
@@ -128,13 +133,13 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
         (outerPoints.first().x + innerPoints.first().x) / 2f,
         (outerPoints.first().y + innerPoints.first().y) / 2f
     )
-    drawCircle(Color.White, radius = tipRadius, center = centerFirst)
+    drawCircle(arcColor, radius = tipRadius, center = centerFirst)
     
     if (sweepFraction >= 0.999f) {
         val centerLast = Offset(
             (outerPoints.last().x + innerPoints.last().x) / 2f,
             (outerPoints.last().y + innerPoints.last().y) / 2f
         )
-        drawCircle(Color.White, radius = tipRadius, center = centerLast)
+        drawCircle(arcColor, radius = tipRadius, center = centerLast)
     }
 }
