@@ -1516,31 +1516,32 @@ fun FadeLyricLineFruit(
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
 
-    // Active line is larger and heavier; inactive is smaller and lighter
-    val targetFontSize = if (isActive) baseFontSize.value else baseFontSize.value - 4f
-    val lineFontSize by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = targetFontSize,
-        animationSpec = androidx.compose.animation.core.spring(
-            dampingRatio = 0.85f,
-            stiffness = 300f
-        ),
-        label = "fontSize"
-    )
-    val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
-
     val displayMediumStyle = MaterialTheme.typography.displayMedium
     val words = syncedLine?.words
 
-    // State to hold the layout result of the invisible active text
-    var activeTextLayoutResult by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+    // Target scale calculations. Active = 1.0 (draws at baseFontSize). Inactive = smaller
+    val inactiveScale = (baseFontSize.value - 4f) / baseFontSize.value // roughly 22sp / 26sp
+    val targetScale = if (isActive) 1f else inactiveScale
+    val lineScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
 
-    BoxWithConstraints(
+    // We use ExtraBold for EVERYTHING so the layout footprint never changes.
+    val fontWeight = FontWeight.ExtraBold
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
                 val layoutInfo = listState.layoutInfo
                 val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == lineIndex }
 
+                var scrollAlpha = 0f
                 if (itemInfo != null) {
                     val viewportHeight = layoutInfo.viewportSize.height.toFloat()
                     val distance = kotlin.math.abs(itemInfo.offset).toFloat()
@@ -1548,76 +1549,21 @@ fun FadeLyricLineFruit(
                     val progress = (distance / maxDistance).coerceIn(0f, 1f)
 
                     // Three-tier alpha: active=1.0, near-inactive=0.38, far-inactive fades toward 0
-                    alpha = when {
+                    scrollAlpha = when {
                         isActive -> 1f
                         progress < 0.15f -> 0.38f
                         else -> (0.38f - ((progress - 0.15f) / 0.85f) * 0.38f).coerceAtLeast(0f)
                     }
-                } else {
-                    alpha = 0f
                 }
+
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 1f) // Scale from bottom-left
+                scaleX = lineScale
+                scaleY = lineScale
+                alpha = scrollAlpha
             }
     ) {
-        // 1. Invisible text locked to the active state for exact measuring
-        val activeAnnotatedString = remember(words, plainWords, textColor) {
-            if (!words.isNullOrEmpty()) {
-                buildAnnotatedString {
-                    words.forEachIndexed { i, syncedWord ->
-                        withStyle(SpanStyle(color = textColor)) {
-                            append(syncedWord.word)
-                        }
-                        if (i < words.lastIndex) append(" ")
-                    }
-                }
-            } else {
-                buildAnnotatedString { append(plainWords.joinToString(" ")) }
-            }
-        }
-
-        Text(
-            text = activeAnnotatedString,
-            style = displayMediumStyle.copy(
-                fontSize = baseFontSize,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = (baseFontSize.value * 1.25f).sp
-            ),
-            softWrap = true,
-            modifier = Modifier.alpha(0f), // Invisible but participates in layout!
-            onTextLayout = { activeTextLayoutResult = it }
-        )
-
-        // Force line breaks exactly as measured by the invisible text
-        val lineBreakWordIndices = remember(plainWords, activeTextLayoutResult) {
-            val breakIndices = mutableSetOf<Int>()
-            activeTextLayoutResult?.let { result ->
-                for (i in 0 until result.lineCount - 1) {
-                    val endCharIdx = result.getLineEnd(i, visibleEnd = true)
-                    var charCount = 0
-                    for (wIndex in plainWords.indices) {
-                        charCount += plainWords[wIndex].length
-                        if (charCount >= endCharIdx - 1) {
-                            breakIndices.add(wIndex)
-                            break
-                        }
-                        charCount += 1 // for the space
-                    }
-                }
-            }
-            breakIndices
-        }
-
-        val formattedPlainLines = remember(plainWords, lineBreakWordIndices) {
-            buildString {
-                plainWords.forEachIndexed { i, word ->
-                    append(word)
-                    if (i < plainWords.lastIndex) {
-                        if (lineBreakWordIndices.contains(i)) append("\n") else append(" ")
-                    }
-                }
-            }
-        }
-
-        // 2. Visible animated text with exact line breaks forced
+        val plainTextLine = plainWords.joinToString(" ")
+        
         if (!words.isNullOrEmpty()) {
             val annotated = buildAnnotatedString {
                 words.forEachIndexed { i, syncedWord ->
@@ -1633,29 +1579,27 @@ fun FadeLyricLineFruit(
                     withStyle(SpanStyle(color = textColor.copy(alpha = wordAlpha))) {
                         append(syncedWord.word)
                     }
-                    if (i < words.lastIndex) {
-                        if (lineBreakWordIndices.contains(i)) append("\n") else append(" ")
-                    }
+                    if (i < words.lastIndex) append(" ")
                 }
             }
             Text(
                 text = annotated,
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = lineFontSize.sp,
+                style = displayMediumStyle.copy(
+                    fontSize = baseFontSize,
                     fontWeight = fontWeight,
-                    lineHeight = (lineFontSize * 1.25f).sp
+                    lineHeight = (baseFontSize.value * 1.25f).sp
                 ),
                 softWrap = true
             )
         } else {
             // Plain text — single Text with natural wrapping
             Text(
-                text = formattedPlainLines,
+                text = plainTextLine,
                 color = textColor,
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = lineFontSize.sp,
+                style = displayMediumStyle.copy(
+                    fontSize = baseFontSize,
                     fontWeight = fontWeight,
-                    lineHeight = (lineFontSize * 1.25f).sp
+                    lineHeight = (baseFontSize.value * 1.25f).sp
                 ),
                 softWrap = true
             )
