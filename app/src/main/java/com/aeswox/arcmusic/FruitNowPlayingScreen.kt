@@ -1516,21 +1516,23 @@ fun FadeLyricLineFruit(
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
 
-    // Active line is larger; inactive is smaller. We animate scale instead of font size
-    // to guarantee zero layout reflows (the layout footprint is permanently locked to the large state).
-    val targetScale = if (isActive) 1f else (baseFontSize.value - 4f) / baseFontSize.value
-    val lineScale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = targetScale,
+    // Active line is larger and heavier; inactive is smaller and lighter
+    val targetFontSize = if (isActive) baseFontSize.value else baseFontSize.value - 4f
+    val lineFontSize by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = targetFontSize,
         animationSpec = androidx.compose.animation.core.spring(
             dampingRatio = 0.85f,
             stiffness = 300f
         ),
-        label = "lineScale"
+        label = "fontSize"
     )
+    val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
 
-    val fullText = remember(plainWords) { plainWords.joinToString(" ") }
+    val textMeasurer = rememberTextMeasurer()
+    val displayMediumStyle = MaterialTheme.typography.displayMedium
+    val words = syncedLine?.words
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
@@ -1552,14 +1554,71 @@ fun FadeLyricLineFruit(
                 } else {
                     alpha = 0f
                 }
-
-                scaleX = lineScale
-                scaleY = lineScale
-                // Shrink toward the left edge so it remains left-aligned
-                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
             }
     ) {
-        val words = syncedLine?.words
+        val exactMaxWidthPx = constraints.maxWidth
+
+        // Measure using the exact AnnotatedString the text will use
+        // to account for any kerning differences across SpanStyles.
+        val activeAnnotatedString = remember(words, plainWords, textColor) {
+            if (!words.isNullOrEmpty()) {
+                buildAnnotatedString {
+                    words.forEachIndexed { i, syncedWord ->
+                        // Active state has full alpha
+                        withStyle(SpanStyle(color = textColor)) {
+                            append(syncedWord.word)
+                        }
+                        if (i < words.lastIndex) append(" ")
+                    }
+                }
+            } else {
+                buildAnnotatedString { append(plainWords.joinToString(" ")) }
+            }
+        }
+
+        val textLayoutResult = remember(activeAnnotatedString, baseFontSize, exactMaxWidthPx, displayMediumStyle) {
+            textMeasurer.measure(
+                text = activeAnnotatedString,
+                style = displayMediumStyle.copy(
+                    fontSize = baseFontSize,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = (baseFontSize.value * 1.25f).sp
+                ),
+                constraints = Constraints(maxWidth = exactMaxWidthPx)
+            )
+        }
+        val activeLineCount = textLayoutResult.lineCount.coerceAtLeast(1)
+
+        // Force line breaks at the exact same words for both active and inactive states
+        // so the text doesn't jump words when transitioning.
+        val lineBreakWordIndices = remember(plainWords, textLayoutResult) {
+            val breakIndices = mutableSetOf<Int>()
+            for (i in 0 until textLayoutResult.lineCount - 1) {
+                val endCharIdx = textLayoutResult.getLineEnd(i, visibleEnd = true)
+                var charCount = 0
+                for (wIndex in plainWords.indices) {
+                    charCount += plainWords[wIndex].length
+                    if (charCount >= endCharIdx - 1) {
+                        breakIndices.add(wIndex)
+                        break
+                    }
+                    charCount += 1 // for the space
+                }
+            }
+            breakIndices
+        }
+
+        val formattedPlainLines = remember(plainWords, lineBreakWordIndices) {
+            buildString {
+                plainWords.forEachIndexed { i, word ->
+                    append(word)
+                    if (i < plainWords.lastIndex) {
+                        if (lineBreakWordIndices.contains(i)) append("\n") else append(" ")
+                    }
+                }
+            }
+        }
+
         if (!words.isNullOrEmpty()) {
             // Word-timed path: single AnnotatedString for natural kerning & wrapping.
             val annotated = buildAnnotatedString {
@@ -1576,29 +1635,33 @@ fun FadeLyricLineFruit(
                     withStyle(SpanStyle(color = textColor.copy(alpha = wordAlpha))) {
                         append(syncedWord.word)
                     }
-                    if (i < words.lastIndex) append(" ")
+                    if (i < words.lastIndex) {
+                        if (lineBreakWordIndices.contains(i)) append("\n") else append(" ")
+                    }
                 }
             }
             Text(
                 text = annotated,
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = baseFontSize,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = (baseFontSize.value * 1.25f).sp
+                    fontSize = lineFontSize.sp,
+                    fontWeight = fontWeight,
+                    lineHeight = (lineFontSize * 1.25f).sp
                 ),
-                softWrap = true
+                softWrap = true,
+                minLines = activeLineCount
             )
         } else {
             // Plain text — single Text with natural wrapping
             Text(
-                text = fullText,
+                text = formattedPlainLines,
                 color = textColor,
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = baseFontSize,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = (baseFontSize.value * 1.25f).sp
+                    fontSize = lineFontSize.sp,
+                    fontWeight = fontWeight,
+                    lineHeight = (lineFontSize * 1.25f).sp
                 ),
-                softWrap = true
+                softWrap = true,
+                minLines = activeLineCount
             )
         }
     }
