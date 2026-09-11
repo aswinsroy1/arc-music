@@ -1644,6 +1644,21 @@ fun HeroSection(
                         )
                 )
 
+                // Centered Lyrics
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isNowPlayingMode,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.Center)
+                ) {
+                    WordSyncedLyrics(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        textColor = MaterialTheme.colorScheme.onSurface,
+                        alignment = Alignment.CenterStart,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
+                    )
+                }
+
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -1651,22 +1666,6 @@ fun HeroSection(
                         .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp)
                         .animateContentSize(animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f))
                 ) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isNowPlayingMode,
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
-                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top)
-                    ) {
-                        Column {
-                            WordSyncedLyrics(
-                                modifier = Modifier.fillMaxWidth(),
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                alignment = Alignment.BottomStart,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-                    }
-
                     Text(
                         text = titleText,
                         style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
@@ -1897,12 +1896,12 @@ fun WordSyncedLyrics(
         
         Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = if (alignment == Alignment.Center) Alignment.CenterHorizontally else Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = horizontalArrangement,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 words.forEachIndexed { wordIndex, word ->
