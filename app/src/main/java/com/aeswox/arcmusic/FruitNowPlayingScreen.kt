@@ -1544,8 +1544,8 @@ fun FadeLyricLineFruit(
     }
 
     val displayMediumStyle = MaterialTheme.typography.displayMedium
-    val activeLineCount = remember(fullText, baseFontSize, availableWidthPx, displayMediumStyle) {
-        val result = textMeasurer.measure(
+    val textLayoutResult = remember(fullText, baseFontSize, availableWidthPx, displayMediumStyle) {
+        textMeasurer.measure(
             text = fullText,
             style = displayMediumStyle.copy(
                 fontSize = baseFontSize,
@@ -1554,9 +1554,39 @@ fun FadeLyricLineFruit(
             ),
             constraints = Constraints(maxWidth = availableWidthPx)
         )
-        result.lineCount.coerceAtLeast(1)
     }
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    val activeLineCount = textLayoutResult.lineCount.coerceAtLeast(1)
+
+    // Force line breaks at the exact same words for both active and inactive states
+    // so the text doesn't jump words when transitioning.
+    val lineBreakWordIndices = remember(plainWords, textLayoutResult) {
+        val breakIndices = mutableSetOf<Int>()
+        for (i in 0 until textLayoutResult.lineCount - 1) {
+            val endCharIdx = textLayoutResult.getLineEnd(i, visibleEnd = true)
+            var charCount = 0
+            for (wIndex in plainWords.indices) {
+                charCount += plainWords[wIndex].length
+                if (charCount >= endCharIdx - 1) {
+                    breakIndices.add(wIndex)
+                    break
+                }
+                charCount += 1 // for the space
+            }
+        }
+        breakIndices
+    }
+
+    val formattedPlainLines = remember(plainWords, lineBreakWordIndices) {
+        buildString {
+            plainWords.forEachIndexed { i, word ->
+                append(word)
+                if (i < plainWords.lastIndex) {
+                    if (lineBreakWordIndices.contains(i)) append("\n") else append(" ")
+                }
+            }
+        }
+    }
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     Box(
         modifier = Modifier
@@ -1599,7 +1629,9 @@ fun FadeLyricLineFruit(
                     withStyle(SpanStyle(color = textColor.copy(alpha = wordAlpha))) {
                         append(syncedWord.word)
                     }
-                    if (i < words.lastIndex) append(" ")
+                    if (i < words.lastIndex) {
+                        if (lineBreakWordIndices.contains(i)) append("\n") else append(" ")
+                    }
                 }
             }
             Text(
@@ -1615,7 +1647,7 @@ fun FadeLyricLineFruit(
         } else {
             // Plain text â€” single Text with natural wrapping
             Text(
-                text = fullText,
+                text = formattedPlainLines,
                 color = textColor,
                 style = MaterialTheme.typography.displayMedium.copy(
                     fontSize = lineFontSize.sp,
