@@ -28,11 +28,12 @@ import kotlin.math.sin
  * used for the app icon (open arc, stroke width modulated like a soundwave envelope).
  * Plays once, then calls onFinished so the caller can swap to real app content.
  *
- * This replaces the system SplashScreen's default static icon: the theme should point
- * windowSplashScreenAnimatedIcon at a transparent placeholder (see drawable/splash_transparent.xml)
- * so nothing is drawn before this composable takes over. The result is a continuous
- * black background from process start through this animation into real content, with
- * no flash of a static launcher icon in between.
+ * Geometry here (R=22, centered at 54,54 on a 108-unit grid) matches svg4/foreground.svg —
+ * corrected from an earlier version that was centered at (54,50) with R=30, which put
+ * the top of the arc ~7 units past the adaptive-icon safe-zone radius (33 units) and
+ * rendered cramped/clipped-looking against the top edge on-device. Don't change these
+ * numbers here without also regenerating the icon assets to match, or the splash and
+ * the static launcher icon will visibly disagree.
  */
 @Composable
 fun AnimatedSplashScreen(
@@ -43,6 +44,7 @@ fun AnimatedSplashScreen(
     val progress = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
+        android.util.Log.d("ArcSplash", "playing")
         progress.animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = durationMillis, easing = FastOutSlowInEasing)
@@ -63,7 +65,7 @@ fun AnimatedSplashScreen(
 }
 
 /**
- * Draws the same open-arc soundwave shape as the app icon (svg3/foreground.svg),
+ * Draws the same open-arc soundwave shape as the app icon (svg4/foreground.svg),
  * on a 108-unit design grid, scaled to fill the Canvas. sweepFraction 0..1 controls
  * how much of the arc has been "drawn" so far.
  */
@@ -72,15 +74,14 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
 
     val gridSize = 108f
     val scale = min(size.width, size.height) / gridSize
-    val canvasCenterX = size.width / 2f
-    val canvasCenterY = size.height / 2f
+    // Mark is centered at (54,54) — the true center of the design grid, and of the
+    // adaptive-icon canvas — so no offset is needed here (unlike the earlier version).
+    val cx = size.width / 2f
+    val cy = size.height / 2f
 
-    // Icon design uses center (54, 50) on the 108-unit grid — 4 units above the
-    // visual grid center — so shift up to match the static icon's optical center.
-    val cx = canvasCenterX
-    val cy = canvasCenterY - (54f - 50f) * scale
-
-    val R = 30f * scale
+    val R = 22f * scale
+    val baseW = 5.0f
+    val ampW = 5.0f
     val startDeg = -215f
     val endDeg = 35f
     val fullSweep = endDeg - startDeg
@@ -100,7 +101,7 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
 
         val tipTaper = sin(Math.PI * tt).coerceAtLeast(0.0).pow(0.7).toFloat()
         val lobe = 0.55f + 0.45f * cos(2f * phi)
-        val w = (6.0f + 6.5f * tipTaper * lobe) * scale
+        val w = (baseW + ampW * tipTaper * lobe) * scale
 
         val rOut = R + w / 2f
         val rIn = R - w / 2f
@@ -118,10 +119,12 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
     drawPath(path, color = Color.White)
 
     // Rounded cap at the trailing (fixed) start of the stroke, matching the static
-    // icon's rounded terminal. The leading/growing end is intentionally left as a
-    // flat cut while animating — it reads as the stroke actively being drawn.
-    drawCircle(Color.White, radius = 3f * scale, center = outerPoints.first())
+    // icon's rounded terminal. The leading/growing end is left as a flat cut while
+    // animating — it reads as the stroke actively being drawn — and gets its own
+    // rounded cap once the sweep completes.
+    val tipRadius = (baseW / 2f) * scale
+    drawCircle(Color.White, radius = tipRadius, center = outerPoints.first())
     if (sweepFraction >= 0.999f) {
-        drawCircle(Color.White, radius = 3f * scale, center = outerPoints.last())
+        drawCircle(Color.White, radius = tipRadius, center = outerPoints.last())
     }
 }

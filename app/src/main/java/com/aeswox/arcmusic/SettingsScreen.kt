@@ -445,12 +445,7 @@ fun SettingsScreen(
                                     .background(Color.Black)
                             ) {
                                 Image(
-                                    painter = painterResource(id = R.mipmap.ic_launcher_background),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                Image(
-                                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
                                     contentDescription = "Arc Music Logo",
                                     modifier = Modifier.fillMaxSize()
                                 )

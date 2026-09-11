@@ -164,8 +164,9 @@ class MainActivity : ComponentActivity() {
             var showIntro by remember { mutableStateOf(true) }
             if (showIntro) {
                 com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(onFinished = { showIntro = false })
-            } else {
-                val viewModel: MusicViewModel = hiltViewModel()
+                return@setContent
+            }
+            val viewModel: MusicViewModel = hiltViewModel()
             val themeMode by viewModel.themeMode.collectAsState()
             val isLibraryLoaded by viewModel.isLibraryLoaded.collectAsState()
             val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
@@ -1145,7 +1146,6 @@ class MainActivity : ComponentActivity() {
     }
 }
         }
-    }
 
 @OptIn(com.google.accompanist.permissions.ExperimentalPermissionsApi::class)
 @Composable
