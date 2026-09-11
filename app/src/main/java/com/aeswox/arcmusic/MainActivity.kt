@@ -1628,6 +1628,7 @@ fun HeroSection(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
+                                    Color.Transparent,
                                     MaterialTheme.colorScheme.surface.copy(alpha = gradientTopAlpha), 
                                     MaterialTheme.colorScheme.surface
                                 )
