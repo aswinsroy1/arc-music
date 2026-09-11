@@ -1528,9 +1528,11 @@ fun FadeLyricLineFruit(
     )
     val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
 
-    val textMeasurer = rememberTextMeasurer()
     val displayMediumStyle = MaterialTheme.typography.displayMedium
     val words = syncedLine?.words
+
+    // State to hold the layout result of the invisible active text
+    var activeTextLayoutResult by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -1556,15 +1558,11 @@ fun FadeLyricLineFruit(
                 }
             }
     ) {
-        val exactMaxWidthPx = constraints.maxWidth
-
-        // Measure using the exact AnnotatedString the text will use
-        // to account for any kerning differences across SpanStyles.
+        // 1. Invisible text locked to the active state for exact measuring
         val activeAnnotatedString = remember(words, plainWords, textColor) {
             if (!words.isNullOrEmpty()) {
                 buildAnnotatedString {
                     words.forEachIndexed { i, syncedWord ->
-                        // Active state has full alpha
                         withStyle(SpanStyle(color = textColor)) {
                             append(syncedWord.word)
                         }
@@ -1576,33 +1574,33 @@ fun FadeLyricLineFruit(
             }
         }
 
-        val textLayoutResult = remember(activeAnnotatedString, baseFontSize, exactMaxWidthPx, displayMediumStyle) {
-            textMeasurer.measure(
-                text = activeAnnotatedString,
-                style = displayMediumStyle.copy(
-                    fontSize = baseFontSize,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = (baseFontSize.value * 1.25f).sp
-                ),
-                constraints = Constraints(maxWidth = exactMaxWidthPx)
-            )
-        }
-        val activeLineCount = textLayoutResult.lineCount.coerceAtLeast(1)
+        Text(
+            text = activeAnnotatedString,
+            style = displayMediumStyle.copy(
+                fontSize = baseFontSize,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = (baseFontSize.value * 1.25f).sp
+            ),
+            softWrap = true,
+            modifier = Modifier.alpha(0f), // Invisible but participates in layout!
+            onTextLayout = { activeTextLayoutResult = it }
+        )
 
-        // Force line breaks at the exact same words for both active and inactive states
-        // so the text doesn't jump words when transitioning.
-        val lineBreakWordIndices = remember(plainWords, textLayoutResult) {
+        // Force line breaks exactly as measured by the invisible text
+        val lineBreakWordIndices = remember(plainWords, activeTextLayoutResult) {
             val breakIndices = mutableSetOf<Int>()
-            for (i in 0 until textLayoutResult.lineCount - 1) {
-                val endCharIdx = textLayoutResult.getLineEnd(i, visibleEnd = true)
-                var charCount = 0
-                for (wIndex in plainWords.indices) {
-                    charCount += plainWords[wIndex].length
-                    if (charCount >= endCharIdx - 1) {
-                        breakIndices.add(wIndex)
-                        break
+            activeTextLayoutResult?.let { result ->
+                for (i in 0 until result.lineCount - 1) {
+                    val endCharIdx = result.getLineEnd(i, visibleEnd = true)
+                    var charCount = 0
+                    for (wIndex in plainWords.indices) {
+                        charCount += plainWords[wIndex].length
+                        if (charCount >= endCharIdx - 1) {
+                            breakIndices.add(wIndex)
+                            break
+                        }
+                        charCount += 1 // for the space
                     }
-                    charCount += 1 // for the space
                 }
             }
             breakIndices
@@ -1619,8 +1617,8 @@ fun FadeLyricLineFruit(
             }
         }
 
+        // 2. Visible animated text with exact line breaks forced
         if (!words.isNullOrEmpty()) {
-            // Word-timed path: single AnnotatedString for natural kerning & wrapping.
             val annotated = buildAnnotatedString {
                 words.forEachIndexed { i, syncedWord ->
                     val wordAlpha = when {
@@ -1647,8 +1645,7 @@ fun FadeLyricLineFruit(
                     fontWeight = fontWeight,
                     lineHeight = (lineFontSize * 1.25f).sp
                 ),
-                softWrap = true,
-                minLines = activeLineCount
+                softWrap = true
             )
         } else {
             // Plain text — single Text with natural wrapping
@@ -1660,8 +1657,7 @@ fun FadeLyricLineFruit(
                     fontWeight = fontWeight,
                     lineHeight = (lineFontSize * 1.25f).sp
                 ),
-                softWrap = true,
-                minLines = activeLineCount
+                softWrap = true
             )
         }
     }
