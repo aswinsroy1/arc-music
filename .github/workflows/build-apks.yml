@@ -39,7 +39,7 @@ jobs:
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --no-configuration-cache
 
       - name: Create Release and Upload APKs
         uses: softprops/action-gh-release@v2
