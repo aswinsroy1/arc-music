@@ -161,16 +161,27 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         setContent {
+            val viewModel: MusicViewModel = hiltViewModel()
+            val themeMode by viewModel.themeMode.collectAsState()
+            
+            val isDarkTheme = when (themeMode) {
+                ThemeMode.System -> isSystemInDarkTheme()
+                ThemeMode.Light -> false
+                ThemeMode.Dark -> true
+            }
+
             var showIntro by remember { mutableStateOf(true) }
             if (showIntro) {
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     keepSplashScreen = false
                 }
-                com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(onFinished = { showIntro = false })
+                com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
+                    isDarkTheme = isDarkTheme,
+                    onFinished = { showIntro = false }
+                )
                 return@setContent
             }
-            val viewModel: MusicViewModel = hiltViewModel()
-            val themeMode by viewModel.themeMode.collectAsState()
+            
             val isLibraryLoaded by viewModel.isLibraryLoaded.collectAsState()
             val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
             
@@ -180,11 +191,6 @@ class MainActivity : ComponentActivity() {
                     kotlinx.coroutines.delay(100)
                     keepSplashScreen = false
                 }
-            }
-            val isDarkTheme = when (themeMode) {
-                ThemeMode.System -> isSystemInDarkTheme()
-                ThemeMode.Light -> false
-                ThemeMode.Dark -> true
             }
 
             ArcMusicTheme(darkTheme = isDarkTheme) {

@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -38,6 +37,7 @@ import kotlin.math.sin
  */
 @Composable
 fun AnimatedSplashScreen(
+    isDarkTheme: Boolean,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
     durationMillis: Int = 900
@@ -53,9 +53,8 @@ fun AnimatedSplashScreen(
         onFinished()
     }
 
-    val isDark = isSystemInDarkTheme()
-    val bgColor = if (isDark) Color.Black else Color.White
-    val arcColor = if (isDark) Color.White else Color.Black
+    val bgColor = if (isDarkTheme) Color.Black else Color.White
+    val arcColor = if (isDarkTheme) Color.White else Color.Black
 
     Box(
         modifier = modifier
