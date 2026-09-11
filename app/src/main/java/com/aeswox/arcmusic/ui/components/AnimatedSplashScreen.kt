@@ -87,7 +87,7 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
     val fullSweep = endDeg - startDeg
     val midDeg = (startDeg + endDeg) / 2f
 
-    val totalSamples = 240
+    val totalSamples = 1200
     val visibleSamples = (totalSamples * sweepFraction).toInt().coerceAtLeast(1)
 
     val outerPoints = ArrayList<Offset>(visibleSamples + 1)
@@ -123,8 +123,18 @@ private fun DrawScope.drawArcMark(sweepFraction: Float) {
     // animating — it reads as the stroke actively being drawn — and gets its own
     // rounded cap once the sweep completes.
     val tipRadius = (baseW / 2f) * scale
-    drawCircle(Color.White, radius = tipRadius, center = outerPoints.first())
+    
+    val centerFirst = Offset(
+        (outerPoints.first().x + innerPoints.first().x) / 2f,
+        (outerPoints.first().y + innerPoints.first().y) / 2f
+    )
+    drawCircle(Color.White, radius = tipRadius, center = centerFirst)
+    
     if (sweepFraction >= 0.999f) {
-        drawCircle(Color.White, radius = tipRadius, center = outerPoints.last())
+        val centerLast = Offset(
+            (outerPoints.last().x + innerPoints.last().x) / 2f,
+            (outerPoints.last().y + innerPoints.last().y) / 2f
+        )
+        drawCircle(Color.White, radius = tipRadius, center = centerLast)
     }
 }
