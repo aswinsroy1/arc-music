@@ -163,6 +163,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             var showIntro by remember { mutableStateOf(true) }
             if (showIntro) {
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    keepSplashScreen = false
+                }
                 com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(onFinished = { showIntro = false })
                 return@setContent
             }
