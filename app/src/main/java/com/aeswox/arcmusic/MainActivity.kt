@@ -1617,8 +1617,13 @@ fun HeroSection(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                val gradientTopAlpha by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (isNowPlayingMode) 0.8f else 0.0f,
+                val scrimStart by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isNowPlayingMode) 0.25f else 0.5f,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
+                )
+
+                val midAlpha by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isNowPlayingMode) 0.8f else 0.5f,
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
                 )
 
@@ -1627,11 +1632,10 @@ fun HeroSection(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = gradientTopAlpha), 
-                                    MaterialTheme.colorScheme.surface
-                                )
+                                0.0f to Color.Transparent,
+                                scrimStart to Color.Transparent,
+                                0.75f to MaterialTheme.colorScheme.surface.copy(alpha = midAlpha),
+                                1.0f to MaterialTheme.colorScheme.surface
                             )
                         )
                 )
