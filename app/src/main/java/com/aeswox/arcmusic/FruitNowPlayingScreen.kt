@@ -1511,7 +1511,7 @@ fun FadeLyricLineFruit(
     fadeSteepness: Float = 1.0f,
     fadeScaleCeiling: Float = 0.85f,
     distanceSizing: Boolean = false,
-    baseFontSize: androidx.compose.ui.unit.TextUnit = 26.sp
+    baseFontSize: androidx.compose.ui.unit.TextUnit = 32.sp
 ) {
     val isActive by remember { derivedStateOf { lineIndex == activeLineIndexProvider() } }
     val currentPosition = if (isActive) currentPositionProvider() else 0L
@@ -1519,9 +1519,9 @@ fun FadeLyricLineFruit(
     val displayMediumStyle = MaterialTheme.typography.displayMedium
     val words = syncedLine?.words
 
-    // Target scale calculations. Active = 1.0 (draws at baseFontSize). Inactive = smaller
-    val inactiveScale = (baseFontSize.value - 4f) / baseFontSize.value // roughly 22sp / 26sp
-    val targetScale = if (isActive) 1f else inactiveScale
+    // Target scale calculations. Active = 1.1 (draws slightly larger). Inactive = 1.0
+    val inactiveScale = 1.0f
+    val targetScale = if (isActive) 1.1f else inactiveScale
     val lineScale by androidx.compose.animation.core.animateFloatAsState(
         targetValue = targetScale,
         animationSpec = androidx.compose.animation.core.spring(
@@ -1531,12 +1531,13 @@ fun FadeLyricLineFruit(
         label = "scale"
     )
 
-    // We use ExtraBold for EVERYTHING so the layout footprint never changes.
-    val fontWeight = FontWeight.ExtraBold
+    // We use Bold for EVERYTHING so the layout footprint never changes.
+    val fontWeight = FontWeight.Bold
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(start = 16.dp, top = 8.dp, end = 32.dp, bottom = 16.dp)
             .graphicsLayer {
                 val layoutInfo = listState.layoutInfo
                 val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == lineIndex }
@@ -1548,11 +1549,11 @@ fun FadeLyricLineFruit(
                     val maxDistance = viewportHeight * 0.5f
                     val progress = (distance / maxDistance).coerceIn(0f, 1f)
 
-                    // Three-tier alpha: active=1.0, near-inactive=0.38, far-inactive fades toward 0
+                    val inactiveBaseAlpha = 0.35f
                     scrollAlpha = when {
                         isActive -> 1f
-                        progress < 0.15f -> 0.38f
-                        else -> (0.38f - ((progress - 0.15f) / 0.85f) * 0.38f).coerceAtLeast(0f)
+                        progress < 0.15f -> inactiveBaseAlpha
+                        else -> (inactiveBaseAlpha - ((progress - 0.15f) / 0.85f) * inactiveBaseAlpha).coerceAtLeast(0f)
                     }
                 }
 
@@ -1587,7 +1588,7 @@ fun FadeLyricLineFruit(
                 style = displayMediumStyle.copy(
                     fontSize = baseFontSize,
                     fontWeight = fontWeight,
-                    lineHeight = (baseFontSize.value * 1.25f).sp
+                    lineHeight = (baseFontSize.value * 1.2f).sp
                 ),
                 softWrap = true
             )
@@ -1599,7 +1600,7 @@ fun FadeLyricLineFruit(
                 style = displayMediumStyle.copy(
                     fontSize = baseFontSize,
                     fontWeight = fontWeight,
-                    lineHeight = (baseFontSize.value * 1.25f).sp
+                    lineHeight = (baseFontSize.value * 1.2f).sp
                 ),
                 softWrap = true
             )
@@ -1948,7 +1949,6 @@ val rawSyncedLines = lyricsData?.synced
     val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor
                             else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
-    val listSpacing = 20.dp
     val bottomPadding = 300.dp
     // The entire lyrics layer uses lyricsFraction for alpha â€” this is what makes
     // the transition feel like elements morphing in place, not a new screen fading in.
@@ -1967,8 +1967,7 @@ val rawSyncedLines = lyricsData?.synced
                 bottom = bottomPadding,
                 start = 28.dp,
                 end   = 28.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(listSpacing)
+            )
         ) {
             itemsIndexed(linesToRender) { lineIndex, line ->
                 val words = remember(lineIndex, syncedLines, line) {
