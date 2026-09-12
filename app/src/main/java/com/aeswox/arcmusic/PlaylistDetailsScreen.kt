@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -50,7 +49,6 @@ fun PlaylistDetailsScreen(
 
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var blurProgress by remember { mutableFloatStateOf(0f) }
 
     if (playlist == null) {
         PlaylistDetailsSkeleton(onNavigateBack = onNavigateBack)
@@ -68,16 +66,8 @@ fun PlaylistDetailsScreen(
         ?: "https://lh3.googleusercontent.com/aida-public/AB6AXuDK2gSPmhFiKqcqPLlCJlIp7lxpTt2scS9SuOmzxmZKXa1UQIjSKITZh8tGxaLLsMWtK_rqugpIF6kWjdqifIFpbIHQ51KFkHHGCwprGn7T1jWwAFiUiOgft22mJtHc311emev_Y9qChhO44k-VwJC7dvX80Zs-JHFurqrp7BRfflgHO2uz-vspGyR9BoWhQUaXuELDgddlmK__JFlAjdrkjKUgyxH0SVRHhhE0iqWq7lQMTieDIl6s1Oh1frE5nhxruwt9dXwi3SRK" // Fallback
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Content container that blurs gradually as the menu popup opens
+        // Ambient glow
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (blurProgress > 0f) Modifier.blur(12.dp * blurProgress) else Modifier
-                )
-        ) {
-            // Ambient glow
-            Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(400.dp)
@@ -131,8 +121,7 @@ fun PlaylistDetailsScreen(
                                     onClick = { showDeleteConfirmDialog = true }
                                 )
                             ),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            onProgressChange = { _, blur -> blurProgress = blur }
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -335,16 +324,6 @@ fun PlaylistDetailsScreen(
             }
         }
     }
-
-    // Dim scrim that smoothly darkens the blurred background
-    if (blurProgress > 0f) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.30f * blurProgress))
-        )
-    }
-}
 
     if (showDeleteConfirmDialog) {
         AlertDialog(
