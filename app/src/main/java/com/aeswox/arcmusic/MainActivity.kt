@@ -1439,7 +1439,7 @@ fun MusicHomeScreen(
                     }
                     3 -> {
                         val stats by viewModel.listeningStats.collectAsState()
-                        ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) })
+                        ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) }, onNavigateToArtist = onNavigateToArtistDetails)
                     }
                 }
         }

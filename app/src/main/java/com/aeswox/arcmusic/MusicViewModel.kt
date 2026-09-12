@@ -1969,7 +1969,7 @@ class MusicViewModel @Inject constructor(
         // Build artist entries â€” photoUri comes from the Artists table via libraryArtists
         val topArtists = artistMinutes.entries
             .sortedByDescending { it.value }
-            .take(8)
+            .take(10)
             .map { (name, minutes) -> 
                 val photoUri = artists.find { it.name.equals(name, ignoreCase = true) }?.photoUri
                 ArtistStatEntry(name, photoUri, minutes) 

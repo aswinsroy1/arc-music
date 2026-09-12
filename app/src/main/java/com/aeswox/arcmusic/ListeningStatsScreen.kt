@@ -60,6 +60,7 @@ fun ListeningStatsScreenContent(
     stats: ListeningStatsData,
     bottomPadding: Dp,
     onNavigateBack: () -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -85,7 +86,7 @@ fun ListeningStatsScreenContent(
         }
         if (stats.topArtists.isNotEmpty()) {
             item {
-                TopArtistsSection(artists = stats.topArtists)
+                TopArtistsSection(artists = stats.topArtists, onArtistClick = onNavigateToArtist)
             }
         }
         if (stats.topGenres.isNotEmpty()) {
@@ -280,7 +281,7 @@ fun WeeklyActivitySection(
 }
 
 @Composable
-fun TopArtistsSection(artists: List<ArtistStatEntry>) {
+fun TopArtistsSection(artists: List<ArtistStatEntry>, onArtistClick: (String) -> Unit) {
     Column {
         Text(
             text = "Top Artists",
@@ -303,7 +304,9 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.width(112.dp)
+                    modifier = Modifier
+                        .width(112.dp)
+                        .jellyClick { onArtistClick(artist.artistName) }
                 ) {
                     com.aeswox.arcmusic.ui.components.ArtistImage(
                         model = artist.photoUri,
