@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import com.aeswox.arcmusic.ui.components.FavoriteHeartIcon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -254,10 +255,11 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f))
                     ) {
-                        Icon(
-                            imageVector = if (artist.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (artist.isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = if (artist.isFavorite) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface
+                        FavoriteHeartIcon(
+                            isFavorite = artist.isFavorite,
+                            activeColor = Color(0xFFE53935),
+                            inactiveColor = MaterialTheme.colorScheme.onSurface,
+                            iconSize = 24.dp
                         )
                     }
                 }

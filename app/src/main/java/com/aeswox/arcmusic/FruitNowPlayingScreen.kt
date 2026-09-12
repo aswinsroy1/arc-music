@@ -365,15 +365,6 @@ fun FruitNowPlayingScreen(
     @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
     val navScope = LocalNavAnimatedVisibilityScope.current
     val jiggleSettings = LocalJigglePhysicsSettings.current
-    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
-    val boundsTransform = remember {
-        { _: androidx.compose.ui.geometry.Rect, _: androidx.compose.ui.geometry.Rect ->
-            spring<androidx.compose.ui.geometry.Rect>(
-                dampingRatio = 0.88f,
-                stiffness = 380f
-            )
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -517,19 +508,7 @@ fun FruitNowPlayingScreen(
 
                     contentScale = ContentScale.Crop,
 
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (sharedScope != null && navScope != null) {
-                                with(sharedScope) {
-                                    Modifier.sharedElement(
-                                        state = rememberSharedContentState(key = "player_artwork"),
-                                        animatedVisibilityScope = navScope,
-                                        boundsTransform = boundsTransform
-                                    )
-                                }
-                            } else Modifier
-                        )
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 // Canvas artwork player â€” crossfades in over the static art
@@ -682,19 +661,7 @@ fun FruitNowPlayingScreen(
                                     ),
                                     color = textColor,
                                     maxLines = 1,
-                                    modifier = Modifier
-                                        .weight(1f, fill = false)
-                                        .then(
-                                            if (sharedScope != null && navScope != null) {
-                                                with(sharedScope) {
-                                                    Modifier.sharedBounds(
-                                                        sharedContentState = rememberSharedContentState(key = "player_title"),
-                                                        animatedVisibilityScope = navScope,
-                                                        boundsTransform = boundsTransform
-                                                    )
-                                                }
-                                            } else Modifier
-                                        )
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                                 if (false /* songToPlay?.isExplicit == true */) {
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -706,16 +673,7 @@ fun FruitNowPlayingScreen(
                                 text = songToPlay?.artist ?: "Unknown",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = textColor.copy(alpha = textAlpha),
-                                maxLines = 1,
-                                modifier = if (sharedScope != null && navScope != null) {
-                                    with(sharedScope) {
-                                        Modifier.sharedBounds(
-                                            sharedContentState = rememberSharedContentState(key = "player_artist"),
-                                            animatedVisibilityScope = navScope,
-                                            boundsTransform = boundsTransform
-                                        )
-                                    }
-                                } else Modifier
+                                maxLines = 1
                             )
 
                         }
@@ -782,16 +740,11 @@ fun FruitNowPlayingScreen(
 
                             ) {
 
-                                Icon(
-
-                                    imageVector = if (songToPlay?.isFavorite == true) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-
-                                    contentDescription = "Favorite",
-
-                                    tint = if (songToPlay?.isFavorite == true) Color.White else textColor,
-
-                                    modifier = Modifier.size(24.dp)
-
+                                FavoriteHeartIcon(
+                                    isFavorite = songToPlay?.isFavorite == true,
+                                    activeColor = Color(0xFFE53935),
+                                    inactiveColor = textColor,
+                                    iconSize = 24.dp
                                 )
 
                             }
@@ -859,19 +812,7 @@ fun FruitNowPlayingScreen(
                             com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
                                 isPlaying = isPlaying,
                                 tint = textColor,
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .then(
-                                        if (sharedScope != null && navScope != null) {
-                                            with(sharedScope) {
-                                                Modifier.sharedElement(
-                                                    state = rememberSharedContentState(key = "player_play_pause"),
-                                                    animatedVisibilityScope = navScope,
-                                                    boundsTransform = boundsTransform
-                                                )
-                                            }
-                                        } else Modifier
-                                    )
+                                modifier = Modifier.size(50.dp)
                             )
 
                         }
@@ -2047,12 +1988,11 @@ val rawSyncedLines = lyricsData?.synced
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = if (songToPlay?.isFavorite == true)
-                                    Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                tint     = if (songToPlay?.isFavorite == true) Color.White else textColor,
-                                modifier = Modifier.size(24.dp)
+                            FavoriteHeartIcon(
+                                isFavorite = songToPlay?.isFavorite == true,
+                                activeColor = Color(0xFFE53935),
+                                inactiveColor = textColor,
+                                iconSize = 24.dp
                             )
                         }
                     }
