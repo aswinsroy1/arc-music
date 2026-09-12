@@ -71,7 +71,9 @@ fun EqualizerScreen(
     val bandLevels by viewModel.bandLevels.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    var selectedPreset by remember { mutableStateOf<String?>("Flat") }
+    val selectedPreset = remember(bandLevels) {
+        EQ_PRESETS.firstOrNull { it.levels == bandLevels }?.name
+    }
 
     Scaffold(
         modifier = modifier.background(MaterialTheme.colorScheme.background),
@@ -129,7 +131,6 @@ fun EqualizerScreen(
                 isEnabled = isEnabled,
                 onBandChanged = { i, v ->
                     viewModel.setBandLevel(i, v)
-                    selectedPreset = null
                 }
             )
 
@@ -141,7 +142,6 @@ fun EqualizerScreen(
                 selectedPreset = selectedPreset,
                 isEnabled = isEnabled,
                 onPresetSelected = { preset ->
-                    selectedPreset = preset.name
                     viewModel.applyPreset(preset.levels)
                 }
             )
@@ -207,7 +207,6 @@ fun EqualizerScreen(
             JellyOutlinedButton(
                 onClick = {
                     viewModel.applyPreset(EQ_PRESETS.first { it.name == "Flat" }.levels)
-                    selectedPreset = "Flat"
                 },
                 modifier = Modifier
                     .fillMaxWidth()
