@@ -54,7 +54,8 @@ fun MorphingMenu(
     buttonSize: Dp = 40.dp,
     menuWidth: Dp = 210.dp,
     contentDescription: String? = "More options",
-    tint: Color = MaterialTheme.colorScheme.onSurface
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+    onProgressChange: (Float) -> Unit = {}
 ) {
     var isOpen by remember { mutableStateOf(false) }
     var isDismissing by remember { mutableStateOf(false) }
@@ -76,6 +77,7 @@ fun MorphingMenu(
             )
             isOpen = false
             isDismissing = false
+            onProgressChange(0f)
             onFinished?.invoke()
         }
     }
@@ -131,6 +133,9 @@ fun MorphingMenu(
                 ) {
                     val rawProgress = animProgress.value
                     val progress = rawProgress.coerceIn(0f, 1f)
+                    SideEffect {
+                        onProgressChange(progress)
+                    }
                     val currentWidth = lerp(buttonSize, menuWidth, rawProgress)
                     val currentHeight = lerp(buttonSize, menuHeight, rawProgress)
                     val currentCorner = lerp(buttonSize / 2, 28.dp, progress)
