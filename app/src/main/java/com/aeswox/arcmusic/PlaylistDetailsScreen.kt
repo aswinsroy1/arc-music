@@ -31,6 +31,8 @@ import com.aeswox.arcmusic.ui.components.JellyIconButton
 import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
 import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
 import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
+import com.aeswox.arcmusic.ui.components.MorphingMenu
+import com.aeswox.arcmusic.ui.components.MorphingMenuItem
 
 @Composable
 fun PlaylistDetailsScreen(
@@ -45,7 +47,6 @@ fun PlaylistDetailsScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    var showMenu by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
@@ -101,102 +102,27 @@ fun PlaylistDetailsScreen(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box {
-                            AppIconButton(
-                                icon = Icons.Default.MoreVert,
-                                contentDescription = "More",
-                                onClick = { showMenu = true },
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                modifier = Modifier
-                                    .width(220.dp)
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-                                    .padding(8.dp),
-                                shape = RoundedCornerShape(32.dp),
-                                shadowElevation = 16.dp
-                            ) {
-                                DropdownMenuItem(
-                                    text = { 
-                                        Text(
-                                            "Edit playlist",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        ) 
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Edit,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        showEditDialog = true
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(24.dp)),
-                                    colors = MenuDefaults.itemColors(
-                                        textColor = MaterialTheme.colorScheme.onSurface
-                                    )
+                        MorphingMenu(
+                            items = listOf(
+                                MorphingMenuItem(
+                                    text = "Edit playlist",
+                                    icon = Icons.Default.Edit,
+                                    onClick = { showEditDialog = true }
+                                ),
+                                MorphingMenuItem(
+                                    text = "Share playlist",
+                                    icon = Icons.Default.IosShare,
+                                    onClick = { onNavigateToShare("playlist", playlistId) }
+                                ),
+                                MorphingMenuItem(
+                                    text = "Delete playlist",
+                                    icon = Icons.Default.DeleteOutline,
+                                    isDestructive = true,
+                                    onClick = { showDeleteConfirmDialog = true }
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                DropdownMenuItem(
-                                    text = { 
-                                        Text(
-                                            "Share playlist",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        ) 
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.IosShare,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        onNavigateToShare("playlist", playlistId)
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(24.dp)),
-                                    colors = MenuDefaults.itemColors(
-                                        textColor = MaterialTheme.colorScheme.onSurface
-                                    )
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                DropdownMenuItem(
-                                    text = { 
-                                        Text(
-                                            "Delete playlist",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        ) 
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.DeleteOutline,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        showDeleteConfirmDialog = true
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(24.dp)),
-                                    colors = MenuDefaults.itemColors(
-                                        textColor = MaterialTheme.colorScheme.error
-                                    )
-                                )
-                            }
-                        }
+                            ),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
