@@ -70,7 +70,7 @@ fun MorphingMenu(
             animProgress.animateTo(
                 targetValue = 0f,
                 animationSpec = spring(
-                    dampingRatio = 0.88f,
+                    dampingRatio = 1.0f,
                     stiffness = Spring.StiffnessMedium
                 )
             )
@@ -129,15 +129,20 @@ fun MorphingMenu(
                         },
                     contentAlignment = Alignment.TopEnd
                 ) {
-                    val progress = animProgress.value
-                    val currentWidth = lerp(buttonSize, menuWidth, progress)
-                    val currentHeight = lerp(buttonSize, menuHeight, progress)
+                    val rawProgress = animProgress.value
+                    val progress = rawProgress.coerceIn(0f, 1f)
+                    val currentWidth = lerp(buttonSize, menuWidth, rawProgress)
+                    val currentHeight = lerp(buttonSize, menuHeight, rawProgress)
                     val currentCorner = lerp(buttonSize / 2, 28.dp, progress)
                     val currentElevation = lerp(0.dp, 12.dp, progress)
 
+                    // Surface background and border smoothly dissolve to transparent as card reaches button size
+                    val surfaceAlpha = (progress / 0.35f).coerceIn(0f, 1f)
+                    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f * surfaceAlpha)
+                    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f * surfaceAlpha)
+
                     Surface(
                         modifier = Modifier
-                            .padding(top = 2.dp, end = 2.dp)
                             .size(currentWidth, currentHeight)
                             .shadow(
                                 elevation = currentElevation,
@@ -145,7 +150,7 @@ fun MorphingMenu(
                             )
                             .border(
                                 width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f * progress.coerceIn(0f, 1f)),
+                                color = borderColor,
                                 shape = RoundedCornerShape(currentCorner)
                             )
                             .clickable(
@@ -155,14 +160,14 @@ fun MorphingMenu(
                                 // Consume clicks inside the card so it doesn't dismiss
                             },
                         shape = RoundedCornerShape(currentCorner),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
+                        color = surfaceColor
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            // 1. Initial 3-dot icon that rotates and dissolves as card expands
-                            val iconAlpha = (1f - progress * 3.3f).coerceIn(0f, 1f)
+                            // 1. Initial 3-dot icon that rotates and crossfades smoothly as card expands/collapses
+                            val iconAlpha = ((0.45f - progress) / 0.45f).coerceIn(0f, 1f)
                             if (iconAlpha > 0.01f) {
                                 Icon(
                                     imageVector = Icons.Default.MoreVert,
@@ -172,9 +177,9 @@ fun MorphingMenu(
                                         .size(24.dp)
                                         .graphicsLayer {
                                             alpha = iconAlpha
-                                            rotationZ = progress * 90f
-                                            scaleX = (1f - progress * 0.3f).coerceAtLeast(0.1f)
-                                            scaleY = (1f - progress * 0.3f).coerceAtLeast(0.1f)
+                                            rotationZ = progress * 45f
+                                            scaleX = 0.9f + (0.1f * iconAlpha)
+                                            scaleY = 0.9f + (0.1f * iconAlpha)
                                         }
                                 )
                             }
