@@ -71,7 +71,7 @@ fun MorphingMenu(
                 targetValue = 0f,
                 animationSpec = spring(
                     dampingRatio = 1.0f,
-                    stiffness = Spring.StiffnessMedium
+                    stiffness = Spring.StiffnessMediumLow
                 )
             )
             isOpen = false
@@ -98,14 +98,14 @@ fun MorphingMenu(
         modifier = modifier.size(buttonSize),
         contentAlignment = Alignment.Center
     ) {
-        // Collapsed trigger button (hidden when menu popup is active)
+        // The 3-dot button in the top bar (covered by the opaque card when open,
+        // seamlessly revealed as the card dissolves when shrinking below 50%)
         AppIconButton(
             icon = Icons.Default.MoreVert,
             contentDescription = contentDescription,
             onClick = { open() },
             tint = tint,
-            size = 24.dp,
-            modifier = Modifier.alpha(if (isOpen) 0f else 1f)
+            size = 24.dp
         )
 
         // Morphing Popup container
@@ -134,16 +134,26 @@ fun MorphingMenu(
                     val currentWidth = lerp(buttonSize, menuWidth, rawProgress)
                     val currentHeight = lerp(buttonSize, menuHeight, rawProgress)
                     val currentCorner = lerp(buttonSize / 2, 28.dp, progress)
-                    val currentElevation = lerp(0.dp, 12.dp, progress)
 
-                    // Surface background and border smoothly dissolve to transparent as card reaches button size
-                    val surfaceAlpha = (progress / 0.35f).coerceIn(0f, 1f)
-                    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f * surfaceAlpha)
-                    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f * surfaceAlpha)
+                    // Non-linear transparency curve:
+                    // 100% opaque until reduced to 50% size (progress >= 0.5f).
+                    // Below 50%, smoothly dissolves using a Hermite S-curve (3t² - 2t³).
+                    val popupAlpha = if (progress >= 0.5f) {
+                        1f
+                    } else {
+                        val t = (progress / 0.5f).coerceIn(0f, 1f)
+                        t * t * (3f - 2f * t)
+                    }
+
+                    val currentElevation = lerp(0.dp, 12.dp, progress) * popupAlpha
+                    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f * popupAlpha)
 
                     Surface(
                         modifier = Modifier
                             .size(currentWidth, currentHeight)
+                            .graphicsLayer {
+                                alpha = popupAlpha
+                            }
                             .shadow(
                                 elevation = currentElevation,
                                 shape = RoundedCornerShape(currentCorner)
@@ -160,32 +170,14 @@ fun MorphingMenu(
                                 // Consume clicks inside the card so it doesn't dismiss
                             },
                         shape = RoundedCornerShape(currentCorner),
-                        color = surfaceColor
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            // 1. Initial 3-dot icon that rotates and crossfades smoothly as card expands/collapses
-                            val iconAlpha = ((0.45f - progress) / 0.45f).coerceIn(0f, 1f)
-                            if (iconAlpha > 0.01f) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = null,
-                                    tint = tint,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .graphicsLayer {
-                                            alpha = iconAlpha
-                                            rotationZ = progress * 45f
-                                            scaleX = 0.9f + (0.1f * iconAlpha)
-                                            scaleY = 0.9f + (0.1f * iconAlpha)
-                                        }
-                                )
-                            }
-
-                            // 2. Menu items list that fades in and slides into place
-                            val itemsAlpha = ((progress - 0.35f) / 0.65f).coerceIn(0f, 1f)
+                            // Menu items list that fades out cleanly between 1.0 and 0.45
+                            val itemsAlpha = ((progress - 0.45f) / 0.55f).coerceIn(0f, 1f)
                             if (itemsAlpha > 0.01f) {
                                 Column(
                                     modifier = Modifier
