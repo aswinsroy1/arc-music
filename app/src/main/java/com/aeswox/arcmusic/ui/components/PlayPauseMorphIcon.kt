@@ -41,9 +41,9 @@ fun PlayPauseMorphIcon(
         // Triangle with vertices (5,5), (19,12), (5,19) and corner radius 2.
         val playPolygon = RoundedPolygon(
             vertices = floatArrayOf(
-                5f, 5f,
+                5f, 3f,
                 19f, 12f,
-                5f, 19f
+                5f, 21f
             ),
             rounding = CornerRounding(2f),
             centerX = 12f,
