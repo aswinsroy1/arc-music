@@ -286,10 +286,26 @@ class MusicRepository(
         onProgress: (ScanPhase, Int, Int) -> Unit = { _, _, _ -> }
     ): ScanResult = withContext(Dispatchers.IO) {
         onProgress(ScanPhase.CLEARING_DATABASE, 0, 0)
+        
+        // Backup playlist tracks before wiping to preserve them
+        val playlistTracksBackup = playlistDao.getAllPlaylistTracks()
+        
         trackDao.deleteAllTracks()
         albumDao.deleteAllAlbums()
         artistDao.deleteAllArtists()
-        scanMediaStore(minDurationMs, minTracksPerAlbum, excludedFolders, null, onProgress)
+        
+        val result = scanMediaStore(minDurationMs, minTracksPerAlbum, excludedFolders, null, onProgress)
+        
+        // Restore playlist tracks for tracks that still exist
+        if (playlistTracksBackup.isNotEmpty()) {
+            val currentTracks = trackDao.getAllTracks().first().map { it.id }.toSet()
+            val validPlaylistTracks = playlistTracksBackup.filter { it.trackId in currentTracks }
+            if (validPlaylistTracks.isNotEmpty()) {
+                playlistDao.insertPlaylistTracks(validPlaylistTracks)
+            }
+        }
+        
+        result
     }
     
     suspend fun logPlayStart(trackId: String) = withContext(Dispatchers.IO) {

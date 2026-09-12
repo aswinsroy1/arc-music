@@ -81,6 +81,9 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylistTracks(playlistTracks: List<PlaylistTrack>)
 
+    @Query("SELECT * FROM playlist_tracks")
+    suspend fun getAllPlaylistTracks(): List<PlaylistTrack>
+
     @Query("""
         SELECT id, name, dateCreated, description,
                COALESCE(coverArtUri, (
