@@ -1,5 +1,8 @@
 package com.aeswox.arcmusic
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -97,11 +100,17 @@ fun ListeningStatsScreenContent(
                 )
             }
         }
-        // Night Owl card: always shown when there is any history
-        if (stats.nightOwlMinutesByHour.any { it > 0L }) {
-            item {
+        // Listening Personality: shows unlocked card if >= 5 hours (300 mins), otherwise shows progress teaser
+        item {
+            if (stats.totalMinutes >= PERSONALITY_UNLOCK_MINUTES) {
                 NightOwlPersonalityCard(
                     minutesByHour = stats.nightOwlMinutesByHour,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            } else {
+                PersonalityLockedCard(
+                    totalMinutes = stats.totalMinutes,
+                    targetMinutes = PERSONALITY_UNLOCK_MINUTES,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
             }
@@ -588,6 +597,135 @@ fun NightOwlPersonalityCard(
                         lineHeight = 22.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+private const val PERSONALITY_UNLOCK_MINUTES = 300L // 5 hours
+
+@Composable
+fun PersonalityLockedCard(
+    totalMinutes: Long,
+    targetMinutes: Long = PERSONALITY_UNLOCK_MINUTES,
+    modifier: Modifier = Modifier
+) {
+    val cardShape = RoundedCornerShape(AppCornerRadius)
+    val progress = (totalMinutes.toFloat() / targetMinutes.toFloat()).coerceIn(0f, 1f)
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "personality_progress"
+    )
+
+    val currentHours = totalMinutes / 60L
+    val currentMins = totalMinutes % 60L
+    val progressText = when {
+        currentHours > 0 && currentMins > 0 -> "$currentHours hr $currentMins min"
+        currentHours > 0 -> "$currentHours hr"
+        else -> "$currentMins min"
+    }
+    val targetHours = targetMinutes / 60L
+    val pct = (progress * 100).toInt()
+
+    GlassCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                shape = cardShape
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Listening Personality",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Unlocks after $targetHours hours of listening — keep playing to reveal your music rhythm.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Progress bar matching app styling
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f))
+            ) {
+                if (animatedProgress > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedProgress.coerceIn(0.001f, 1f))
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "$progressText / $targetHours hrs",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$pct%",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
