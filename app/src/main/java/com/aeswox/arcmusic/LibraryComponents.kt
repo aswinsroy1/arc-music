@@ -25,6 +25,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -83,6 +86,15 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
         onSelectionModeChange(isSelectionMode)
     }
 
+    val context = LocalContext.current
+    val m3uImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importM3uPlaylist(context, uri)
+        }
+    }
+
     val currentTab = tabs.getOrNull(pagerState.currentPage)
     val libraryMenuItems = remember(currentTab) {
         val list = mutableListOf<MorphingMenuItem>()
@@ -93,6 +105,17 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
                     icon = Icons.Default.Refresh,
                     onClick = {
                         viewModel.refetchAllArtistsDetails()
+                    }
+                )
+            )
+        }
+        if (currentTab == "Playlists") {
+            list.add(
+                MorphingMenuItem(
+                    text = "Import M3U Playlist",
+                    icon = Icons.Outlined.Download,
+                    onClick = {
+                        m3uImportLauncher.launch(arrayOf("*/*"))
                     }
                 )
             )
