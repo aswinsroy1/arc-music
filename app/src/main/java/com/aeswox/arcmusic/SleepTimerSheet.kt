@@ -58,6 +58,17 @@ fun SleepTimerContent(
     
     var isCustomView by remember { mutableStateOf(false) }
     
+    var lastNumericPreset by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0)) }
+    if (selectedPreset != -1) {
+        lastNumericPreset = selectedPreset
+    }
+    
+    val animatedPreset by androidx.compose.animation.core.animateIntAsState(
+        targetValue = lastNumericPreset,
+        animationSpec = tween(durationMillis = 300),
+        label = "PresetCount"
+    )
+    
     var customHours by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0) / 60) }
     var customMins by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0) % 60) }
     var finishCurrentSong by remember { mutableStateOf(false) }
@@ -205,20 +216,14 @@ fun SleepTimerContent(
                     modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
                 ) {
                     AnimatedContent(
-                        targetState = selectedPreset,
+                        targetState = selectedPreset == -1,
                         transitionSpec = {
-                            val t = if (targetState == -1) 999 else targetState
-                            val i = if (initialState == -1) 999 else initialState
-                            if (t > i) {
-                                (androidx.compose.animation.slideInVertically { height -> height } + fadeIn()) togetherWith (androidx.compose.animation.slideOutVertically { height -> -height } + fadeOut())
-                            } else {
-                                (androidx.compose.animation.slideInVertically { height -> -height } + fadeIn()) togetherWith (androidx.compose.animation.slideOutVertically { height -> height } + fadeOut())
-                            }
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
                         },
-                        label = "TimerValueMorph"
-                    ) { preset ->
+                        label = "TimerValueTypeMorph"
+                    ) { isEot ->
                         Row(verticalAlignment = Alignment.Bottom) {
-                            if (preset == -1) {
+                            if (isEot) {
                                 Text(
                                     text = "End of track",
                                     style = MaterialTheme.typography.headlineLarge.copy(
@@ -228,7 +233,7 @@ fun SleepTimerContent(
                                 )
                             } else {
                                 Text(
-                                    text = preset.toString(),
+                                    text = animatedPreset.toString(),
                                     style = MaterialTheme.typography.headlineLarge.copy(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 48.sp
