@@ -1,16 +1,27 @@
 package com.aeswox.arcmusic
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,7 +58,22 @@ fun SleepTimerContent(
     var customMins by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0) % 60) }
     var finishCurrentSong by remember { mutableStateOf(false) }
 
-    Column(
+    BackHandler(enabled = isCustomView) {
+        isCustomView = false
+    }
+
+    AnimatedContent(
+        targetState = isCustomView,
+        transitionSpec = {
+            fadeIn(animationSpec = tween(300)) togetherWith
+            fadeOut(animationSpec = tween(300)) using
+            SizeTransform { initialSize, targetSize ->
+                tween(durationMillis = 300)
+            }
+        },
+        label = "SleepTimerCustomViewMorph"
+    ) { custom ->
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -60,7 +86,7 @@ fun SleepTimerContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (isCustomView) "Custom duration" else "Sleep timer",
+                    text = if (custom) "Custom duration" else "Sleep timer",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Medium,
                         fontSize = 20.sp
@@ -69,7 +95,7 @@ fun SleepTimerContent(
                 
                 JellyIconButton(
                     onClick = { 
-                        if (isCustomView) isCustomView = false 
+                        if (custom) isCustomView = false 
                         else onDismiss() 
                     },
                     modifier = Modifier
@@ -79,8 +105,8 @@ fun SleepTimerContent(
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        imageVector = if (custom) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                        contentDescription = if (custom) "Back" else "Close",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(18.dp)
                     )
@@ -89,7 +115,7 @@ fun SleepTimerContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (isCustomView) {
+            if (custom) {
                 // Custom Timer View
                 Box(
                     modifier = Modifier
@@ -277,7 +303,11 @@ fun SleepTimerContent(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                        .jellyClick { isCustomView = true }
+                        .jellyClick { 
+                            customHours = selectedPreset.coerceAtLeast(0) / 60
+                            customMins = selectedPreset.coerceAtLeast(0) % 60
+                            isCustomView = true 
+                        }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -303,40 +333,46 @@ fun SleepTimerContent(
                 }
             }
 
-            if (isCustomView || selectedPreset != -1) {
-                Spacer(modifier = Modifier.height(16.dp))
+            AnimatedVisibility(
+                visible = custom || selectedPreset != -1,
+                enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                        .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Finish current song",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "When the timer ends, pause after this song.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                            .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Finish current song",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "When the timer ends, pause after this song.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = finishCurrentSong,
+                            onCheckedChange = { finishCurrentSong = it }
                         )
                     }
-                    Switch(
-                        checked = finishCurrentSong,
-                        onCheckedChange = { finishCurrentSong = it }
-                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Action Button
-            if (isCustomView) {
+            if (custom) {
                 JellyButton(
                     onClick = { 
                         val totalMins = customHours * 60 + customMins
@@ -391,6 +427,7 @@ fun SleepTimerContent(
                     )
                 }
             }
+        }
     }
 }
 

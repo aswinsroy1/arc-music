@@ -1,5 +1,12 @@
 package com.aeswox.arcmusic
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -34,7 +42,6 @@ data class PlaylistSimple(
     val isSelected: Boolean = false
 )
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToPlaylistContent(
@@ -45,9 +52,25 @@ fun AddToPlaylistContent(
     val viewModel: MusicViewModel = hiltViewModel()
     val playlists by viewModel.libraryPlaylists.collectAsState()
     val playlistsContainingTracks by viewModel.getPlaylistsContainingTracks(trackIds).collectAsState(initial = emptyList())
-    var showNewPlaylistDialog by remember { mutableStateOf(false) }
+    var isCreatingPlaylist by remember { mutableStateOf(false) }
+    var playlistName by remember { mutableStateOf("") }
 
-    Column(
+    BackHandler(enabled = isCreatingPlaylist) {
+        isCreatingPlaylist = false
+    }
+
+    AnimatedContent(
+        targetState = isCreatingPlaylist,
+        transitionSpec = {
+            fadeIn(animationSpec = tween(300)) togetherWith
+            fadeOut(animationSpec = tween(300)) using
+            SizeTransform { initialSize, targetSize ->
+                tween(durationMillis = 300)
+            }
+        },
+        label = "AddToPlaylistMorph"
+    ) { creating ->
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 32.dp)
@@ -62,126 +85,31 @@ fun AddToPlaylistContent(
             ) {
                 Spacer(modifier = Modifier.width(32.dp))
                 Text(
-                    text = "Add to playlist",
+                    text = if (creating) "New playlist" else "Add to playlist",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )
-                JellyIconButton(onClick = onDismissRequest) {
+                JellyIconButton(onClick = {
+                    if (creating) isCreatingPlaylist = false else onDismissRequest()
+                }) {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        imageVector = if (creating) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                        contentDescription = if (creating) "Back" else "Close",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            
-            // New playlist button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .jellyClick { showNewPlaylistDialog = true }
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "New playlist",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "New playlist",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-            )
-            
-            // Playlist items
-            LazyColumn(
-                modifier = Modifier.physicsBounceOverscroll().fillMaxWidth()
-            ) {
-                items(playlists) { playlist ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .jellyClick {
-                                if (trackIds.isNotEmpty()) {
-                                    viewModel.addTracksToPlaylist(playlist.id, trackIds)
-                                }
-                                onDismissRequest()
-                            }
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = playlist.coverArtUri,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = playlist.name,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        
-                        if (playlistsContainingTracks.contains(playlist.id)) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Already added",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    
-    if (showNewPlaylistDialog) {
-        var playlistName by remember { mutableStateOf("") }
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showNewPlaylistDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(32.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            ) {
+
+            if (creating) {
+                // New playlist creation UI (in-sheet)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(horizontal = 24.dp)
                 ) {
-                    Text(
-                        text = "New playlist",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 24.dp)
-                    )
-                    
+                    Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = playlistName,
                         onValueChange = { playlistName = it },
@@ -191,40 +119,114 @@ fun AddToPlaylistContent(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
                     
                     Spacer(modifier = Modifier.height(32.dp))
                     
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                    JellyButton(
+                        onClick = {
+                            if (playlistName.isNotBlank() && trackIds.isNotEmpty()) {
+                                viewModel.createPlaylist(playlistName, null, null, trackIds)
+                            } else if (playlistName.isNotBlank()) {
+                                viewModel.createPlaylist(playlistName, null, null, emptyList())
+                            }
+                            isCreatingPlaylist = false
+                            onDismissRequest()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.onSurface,
+                            contentColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = RoundedCornerShape(28.dp)
                     ) {
-                        JellyTextButton(
-                            onClick = { showNewPlaylistDialog = false },
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                        }
-                        JellyButton(
-                            onClick = {
-                                if (playlistName.isNotBlank() && trackIds.isNotEmpty()) {
-                                    viewModel.createPlaylist(playlistName, null, null, trackIds)
-                                } else if (playlistName.isNotBlank()) {
-                                    viewModel.createPlaylist(playlistName, null, null, emptyList())
+                        Text("Create Playlist", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    }
+                }
+            } else {
+                // Playlist list
+                // New playlist button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .jellyClick { isCreatingPlaylist = true }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "New playlist",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "New playlist",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+                
+                // Playlist items
+                LazyColumn(
+                    modifier = Modifier.physicsBounceOverscroll().fillMaxWidth()
+                ) {
+                    items(playlists) { playlist ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .jellyClick {
+                                    if (trackIds.isNotEmpty()) {
+                                        viewModel.addTracksToPlaylist(playlist.id, trackIds)
+                                    }
+                                    onDismissRequest()
                                 }
-                                showNewPlaylistDialog = false
-                                onDismissRequest()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(100.dp)
+                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Create", fontWeight = FontWeight.SemiBold)
+                            AsyncImage(
+                                model = playlist.coverArtUri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = playlist.name,
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            
+                            if (playlistsContainingTracks.contains(playlist.id)) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Already added",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }
