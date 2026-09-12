@@ -271,8 +271,8 @@ fun MiniPlayer(
     val boundsTransform = remember {
         { _: Rect, _: Rect ->
             spring<Rect>(
-                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                dampingRatio = 0.88f,
+                stiffness = 380f
             )
         }
     }
@@ -316,6 +316,17 @@ fun MiniPlayer(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(16.dp))
+                .then(
+                    if (sharedScope != null && navScope != null) {
+                        with(sharedScope) {
+                            Modifier.sharedElement(
+                                state = rememberSharedContentState(key = "player_artwork"),
+                                animatedVisibilityScope = navScope,
+                                boundsTransform = boundsTransform
+                            )
+                        }
+                    } else Modifier
+                )
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -323,20 +334,50 @@ fun MiniPlayer(
                 text = title, 
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), 
                 color = MaterialTheme.colorScheme.onSurface, 
-                maxLines = 1
+                maxLines = 1,
+                modifier = if (sharedScope != null && navScope != null) {
+                    with(sharedScope) {
+                        Modifier.sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "player_title"),
+                            animatedVisibilityScope = navScope,
+                            boundsTransform = boundsTransform
+                        )
+                    }
+                } else Modifier
             )
             Text(
                 text = artist, 
                 style = MaterialTheme.typography.bodyMedium, 
                 color = MaterialTheme.colorScheme.onSurfaceVariant, 
-                maxLines = 1
+                maxLines = 1,
+                modifier = if (sharedScope != null && navScope != null) {
+                    with(sharedScope) {
+                        Modifier.sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "player_artist"),
+                            animatedVisibilityScope = navScope,
+                            boundsTransform = boundsTransform
+                        )
+                    }
+                } else Modifier
             )
         }
         JellyIconButton(onClick = onPlayPauseClick) {
             com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
                 isPlaying = isPlaying, 
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .then(
+                        if (sharedScope != null && navScope != null) {
+                            with(sharedScope) {
+                                Modifier.sharedElement(
+                                    state = rememberSharedContentState(key = "player_play_pause"),
+                                    animatedVisibilityScope = navScope,
+                                    boundsTransform = boundsTransform
+                                )
+                            }
+                        } else Modifier
+                    )
             )
         }
         JellyIconButton(onClick = onSkipNextClick) {

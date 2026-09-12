@@ -365,6 +365,15 @@ fun FruitNowPlayingScreen(
     @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
     val navScope = LocalNavAnimatedVisibilityScope.current
     val jiggleSettings = LocalJigglePhysicsSettings.current
+    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+    val boundsTransform = remember {
+        { _: androidx.compose.ui.geometry.Rect, _: androidx.compose.ui.geometry.Rect ->
+            spring<androidx.compose.ui.geometry.Rect>(
+                dampingRatio = 0.88f,
+                stiffness = 380f
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -508,7 +517,19 @@ fun FruitNowPlayingScreen(
 
                     contentScale = ContentScale.Crop,
 
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (sharedScope != null && navScope != null) {
+                                with(sharedScope) {
+                                    Modifier.sharedElement(
+                                        state = rememberSharedContentState(key = "player_artwork"),
+                                        animatedVisibilityScope = navScope,
+                                        boundsTransform = boundsTransform
+                                    )
+                                }
+                            } else Modifier
+                        )
                 )
 
                 // Canvas artwork player â€” crossfades in over the static art
@@ -661,7 +682,19 @@ fun FruitNowPlayingScreen(
                                     ),
                                     color = textColor,
                                     maxLines = 1,
-                                    modifier = Modifier.weight(1f, fill = false)
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .then(
+                                            if (sharedScope != null && navScope != null) {
+                                                with(sharedScope) {
+                                                    Modifier.sharedBounds(
+                                                        sharedContentState = rememberSharedContentState(key = "player_title"),
+                                                        animatedVisibilityScope = navScope,
+                                                        boundsTransform = boundsTransform
+                                                    )
+                                                }
+                                            } else Modifier
+                                        )
                                 )
                                 if (false /* songToPlay?.isExplicit == true */) {
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -673,7 +706,16 @@ fun FruitNowPlayingScreen(
                                 text = songToPlay?.artist ?: "Unknown",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = textColor.copy(alpha = textAlpha),
-                                maxLines = 1
+                                maxLines = 1,
+                                modifier = if (sharedScope != null && navScope != null) {
+                                    with(sharedScope) {
+                                        Modifier.sharedBounds(
+                                            sharedContentState = rememberSharedContentState(key = "player_artist"),
+                                            animatedVisibilityScope = navScope,
+                                            boundsTransform = boundsTransform
+                                        )
+                                    }
+                                } else Modifier
                             )
 
                         }
@@ -817,7 +859,19 @@ fun FruitNowPlayingScreen(
                             com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
                                 isPlaying = isPlaying,
                                 tint = textColor,
-                                modifier = Modifier.size(50.dp)
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .then(
+                                        if (sharedScope != null && navScope != null) {
+                                            with(sharedScope) {
+                                                Modifier.sharedElement(
+                                                    state = rememberSharedContentState(key = "player_play_pause"),
+                                                    animatedVisibilityScope = navScope,
+                                                    boundsTransform = boundsTransform
+                                                )
+                                            }
+                                        } else Modifier
+                                    )
                             )
 
                         }

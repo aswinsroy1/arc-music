@@ -396,6 +396,15 @@ fun ArcNowPlayingScreen(
     @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
     val navScope = LocalNavAnimatedVisibilityScope.current
     val jiggleSettings = LocalJigglePhysicsSettings.current
+    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+    val boundsTransform = remember {
+        { _: androidx.compose.ui.geometry.Rect, _: androidx.compose.ui.geometry.Rect ->
+            spring<androidx.compose.ui.geometry.Rect>(
+                dampingRatio = 0.88f,
+                stiffness = 380f
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -539,7 +548,19 @@ fun ArcNowPlayingScreen(
 
                     contentScale = ContentScale.Crop,
 
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (sharedScope != null && navScope != null) {
+                                with(sharedScope) {
+                                    Modifier.sharedElement(
+                                        state = rememberSharedContentState(key = "player_artwork"),
+                                        animatedVisibilityScope = navScope,
+                                        boundsTransform = boundsTransform
+                                    )
+                                }
+                            } else Modifier
+                        )
                 )
 
                 // Canvas artwork player â€” crossfades in over the static art
@@ -724,7 +745,16 @@ fun ArcNowPlayingScreen(
                                                 ),
                                                 color = textColor,
                                                 maxLines = 1,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                modifier = if (sharedScope != null && navScope != null) {
+                                                    with(sharedScope) {
+                                                        Modifier.sharedBounds(
+                                                            sharedContentState = rememberSharedContentState(key = "player_title"),
+                                                            animatedVisibilityScope = navScope,
+                                                            boundsTransform = boundsTransform
+                                                        )
+                                                    }
+                                                } else Modifier
                                             )
                                         }
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -733,7 +763,16 @@ fun ArcNowPlayingScreen(
                                             style = MaterialTheme.typography.titleMedium,
                                             color = textColor.copy(alpha = textAlpha),
                                             maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                            modifier = if (sharedScope != null && navScope != null) {
+                                                with(sharedScope) {
+                                                    Modifier.sharedBounds(
+                                                        sharedContentState = rememberSharedContentState(key = "player_artist"),
+                                                        animatedVisibilityScope = navScope,
+                                                        boundsTransform = boundsTransform
+                                                    )
+                                                }
+                                            } else Modifier
                                         )
                                     }
                                 }
@@ -883,7 +922,19 @@ fun ArcNowPlayingScreen(
                                         com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
                                             isPlaying = isPlaying,
                                             tint = textColor,
-                                            modifier = Modifier.size(46.dp)
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .then(
+                                                    if (sharedScope != null && navScope != null) {
+                                                        with(sharedScope) {
+                                                            Modifier.sharedElement(
+                                                                state = rememberSharedContentState(key = "player_play_pause"),
+                                                                animatedVisibilityScope = navScope,
+                                                                boundsTransform = boundsTransform
+                                                            )
+                                                        }
+                                                    } else Modifier
+                                                )
                                         )
                                     }
 
