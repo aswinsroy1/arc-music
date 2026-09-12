@@ -305,33 +305,13 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.width(112.dp)
                 ) {
-                    if (artist.photoUri != null) {
-                        AsyncImage(
-                            model = artist.photoUri,
-                            contentDescription = artist.artistName,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(112.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        )
-                    } else {
-                        // Neutral placeholder — no broken empty circle
-                        Box(
-                            modifier = Modifier
-                                .size(112.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
+                    com.aeswox.arcmusic.ui.components.ArtistImage(
+                        model = artist.photoUri,
+                        contentDescription = artist.artistName,
+                        modifier = Modifier
+                            .size(112.dp)
+                            .clip(CircleShape)
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = artist.artistName,

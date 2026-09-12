@@ -228,10 +228,9 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                     .aspectRatio(4f/3f)
                     .clip(RoundedCornerShape(48.dp))
             ) {
-                AsyncImage(
+                com.aeswox.arcmusic.ui.components.ArtistImage(
                     model = artist?.photoUri ?: "",
                     contentDescription = "Artist Image",
-                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
                 Box(

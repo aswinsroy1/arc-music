@@ -1635,12 +1635,20 @@ fun HeroSection(
                         }
                     }
             ) {
-                AsyncImage(
-                    model = artwork,
-                    contentDescription = titleText,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (suggestedItem is HeroCardItem.ArtistItem) {
+                    com.aeswox.arcmusic.ui.components.ArtistImage(
+                        model = artwork,
+                        contentDescription = titleText,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    AsyncImage(
+                        model = artwork,
+                        contentDescription = titleText,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 val topAlpha by androidx.compose.animation.core.animateFloatAsState(
                     targetValue = if (isNowPlayingMode) 0.4f else 0.0f,
@@ -1653,7 +1661,7 @@ fun HeroSection(
                 )
 
                 val midStop by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (isNowPlayingMode) 0.6f else 0.65f,
+                    targetValue = if (isNowPlayingMode) 0.6f else 0.35f,
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
                 )
 
@@ -2309,32 +2317,13 @@ fun ListeningStatsSection(
                         Spacer(modifier = Modifier.height(8.dp))
                         if (topArtist != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (topArtist.photoUri != null) {
-                                    AsyncImage(
-                                        model = topArtist.photoUri,
-                                        contentDescription = topArtist.artistName,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
+                                com.aeswox.arcmusic.ui.components.ArtistImage(
+                                    model = topArtist.photoUri,
+                                    contentDescription = topArtist.artistName,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = topArtist.artistName,
@@ -3186,10 +3175,9 @@ fun ArtistResultItem(name: String, imageUrl: Any?, isVerified: Boolean = false, 
         modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Box(modifier = Modifier.size(100.dp)) {
-            AsyncImage(
+            com.aeswox.arcmusic.ui.components.ArtistImage(
                 model = imageUrl,
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)

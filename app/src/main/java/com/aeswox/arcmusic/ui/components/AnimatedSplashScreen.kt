@@ -40,10 +40,13 @@ fun AnimatedSplashScreen(
     progress: Float,
     modifier: Modifier = Modifier
 ) {
+    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     val arcColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
 
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(bgColor),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(120.dp)) {

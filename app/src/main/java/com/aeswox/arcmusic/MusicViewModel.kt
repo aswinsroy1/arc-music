@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic
+package com.aeswox.arcmusic
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -1447,9 +1447,10 @@ class MusicViewModel @Inject constructor(
         // --- Listening Stats: computed from PlayHistory + Track library ---
         listeningStats = combine(
             repository.getFullPlayHistory(),
-            repository.getAllTracks()
-        ) { history, tracks ->
-            computeListeningStats(history, tracks)
+            repository.getAllTracks(),
+            repository.getAllArtists()
+        ) { history, tracks, artists ->
+            computeListeningStats(history, tracks, artists)
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
@@ -1899,7 +1900,8 @@ class MusicViewModel @Inject constructor(
 
     private fun computeListeningStats(
         history: List<PlayHistory>,
-        tracks: List<Track>
+        tracks: List<Track>,
+        artists: List<Artist>
     ): ListeningStatsData {
         if (history.isEmpty() || tracks.isEmpty()) {
             return ListeningStatsData(
@@ -1964,12 +1966,14 @@ class MusicViewModel @Inject constructor(
             val playedMin = getEffectivePlayedMs(ph, track) / 60_000L
             artistMinutes[artist] = (artistMinutes[artist] ?: 0L) + playedMin
         }
-        // Build artist entries â€” photoUri comes from the Artists table via libraryArtists,
-        // but since we only have Track here, we leave photoUri null (placeholder shown in UI).
+        // Build artist entries â€” photoUri comes from the Artists table via libraryArtists
         val topArtists = artistMinutes.entries
             .sortedByDescending { it.value }
             .take(8)
-            .map { (name, minutes) -> ArtistStatEntry(name, null, minutes) }
+            .map { (name, minutes) -> 
+                val photoUri = artists.find { it.name.equals(name, ignoreCase = true) }?.photoUri
+                ArtistStatEntry(name, photoUri, minutes) 
+            }
 
         // --- Top Genres (ranked by actual listening time) ---
         val topGenres = computeTopGenresByListeningTime(history, trackById)
