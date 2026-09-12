@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
@@ -392,39 +393,130 @@ fun SleepTimerContent(
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
-            } else if (isActive) {
-                JellyButton(
-                    onClick = { onClear() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Text(
-                        text = "Stop Timer",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
             } else {
-                JellyButton(
-                    onClick = { onStart(selectedPreset, finishCurrentSong) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onSurface,
-                        contentColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Text(
-                        text = "Start Timer",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                    )
+                AnimatedContent(
+                    targetState = isActive,
+                    transitionSpec = {
+                        fadeIn(tween(300)) togetherWith fadeOut(tween(300)) using SizeTransform { _, _ -> tween(300) }
+                    },
+                    label = "TimerActionPillMorph"
+                ) { active ->
+                    if (active) {
+                        var expanded by remember { mutableStateOf(false) }
+                        val remainingMins = (timeLeft / 60000).toInt()
+                        val remainingSecs = ((timeLeft % 60000) / 1000).toInt()
+                        
+                        val pillWidthFraction by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = if (expanded) 1f else 0.85f, 
+                            label = "PillWidth",
+                            animationSpec = tween(300)
+                        )
+                        
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Pill
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth(pillWidthFraction)
+                                    .height(56.dp)
+                                    .clip(RoundedCornerShape(28.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .jellyClick { expanded = !expanded }
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Pause,
+                                        contentDescription = "Timer Active",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "${String.format("%02d:%02d", remainingMins, remainingSecs)} remaining",
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                
+                                JellyIconButton(
+                                    onClick = { onClear() },
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel Timer",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            // Expanded Options
+                            AnimatedVisibility(
+                                visible = expanded,
+                                enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    JellyButton(
+                                        onClick = { onStart(remainingMins + 5, finishCurrentSong) },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(48.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        ),
+                                        shape = RoundedCornerShape(24.dp)
+                                    ) {
+                                        Text("+5 min", fontWeight = FontWeight.Bold)
+                                    }
+                                    JellyButton(
+                                        onClick = { onStart(remainingMins + 15, finishCurrentSong) },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(48.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        ),
+                                        shape = RoundedCornerShape(24.dp)
+                                    ) {
+                                        Text("+15 min", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        JellyButton(
+                            onClick = { onStart(selectedPreset, finishCurrentSong) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.onSurface,
+                                contentColor = MaterialTheme.colorScheme.surface
+                            ),
+                            shape = RoundedCornerShape(28.dp)
+                        ) {
+                            Text(
+                                text = "Start Timer",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
                 }
             }
         }
