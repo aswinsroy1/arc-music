@@ -441,11 +441,11 @@ fun GenreCard(
  * Always shown once there is at least one non-zero hour bucket.
  *
  * Personalities:
- *  - The Night Owl          — peak window 0–5 AM   (midnight navy → deep indigo)
- *  - The Early Bird         — peak window 6–11 AM  (warm amber → sunrise orange)
- *  - The Afternoon Listener — peak window 12–17    (golden yellow → warm teal)
- *  - The Evening Unwinder   — peak window 18–23    (deep rose → violet dusk)
- *  - The Free Spirit        — no dominant window   (electric teal → vivid purple)
+ *  - The Night Owl        — peak window 10 PM–5 AM (22..23, 0..4) (midnight navy → deep indigo)
+ *  - The Early Bird       — peak window 5–10 AM (5..9)            (warm amber → sunrise orange)
+ *  - The Daytripper       — peak window 10 AM–5 PM (10..16)       (golden yellow → warm teal)
+ *  - The Evening Unwinder — peak window 5–10 PM (17..21)          (deep rose → violet dusk)
+ *  - The Free Spirit      — no dominant window                    (electric teal → vivid purple)
  */
 @Composable
 fun NightOwlPersonalityCard(
@@ -491,33 +491,33 @@ fun NightOwlPersonalityCard(
             gradientStart = Color(0xFF0EA5A0),   // electric teal
             gradientEnd   = Color(0xFF7C3AED)    // vivid purple
         )
-        bestStart in 0..5 -> Personality(
-            icon          = Icons.Default.DarkMode,
-            label         = "The Night Owl",
-            blurb         = "Most active between ${fmt(bestStart)} and ${fmt(peakEnd)}. You love the quiet hours and the music that fills them.",
-            gradientStart = Color(0xFF0F172A),   // midnight navy
-            gradientEnd   = Color(0xFF312E81)    // deep indigo
-        )
-        bestStart in 6..11 -> Personality(
+        bestStart in 5..9 -> Personality(
             icon          = Icons.Default.LightMode,
             label         = "The Early Bird",
             blurb         = "Your listening peaks between ${fmt(bestStart)} and ${fmt(peakEnd)}. You start every day with the right soundtrack.",
             gradientStart = Color(0xFFB45309),   // warm amber
             gradientEnd   = Color(0xFFEA580C)    // sunrise orange
         )
-        bestStart in 12..17 -> Personality(
+        bestStart in 10..16 -> Personality(
             icon          = Icons.Default.WbSunny,
-            label         = "The Afternoon Listener",
-            blurb         = "Peak activity from ${fmt(bestStart)} to ${fmt(peakEnd)} — music is your productive afternoon fuel.",
+            label         = "The Daytripper",
+            blurb         = "Peak activity from ${fmt(bestStart)} to ${fmt(peakEnd)} — music powers your day and keeps your rhythm flowing.",
             gradientStart = Color(0xFFD97706),   // golden yellow
             gradientEnd   = Color(0xFF0D9488)    // warm teal
         )
-        else -> Personality(
+        bestStart in 17..21 -> Personality(
             icon          = Icons.Default.Nightlight,
             label         = "The Evening Unwinder",
             blurb         = "You wind down with music between ${fmt(bestStart)} and ${fmt(peakEnd)}. The perfect way to close out the day.",
             gradientStart = Color(0xFF9F1239),   // deep rose
             gradientEnd   = Color(0xFF6D28D9)    // violet dusk
+        )
+        else -> Personality(
+            icon          = Icons.Default.DarkMode,
+            label         = "The Night Owl",
+            blurb         = "Most active between ${fmt(bestStart)} and ${fmt(peakEnd)}. You love the quiet hours and the music that fills them.",
+            gradientStart = Color(0xFF0F172A),   // midnight navy
+            gradientEnd   = Color(0xFF312E81)    // deep indigo
         )
     }
 
