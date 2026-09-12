@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -31,9 +32,9 @@ fun AlbumDetailsScreen(
     albumId: String,
     onNavigateBack: () -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
-    onNavigateToAlbum: (String) -> Unit = {}
+    onNavigateToAlbum: (String) -> Unit = {},
+    viewModel: MusicViewModel = hiltViewModel()
 ) {
-    val viewModel: MusicViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val album by viewModel.getAlbumById(albumId).collectAsState(initial = null)
     val tracks by viewModel.getTracksByAlbum(albumId).collectAsState(initial = emptyList())
     val sortedTracks = remember(tracks) { tracks.sortedBy { it.trackNumber } }
