@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
                 )
                 splashProgress.animateTo(
                     targetValue = 2f,
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 700, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing)
                 )
                 isSplashDismissed = true
             }
@@ -225,16 +225,12 @@ class MainActivity : ComponentActivity() {
                     )
                 ) {
                     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        val revealProgress = if (isSplashDismissed) 1f else {
-                            ((splashProgress.value - 1.45f) / 0.55f).coerceIn(0f, 1f)
-                        }
-                        val easedReveal = if (isSplashDismissed) 1f else {
-                            androidx.compose.animation.core.FastOutSlowInEasing.transform(revealProgress)
-                        }
                         val homeScale = if (isSplashDismissed) 1f else {
-                            0.85f + (0.15f * easedReveal)
+                            0.95f + (0.05f * ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f))
                         }
-                        val homeAlpha = if (isSplashDismissed) 1f else easedReveal
+                        val homeAlpha = if (isSplashDismissed) 1f else {
+                            ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
+                        }
                         
                         Scaffold(
                             modifier = Modifier.fillMaxSize().graphicsLayer {
@@ -257,7 +253,8 @@ class MainActivity : ComponentActivity() {
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
                     
                     val effectiveGlowIntensity = if (isSplashDismissed) glowIntensity else {
-                        glowIntensity * easedReveal
+                        val bloomProgress = ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
+                        glowIntensity * bloomProgress
                     }
                     
                     val view = androidx.compose.ui.platform.LocalView.current
@@ -1186,7 +1183,9 @@ class MainActivity : ComponentActivity() {
             } // end Scaffold trailing lambda
             
             if (!isSplashDismissed) {
-                val splashAlpha = if (isSplashDismissed) 0f else (1f - easedReveal)
+                val splashAlpha = if (splashProgress.value > 1.8f) {
+                    1f - ((splashProgress.value - 1.8f) / 0.2f).coerceIn(0f, 1f)
+                } else 1f
                 
                 com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
                     progress = splashProgress.value,
@@ -2578,6 +2577,14 @@ fun SearchBar(
     onSearch: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var textFieldValue by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text = query)) }
+
+    LaunchedEffect(query) {
+        if (query != textFieldValue.text) {
+            textFieldValue = textFieldValue.copy(text = query)
+        }
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -2593,15 +2600,20 @@ fun SearchBar(
         )
         Spacer(modifier = Modifier.width(12.dp))
         androidx.compose.foundation.text.BasicTextField(
-            value = query,
-            onValueChange = onQueryChange,
+            value = textFieldValue,
+            onValueChange = {
+                textFieldValue = it
+                if (it.text != query) {
+                    onQueryChange(it.text)
+                }
+            },
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
             modifier = Modifier.weight(1f).padding(vertical = 12.dp),
             singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch() }),
             decorationBox = { innerTextField ->
-                if (query.isEmpty()) {
+                if (textFieldValue.text.isEmpty()) {
                     Text(
                         text = "Search songs, albums, artists...",
                         style = MaterialTheme.typography.bodyLarge,
@@ -2611,7 +2623,7 @@ fun SearchBar(
                 innerTextField()
             }
         )
-        if (query.isEmpty()) {
+        if (textFieldValue.text.isEmpty()) {
             JellyIconButton(onClick = { }) {
                 Icon(
                     imageVector = Icons.Default.Mic,
@@ -2620,7 +2632,10 @@ fun SearchBar(
                 )
             }
         } else {
-            JellyIconButton(onClick = { onQueryChange("") }) {
+            JellyIconButton(onClick = { 
+                textFieldValue = androidx.compose.ui.text.input.TextFieldValue("")
+                onQueryChange("") 
+            }) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Clear",
