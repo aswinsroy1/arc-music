@@ -50,7 +50,7 @@ fun PlaylistDetailsScreen(
 
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var menuProgress by remember { mutableFloatStateOf(0f) }
+    var blurProgress by remember { mutableFloatStateOf(0f) }
 
     if (playlist == null) {
         PlaylistDetailsSkeleton(onNavigateBack = onNavigateBack)
@@ -73,7 +73,7 @@ fun PlaylistDetailsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
-                    if (menuProgress > 0f) Modifier.blur(20.dp * menuProgress) else Modifier
+                    if (blurProgress > 0f) Modifier.blur(12.dp * blurProgress) else Modifier
                 )
         ) {
             // Ambient glow
@@ -132,7 +132,7 @@ fun PlaylistDetailsScreen(
                                 )
                             ),
                             tint = MaterialTheme.colorScheme.onSurface,
-                            onProgressChange = { menuProgress = it }
+                            onProgressChange = { _, blur -> blurProgress = blur }
                         )
                     }
                 }
@@ -337,11 +337,11 @@ fun PlaylistDetailsScreen(
     }
 
     // Dim scrim that smoothly darkens the blurred background
-    if (menuProgress > 0f) {
+    if (blurProgress > 0f) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f * menuProgress))
+                .background(Color.Black.copy(alpha = 0.30f * blurProgress))
         )
     }
 }
