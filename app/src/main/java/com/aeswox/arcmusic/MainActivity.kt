@@ -333,7 +333,7 @@ class MainActivity : ComponentActivity() {
                     val contentBottomPadding = bottomOffset + animMiniPlayerHeightContrib
 
                     @OptIn(ExperimentalSharedTransitionApi::class)
-                    SharedTransitionLayout {
+                    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
                         androidx.compose.runtime.CompositionLocalProvider(
                             LocalSharedTransitionScope provides this
                         ) {
@@ -559,7 +559,8 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToDuplicateSongs = { navController.navigate("duplicate_songs") },
                                     onNavigateToCorruptedTags = { navController.navigate("corrupted_tags") },
                                     onNavigateToLowQualityFiles = { navController.navigate("low_quality_files") },
-                                    glowIntensity = glowIntensity
+                                    glowIntensity = glowIntensity,
+                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -704,7 +705,8 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToAlbum = { albumId -> navController.navigate("album_details/$albumId") },
                                     onNavigateToAllTracks = { aId -> navController.navigate("artist_tracks/$aId") },
                                     onNavigateToAllAlbums = { aId -> navController.navigate("artist_albums/$aId") },
-                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") }
+                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") },
+                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -719,7 +721,8 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                                 ArtistTracksScreen(
                                     artistId = artistId,
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = { navController.popBackStack() },
+                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -735,7 +738,8 @@ class MainActivity : ComponentActivity() {
                                 ArtistAlbumsScreen(
                                     artistId = artistId,
                                     onNavigateBack = { navController.popBackStack() },
-                                    onNavigateToAlbum = { albumId -> navController.navigate("album_details/$albumId") }
+                                    onNavigateToAlbum = { albumId -> navController.navigate("album_details/$albumId") },
+                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -752,7 +756,8 @@ class MainActivity : ComponentActivity() {
                                     albumId = albumId,
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToArtist = { aId -> navController.navigate("artist_details/$aId") },
-                                    onNavigateToAlbum = { aId -> navController.navigate("album_details/$aId") }
+                                    onNavigateToAlbum = { aId -> navController.navigate("album_details/$aId") },
+                                    viewModel = viewModel
                                 )
                             }
                         }
@@ -768,7 +773,8 @@ class MainActivity : ComponentActivity() {
                                 PlaylistDetailsScreen(
                                     playlistId = playlistId,
                                     onNavigateBack = { navController.popBackStack() },
-                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") }
+                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") },
+                                    viewModel = viewModel
                                 )
                             }
                         }
