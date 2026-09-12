@@ -441,11 +441,11 @@ fun GenreCard(
  * Always shown once there is at least one non-zero hour bucket.
  *
  * Personalities:
- *  - The Night Owl        — peak window 10 PM–5 AM (22..23, 0..4) (midnight navy → deep indigo)
+ *  - The Night Owl        — peak window 10 PM–5 AM (22..23, 0..4) (moonlit indigo → midnight blue)
  *  - The Early Bird       — peak window 5–10 AM (5..9)            (warm amber → sunrise orange)
- *  - The Daytripper       — peak window 10 AM–5 PM (10..16)       (golden yellow → warm teal)
- *  - The Evening Unwinder — peak window 5–10 PM (17..21)          (deep rose → violet dusk)
- *  - The Free Spirit      — no dominant window                    (electric teal → vivid purple)
+ *  - The Daytripper       — peak window 10 AM–5 PM (10..16)       (vibrant yellow → fresh teal)
+ *  - The Evening Unwinder — peak window 5–10 PM (17..21)          (twilight rose → dusk violet)
+ *  - The Free Spirit      — no dominant window                    (electric cyan → vivid purple)
  */
 @Composable
 fun NightOwlPersonalityCard(
@@ -488,81 +488,106 @@ fun NightOwlPersonalityCard(
             icon          = Icons.Default.Shuffle,
             label         = "The Free Spirit",
             blurb         = "Your listening has no rules — you play music whenever the mood strikes, day or night. Music just fits into every corner of your life.",
-            gradientStart = Color(0xFF0EA5A0),   // electric teal
-            gradientEnd   = Color(0xFF7C3AED)    // vivid purple
+            gradientStart = Color(0xFF06B6D4),   // electric cyan
+            gradientEnd   = Color(0xFFA855F7)    // vivid purple
         )
         bestStart in 5..9 -> Personality(
             icon          = Icons.Default.LightMode,
             label         = "The Early Bird",
             blurb         = "Your listening peaks between ${fmt(bestStart)} and ${fmt(peakEnd)}. You start every day with the right soundtrack.",
-            gradientStart = Color(0xFFB45309),   // warm amber
-            gradientEnd   = Color(0xFFEA580C)    // sunrise orange
+            gradientStart = Color(0xFFF59E0B),   // warm amber
+            gradientEnd   = Color(0xFFF97316)    // sunrise orange
         )
         bestStart in 10..16 -> Personality(
             icon          = Icons.Default.WbSunny,
             label         = "The Daytripper",
             blurb         = "Peak activity from ${fmt(bestStart)} to ${fmt(peakEnd)} — music powers your day and keeps your rhythm flowing.",
-            gradientStart = Color(0xFFD97706),   // golden yellow
-            gradientEnd   = Color(0xFF0D9488)    // warm teal
+            gradientStart = Color(0xFFEAB308),   // vibrant yellow
+            gradientEnd   = Color(0xFF14B8A6)    // fresh teal
         )
         bestStart in 17..21 -> Personality(
             icon          = Icons.Default.Nightlight,
             label         = "The Evening Unwinder",
             blurb         = "You wind down with music between ${fmt(bestStart)} and ${fmt(peakEnd)}. The perfect way to close out the day.",
-            gradientStart = Color(0xFF9F1239),   // deep rose
-            gradientEnd   = Color(0xFF6D28D9)    // violet dusk
+            gradientStart = Color(0xFFF43F5E),   // twilight rose
+            gradientEnd   = Color(0xFF8B5CF6)    // dusk violet
         )
         else -> Personality(
             icon          = Icons.Default.DarkMode,
             label         = "The Night Owl",
             blurb         = "Most active between ${fmt(bestStart)} and ${fmt(peakEnd)}. You love the quiet hours and the music that fills them.",
-            gradientStart = Color(0xFF0F172A),   // midnight navy
-            gradientEnd   = Color(0xFF312E81)    // deep indigo
+            gradientStart = Color(0xFF818CF8),   // moonlit indigo
+            gradientEnd   = Color(0xFF3B82F6)    // midnight blue
         )
     }
 
-    val gradient = Brush.linearGradient(
-        colors = listOf(personality.gradientStart, personality.gradientEnd)
+    val cardShape = RoundedCornerShape(AppCornerRadius)
+    val tintGradient = Brush.linearGradient(
+        colors = listOf(
+            personality.gradientStart.copy(alpha = 0.16f),
+            personality.gradientEnd.copy(alpha = 0.08f)
+        )
+    )
+    val borderGradient = Brush.linearGradient(
+        colors = listOf(
+            personality.gradientStart.copy(alpha = 0.35f),
+            personality.gradientEnd.copy(alpha = 0.15f)
+        )
     )
 
-    Box(
+    GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(gradient)
-            .padding(32.dp)
+            .border(
+                width = 1.dp,
+                brush = borderGradient,
+                shape = cardShape
+            )
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(tintGradient)
+                .padding(24.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = personality.icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = personality.label,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = personality.blurb,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    lineHeight = 24.sp
-                )
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(personality.gradientStart.copy(alpha = 0.18f))
+                        .border(
+                            width = 1.dp,
+                            color = personality.gradientStart.copy(alpha = 0.35f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = personality.icon,
+                        contentDescription = null,
+                        tint = personality.gradientStart,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = personality.label,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = personality.blurb,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 22.sp
+                    )
+                }
             }
         }
     }
