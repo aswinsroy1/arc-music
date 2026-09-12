@@ -1169,30 +1169,29 @@ class MainActivity : ComponentActivity() {
                                     onCreatePlaylist = { name, description, coverArtUri, trackIds ->
                                         viewModel.createPlaylist(name, description, coverArtUri, trackIds)
                                     }
-                                    }
                                 )
                             }
-                        }
-                    }
-                }
+                        } // end Box E
+                    } // end CompositionLocalProvider D
+                } // end SharedTransitionLayout C
+            } // end Scaffold trailing lambda
+            
+            if (!isSplashDismissed) {
+                val splashAlpha = if (splashProgress.value > 1.8f) {
+                    1f - ((splashProgress.value - 1.8f) / 0.2f).coerceIn(0f, 1f)
+                } else 1f
+                
+                com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
+                    progress = splashProgress.value,
+                    modifier = Modifier.graphicsLayer { alpha = splashAlpha }
+                )
             }
-                        
-                        if (!isSplashDismissed) {
-                            val splashAlpha = if (splashProgress.value > 1.8f) {
-                                1f - ((splashProgress.value - 1.8f) / 0.2f).coerceIn(0f, 1f)
-                            } else 1f
-                            
-                            com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
-                                progress = splashProgress.value,
-                                modifier = Modifier.graphicsLayer { alpha = splashAlpha }
-                            )
-                        }
-                    }
-            }
-        }
-    }
-}
-        }
+        } // end Box A (AnimatedSplashScreen container)
+        } // end CompositionLocalProvider (JigglePhysics)
+    } // end ArcMusicTheme
+} // end setContent
+    } // end onCreate
+} // end MainActivity
 
 @OptIn(com.google.accompanist.permissions.ExperimentalPermissionsApi::class)
 @Composable
