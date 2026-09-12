@@ -441,39 +441,39 @@ fun GenreCard(
  * Always shown once there is at least one non-zero hour bucket.
  *
  * Personalities:
- *  - The Night Owl        — peak window 10 PM–5 AM (22..23, 0..4) (moonlit indigo → midnight blue)
- *  - The Early Bird       — peak window 5–10 AM (5..9)            (warm amber → sunrise orange)
- *  - The Daytripper       — peak window 10 AM–5 PM (10..16)       (vibrant yellow → fresh teal)
- *  - The Evening Unwinder — peak window 5–10 PM (17..21)          (twilight rose → dusk violet)
- *  - The Free Spirit      — no dominant window                    (electric cyan → vivid purple)
+ *  - The Night Owl        — peak period 10 PM–5 AM (hours 22..23, 0..4) (moonlit indigo → midnight blue)
+ *  - The Early Bird       — peak period 5–11 AM (hours 5..10)            (warm amber → sunrise orange)
+ *  - The Daytripper       — peak period 11 AM–5 PM (hours 11..16)         (vibrant yellow → fresh teal)
+ *  - The Evening Unwinder — peak period 5–10 PM (hours 17..21)          (twilight rose → dusk violet)
+ *  - The Free Spirit      — evenly distributed listening                (electric cyan → vivid purple)
  */
 @Composable
 fun NightOwlPersonalityCard(
     minutesByHour: List<Long>,
     modifier: Modifier = Modifier
 ) {
-    // Find the best 4-hour window
-    val windowSize = 4
-    var bestStart = 0
-    var bestTotal = 0L
-    for (start in 0 until 24) {
-        val total = (0 until windowSize).sumOf { minutesByHour[(start + it) % 24] }
-        if (total > bestTotal) { bestTotal = total; bestStart = start }
-    }
-    val peakEnd = (bestStart + windowSize) % 24
-    val grandTotal = minutesByHour.sum().coerceAtLeast(1L)
+    // Divide 24 hours into 4 distinct, non-overlapping periods:
+    // Morning (5 AM - 11 AM): hours 5..10
+    // Daytime (11 AM - 5 PM): hours 11..16
+    // Evening (5 PM - 10 PM): hours 17..21
+    // Night (10 PM - 5 AM): hours 22..23, 0..4
+    val morningHours = 5..10
+    val dayHours = 11..16
+    val eveningHours = 17..21
+    val nightHours = listOf(22, 23, 0, 1, 2, 3, 4)
 
-    // If the top 4-hour window contains < 35% of total listening, the pattern is too
+    val morningTotal = morningHours.sumOf { minutesByHour.getOrElse(it) { 0L } }
+    val dayTotal = dayHours.sumOf { minutesByHour.getOrElse(it) { 0L } }
+    val eveningTotal = eveningHours.sumOf { minutesByHour.getOrElse(it) { 0L } }
+    val nightTotal = nightHours.sumOf { minutesByHour.getOrElse(it) { 0L } }
+
+    val grandTotal = (morningTotal + dayTotal + eveningTotal + nightTotal).coerceAtLeast(1L)
+    val maxTotal = maxOf(morningTotal, dayTotal, eveningTotal, nightTotal)
+    val maxFraction = maxTotal.toFloat() / grandTotal.toFloat()
+
+    // If the top block does not reach at least 35% of total listening, the pattern is too
     // spread out to call a time-based personality — show "The Free Spirit" instead.
-    val peakFraction = bestTotal.toFloat() / grandTotal.toFloat()
-    val isSpread = peakFraction < 0.35f
-
-    fun fmt(h: Int) = when {
-        h == 0  -> "midnight"
-        h < 12  -> "$h AM"
-        h == 12 -> "noon"
-        else    -> "${h - 12} PM"
-    }
+    val isSpread = maxFraction < 0.35f
 
     data class Personality(
         val icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -491,31 +491,31 @@ fun NightOwlPersonalityCard(
             gradientStart = Color(0xFF06B6D4),   // electric cyan
             gradientEnd   = Color(0xFFA855F7)    // vivid purple
         )
-        bestStart in 5..9 -> Personality(
+        maxTotal == morningTotal -> Personality(
             icon          = Icons.Default.LightMode,
             label         = "The Early Bird",
-            blurb         = "Your listening peaks between ${fmt(bestStart)} and ${fmt(peakEnd)}. You start every day with the right soundtrack.",
+            blurb         = "Peak listening in the morning between 5 AM and 11 AM. You start every day with the right soundtrack.",
             gradientStart = Color(0xFFF59E0B),   // warm amber
             gradientEnd   = Color(0xFFF97316)    // sunrise orange
         )
-        bestStart in 10..16 -> Personality(
+        maxTotal == dayTotal -> Personality(
             icon          = Icons.Default.WbSunny,
             label         = "The Daytripper",
-            blurb         = "Peak activity from ${fmt(bestStart)} to ${fmt(peakEnd)} — music powers your day and keeps your rhythm flowing.",
+            blurb         = "Peak listening in the afternoon between 11 AM and 5 PM — music powers your day and keeps your rhythm flowing.",
             gradientStart = Color(0xFFEAB308),   // vibrant yellow
             gradientEnd   = Color(0xFF14B8A6)    // fresh teal
         )
-        bestStart in 17..21 -> Personality(
+        maxTotal == eveningTotal -> Personality(
             icon          = Icons.Default.Nightlight,
             label         = "The Evening Unwinder",
-            blurb         = "You wind down with music between ${fmt(bestStart)} and ${fmt(peakEnd)}. The perfect way to close out the day.",
+            blurb         = "Peak listening in the evening between 5 PM and 10 PM. The perfect way to wind down and close out the day.",
             gradientStart = Color(0xFFF43F5E),   // twilight rose
             gradientEnd   = Color(0xFF8B5CF6)    // dusk violet
         )
         else -> Personality(
             icon          = Icons.Default.DarkMode,
             label         = "The Night Owl",
-            blurb         = "Most active between ${fmt(bestStart)} and ${fmt(peakEnd)}. You love the quiet hours and the music that fills them.",
+            blurb         = "Peak listening late at night between 10 PM and 5 AM. You love the quiet hours and the music that fills them.",
             gradientStart = Color(0xFF818CF8),   // moonlit indigo
             gradientEnd   = Color(0xFF3B82F6)    // midnight blue
         )
