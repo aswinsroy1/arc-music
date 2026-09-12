@@ -34,6 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import com.aeswox.arcmusic.ui.components.ArcModalBottomSheet
+import com.aeswox.arcmusic.ui.components.MorphingMenu
+import com.aeswox.arcmusic.ui.components.MorphingMenuItem
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +67,6 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
     val scope = rememberCoroutineScope()
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 1, pageCount = { tabs.size })
     var showRearrangeSheet by remember { mutableStateOf(false) }
-    var showOptionsMenu by remember { mutableStateOf(false) }
     
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     val selectedItems = remember { mutableStateListOf<String>() }
@@ -82,27 +83,36 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
         onSelectionModeChange(isSelectionMode)
     }
 
+    val currentTab = tabs.getOrNull(pagerState.currentPage)
+    val libraryMenuItems = remember(currentTab) {
+        val list = mutableListOf<MorphingMenuItem>()
+        if (currentTab == "Artists") {
+            list.add(
+                MorphingMenuItem(
+                    text = "Refresh All Artists",
+                    icon = Icons.Default.Refresh,
+                    onClick = {
+                        viewModel.refetchAllArtistsDetails()
+                    }
+                )
+            )
+        }
+        list.add(
+            MorphingMenuItem(
+                text = "Manage Sections",
+                icon = Icons.Default.Tune,
+                onClick = { showRearrangeSheet = true }
+            )
+        )
+        list
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
         LibraryHeader(
-            title = tabs.getOrNull(pagerState.currentPage) ?: "",
+            title = currentTab ?: "",
             onTitleLongPress = { showRearrangeSheet = true },
-            onOptionsClick = { showOptionsMenu = true },
-            optionsMenuExpanded = showOptionsMenu,
-            onOptionsDismiss = { showOptionsMenu = false },
-            optionsMenuContent = {
-                val currentTab = tabs.getOrNull(pagerState.currentPage)
-                if (currentTab == "Artists") {
-                    ArcDropdownMenuItem(
-                        text = "Refresh All Artists",
-                        icon = Icons.Outlined.Refresh,
-                        onClick = {
-                            showOptionsMenu = false
-                            viewModel.refetchAllArtistsDetails()
-                        }
-                    )
-                }
-            },
+            menuItems = libraryMenuItems,
             modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 12.dp)
         )
         
@@ -438,10 +448,7 @@ fun LibraryPagerContent(
 fun LibraryHeader(
     title: String, 
     onTitleLongPress: () -> Unit = {}, 
-    onOptionsClick: () -> Unit = {}, 
-    optionsMenuExpanded: Boolean = false,
-    onOptionsDismiss: () -> Unit = {},
-    optionsMenuContent: @Composable ColumnScope.() -> Unit = {},
+    menuItems: List<MorphingMenuItem> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -492,22 +499,11 @@ fun LibraryHeader(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box {
-                IconButton(onClick = onOptionsClick) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert, 
-                        contentDescription = "More", 
-                        tint = MaterialTheme.colorScheme.onSurface, 
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                
-                ArcDropdownMenu(
-                    expanded = optionsMenuExpanded,
-                    onDismissRequest = onOptionsDismiss
-                ) {
-                    optionsMenuContent()
-                }
+            if (menuItems.isNotEmpty()) {
+                MorphingMenu(
+                    items = menuItems,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }

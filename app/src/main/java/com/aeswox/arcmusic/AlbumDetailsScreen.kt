@@ -33,6 +33,7 @@ fun AlbumDetailsScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
+    onNavigateToShare: (String, String) -> Unit = { _, _ -> },
     viewModel: MusicViewModel = hiltViewModel()
 ) {
     val album by viewModel.getAlbumById(albumId).collectAsState(initial = null)
@@ -43,6 +44,49 @@ fun AlbumDetailsScreen(
     
     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
+
+    val menuItems = remember(album, sortedTracks) {
+        val list = mutableListOf<MorphingMenuItem>()
+        if (sortedTracks.isNotEmpty() && album != null) {
+            list.add(
+                MorphingMenuItem(
+                    text = "Play next",
+                    icon = Icons.Default.QueueMusic,
+                    onClick = {
+                        viewModel.addSelectedItemsToQueue(listOf("album_${album!!.id}"), playNext = true)
+                    }
+                )
+            )
+            list.add(
+                MorphingMenuItem(
+                    text = "Add to queue",
+                    icon = Icons.Default.PlaylistAdd,
+                    onClick = {
+                        viewModel.addSelectedItemsToQueue(listOf("album_${album!!.id}"), playNext = false)
+                    }
+                )
+            )
+        }
+        if (!album?.artist.isNullOrBlank()) {
+            list.add(
+                MorphingMenuItem(
+                    text = "Go to artist",
+                    icon = Icons.Default.Person,
+                    onClick = { onNavigateToArtist(album!!.artist) }
+                )
+            )
+        }
+        if (album != null) {
+            list.add(
+                MorphingMenuItem(
+                    text = "Share album",
+                    icon = Icons.Default.IosShare,
+                    onClick = { onNavigateToShare("album", album!!.id) }
+                )
+            )
+        }
+        list
+    }
 
     if (album == null) {
         AlbumDetailsSkeleton(onNavigateBack = onNavigateBack)
@@ -55,7 +99,7 @@ fun AlbumDetailsScreen(
         contentPadding = PaddingValues(top = 48.dp, bottom = 120.dp)
     ) {
         item {
-            AlbumDetailsHeader(onNavigateBack = onNavigateBack)
+            AlbumDetailsHeader(onNavigateBack = onNavigateBack, menuItems = menuItems)
         }
         item {
             AlbumDetailsInfo(
@@ -93,24 +137,32 @@ fun AlbumDetailsScreen(
 }
 
 @Composable
-fun AlbumDetailsHeader(onNavigateBack: () -> Unit) {
+fun AlbumDetailsHeader(
+    onNavigateBack: () -> Unit,
+    menuItems: List<MorphingMenuItem> = emptyList()
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        JellyIconButton(onClick = onNavigateBack) {
-            Icon(
-                imageVector = Icons.Default.ArrowBackIosNew,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        AppIconButton(
+            icon = Icons.Default.ArrowBackIosNew,
+            contentDescription = "Back",
+            onClick = onNavigateBack,
+            tint = MaterialTheme.colorScheme.onSurface
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            JellyIconButton(onClick = { }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
+            if (menuItems.isNotEmpty()) {
+                MorphingMenu(
+                    items = menuItems,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            } else {
+                AppIconButton(
+                    icon = Icons.Default.MoreVert,
                     contentDescription = "More",
+                    onClick = { },
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }

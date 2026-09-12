@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Check
 
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -136,6 +137,8 @@ import com.aeswox.arcmusic.ui.components.JellyIconButton
 import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
 import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
 import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
+import com.aeswox.arcmusic.ui.components.MorphingMenu
+import com.aeswox.arcmusic.ui.components.MorphingMenuItem
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
@@ -757,6 +760,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateBack = { navController.popBackStack() },
                                     onNavigateToArtist = { aId -> navController.navigate("artist_details/$aId") },
                                     onNavigateToAlbum = { aId -> navController.navigate("album_details/$aId") },
+                                    onNavigateToShare = { type, id -> navController.navigate("share?type=$type&id=$id") },
                                     viewModel = viewModel
                                 )
                             }
@@ -2449,7 +2453,10 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
         modifier = modifier.physicsBounceOverscroll().fillMaxSize()
     ) {
         item {
-            SearchHeader(modifier = Modifier.padding(horizontal = 24.dp))
+            SearchHeader(
+                onClearHistory = { viewModel.clearAllRecentSearches() },
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
         }
         item {
             SearchBar(
@@ -2543,7 +2550,10 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
 }
 
 @Composable
-fun SearchHeader(modifier: Modifier = Modifier) {
+fun SearchHeader(
+    onClearHistory: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -2558,14 +2568,17 @@ fun SearchHeader(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurface
         )
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            JellyIconButton(onClick = { }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert, 
-                    contentDescription = "More", 
-                    tint = MaterialTheme.colorScheme.onSurface, 
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+            MorphingMenu(
+                items = listOf(
+                    MorphingMenuItem(
+                        text = "Clear search history",
+                        icon = Icons.Default.Delete,
+                        isDestructive = true,
+                        onClick = onClearHistory
+                    )
+                ),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }

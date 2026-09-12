@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -52,9 +53,10 @@ fun MorphingMenu(
     items: List<MorphingMenuItem>,
     modifier: Modifier = Modifier,
     buttonSize: Dp = 40.dp,
-    menuWidth: Dp = 210.dp,
+    menuWidth: Dp = 230.dp,
     contentDescription: String? = "More options",
-    tint: Color = MaterialTheme.colorScheme.onSurface
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+    buttonBackground: Color = Color.Transparent
 ) {
     var isOpen by remember { mutableStateOf(false) }
     var isDismissing by remember { mutableStateOf(false) }
@@ -81,7 +83,7 @@ fun MorphingMenu(
     }
 
     fun open() {
-        if (isOpen) return
+        if (isOpen || items.isEmpty()) return
         isOpen = true
         coroutineScope.launch {
             animProgress.animateTo(
@@ -105,7 +107,15 @@ fun MorphingMenu(
             contentDescription = contentDescription,
             onClick = { open() },
             tint = tint,
-            size = 24.dp
+            size = 24.dp,
+            modifier = if (buttonBackground != Color.Transparent) {
+                Modifier
+                    .size(buttonSize)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(buttonBackground)
+            } else {
+                Modifier.size(buttonSize)
+            }
         )
 
         // Morphing Popup container
@@ -236,7 +246,8 @@ private fun MorphingMenuItemRow(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             color = textColor,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

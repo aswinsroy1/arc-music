@@ -93,7 +93,6 @@ fun ArtistDetailsScreen(
         }
     }
 
-    var showOptionsSheet by remember { mutableStateOf(false) }
     var showInternetSearch by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -134,66 +133,48 @@ fun ArtistDetailsScreen(
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
-            Box {
-                JellyIconButton(
-                    onClick = { showOptionsSheet = true },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                
-                ArcDropdownMenu(
-                    expanded = showOptionsSheet,
-                    onDismissRequest = { showOptionsSheet = false }
-                ) {
-                    ArcDropdownMenuItem(
+            MorphingMenu(
+                items = listOf(
+                    MorphingMenuItem(
                         text = "Refresh",
                         icon = Icons.Outlined.Refresh,
                         onClick = {
-                            showOptionsSheet = false
                             if (artist != null) {
                                 viewModel.refetchArtistDetails(artistId, artist!!.name)
                             }
                         }
-                    )
-                    ArcDropdownMenuItem(
+                    ),
+                    MorphingMenuItem(
                         text = "Share",
                         icon = Icons.Outlined.Share,
                         onClick = { 
-                            showOptionsSheet = false
                             onNavigateToShare("artist", artistId)
                         }
-                    )
-                    ArcDropdownMenuItem(
-                        text = "Delete",
-                        icon = Icons.Outlined.Delete,
-                        isDestructive = true,
-                        onClick = { showOptionsSheet = false }
-                    )
-                    ArcDropdownMenuItem(
+                    ),
+                    MorphingMenuItem(
                         text = "Change image (gallery)",
                         icon = Icons.Outlined.Image,
                         onClick = {
-                            showOptionsSheet = false
                             galleryLauncher.launch(arrayOf("image/*"))
                         }
-                    )
-                    ArcDropdownMenuItem(
+                    ),
+                    MorphingMenuItem(
                         text = "Change image (online)",
                         icon = Icons.Outlined.Public,
                         onClick = {
-                            showOptionsSheet = false
                             showInternetSearch = true
                         }
+                    ),
+                    MorphingMenuItem(
+                        text = "Delete",
+                        icon = Icons.Outlined.Delete,
+                        isDestructive = true,
+                        onClick = { }
                     )
-                }
-            }
+                ),
+                buttonBackground = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
         }
         
 
