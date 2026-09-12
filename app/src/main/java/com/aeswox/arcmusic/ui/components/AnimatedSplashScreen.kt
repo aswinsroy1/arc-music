@@ -37,24 +37,11 @@ import kotlin.math.sin
  */
 @Composable
 fun AnimatedSplashScreen(
-    isDarkTheme: Boolean,
-    onFinished: () -> Unit,
-    modifier: Modifier = Modifier,
-    durationMillis: Int = 900
+    progress: Float,
+    modifier: Modifier = Modifier
 ) {
-    val progress = remember { Animatable(0f) }
-
-    LaunchedEffect(Unit) {
-        android.util.Log.d("ArcSplash", "playing")
-        progress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = durationMillis, easing = FastOutSlowInEasing)
-        )
-        onFinished()
-    }
-
-    val bgColor = if (isDarkTheme) Color.Black else Color.White
-    val arcColor = if (isDarkTheme) Color.White else Color.Black
+    val bgColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+    val arcColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground
 
     Box(
         modifier = modifier
@@ -63,7 +50,7 @@ fun AnimatedSplashScreen(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(120.dp)) {
-            drawArcMark(sweepFraction = progress.value, arcColor = arcColor)
+            drawArcMark(sweepFraction = progress, arcColor = arcColor)
         }
     }
 }
@@ -78,8 +65,6 @@ private fun DrawScope.drawArcMark(sweepFraction: Float, arcColor: Color) {
 
     val gridSize = 108f
     val scale = min(size.width, size.height) / gridSize
-    // Mark is centered at (54,54) — the true center of the design grid, and of the
-    // adaptive-icon canvas — so no offset is needed here (unlike the earlier version).
     val cx = size.width / 2f
     val cy = size.height / 2f
 
@@ -92,12 +77,21 @@ private fun DrawScope.drawArcMark(sweepFraction: Float, arcColor: Color) {
     val midDeg = (startDeg + endDeg) / 2f
 
     val totalSamples = 1200
-    val visibleSamples = (totalSamples * sweepFraction).toInt().coerceAtLeast(1)
+    val drawProgress = sweepFraction.coerceIn(0f, 1f)
+    val eraseProgress = (sweepFraction - 1f).coerceIn(0f, 1f)
+    
+    val visibleSamplesDraw = (totalSamples * drawProgress).toInt()
+    val visibleSamplesErase = (totalSamples * eraseProgress).toInt()
+    
+    if (visibleSamplesErase >= visibleSamplesDraw && visibleSamplesDraw > 0) return
 
-    val outerPoints = ArrayList<Offset>(visibleSamples + 1)
-    val innerPoints = ArrayList<Offset>(visibleSamples + 1)
+    val visibleSamplesCount = visibleSamplesDraw - visibleSamplesErase
+    if (visibleSamplesCount <= 0) return
 
-    for (i in 0..visibleSamples) {
+    val outerPoints = ArrayList<Offset>(visibleSamplesCount + 1)
+    val innerPoints = ArrayList<Offset>(visibleSamplesCount + 1)
+
+    for (i in visibleSamplesErase..visibleSamplesDraw) {
         val tt = i / totalSamples.toFloat()
         val deg = startDeg + fullSweep * tt
         val rad = Math.toRadians(deg.toDouble()).toFloat()
@@ -122,19 +116,19 @@ private fun DrawScope.drawArcMark(sweepFraction: Float, arcColor: Color) {
     }
     drawPath(path, color = arcColor)
 
-    // Rounded cap at the trailing (fixed) start of the stroke, matching the static
-    // icon's rounded terminal. The leading/growing end is left as a flat cut while
-    // animating — it reads as the stroke actively being drawn — and gets its own
-    // rounded cap once the sweep completes.
     val tipRadius = (baseW / 2f) * scale
     
-    val centerFirst = Offset(
-        (outerPoints.first().x + innerPoints.first().x) / 2f,
-        (outerPoints.first().y + innerPoints.first().y) / 2f
-    )
-    drawCircle(arcColor, radius = tipRadius, center = centerFirst)
+    // Trailing edge cap
+    if (eraseProgress < 1f) {
+        val centerFirst = Offset(
+            (outerPoints.first().x + innerPoints.first().x) / 2f,
+            (outerPoints.first().y + innerPoints.first().y) / 2f
+        )
+        drawCircle(arcColor, radius = tipRadius, center = centerFirst)
+    }
     
-    if (sweepFraction >= 0.999f) {
+    // Leading edge cap (only fully rounded when finished drawing, but before erased)
+    if (drawProgress >= 0.999f && eraseProgress < 1f) {
         val centerLast = Offset(
             (outerPoints.last().x + innerPoints.last().x) / 2f,
             (outerPoints.last().y + innerPoints.last().y) / 2f

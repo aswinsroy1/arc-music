@@ -182,28 +182,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            var showIntro by remember { mutableStateOf(true) }
-            if (showIntro) {
-                androidx.compose.runtime.LaunchedEffect(Unit) {
-                    keepSplashScreen = false
-                }
-                com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
-                    isDarkTheme = isDarkTheme,
-                    onFinished = { showIntro = false }
+            val splashProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+            var isSplashDismissed by remember { mutableStateOf(false) }
+            
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                keepSplashScreen = false
+                splashProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 800, easing = androidx.compose.animation.core.FastOutSlowInEasing)
                 )
-                return@setContent
+                splashProgress.animateTo(
+                    targetValue = 2f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                )
+                isSplashDismissed = true
             }
             
             val isLibraryLoaded by viewModel.isLibraryLoaded.collectAsState()
             val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
-            
-            androidx.compose.runtime.LaunchedEffect(isLibraryLoaded, hasCompletedOnboarding) {
-                if (hasCompletedOnboarding != null && (isLibraryLoaded || hasCompletedOnboarding == false)) {
-                    // Small delay to ensure the UI is fully drawn before the splash screen hides
-                    kotlinx.coroutines.delay(100)
-                    keepSplashScreen = false
-                }
-            }
 
             ArcMusicTheme(darkTheme = isDarkTheme) {
                 val baseBg = MaterialTheme.colorScheme.background
@@ -228,10 +224,22 @@ class MainActivity : ComponentActivity() {
                         gravity = physicsGravity
                     )
                 ) {
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize(),
-                        containerColor = MaterialTheme.colorScheme.background
-                    ) { innerPadding ->
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        val homeScale = if (isSplashDismissed) 1f else {
+                            0.95f + (0.05f * ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f))
+                        }
+                        val homeAlpha = if (isSplashDismissed) 1f else {
+                            ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
+                        }
+                        
+                        Scaffold(
+                            modifier = Modifier.fillMaxSize().graphicsLayer {
+                                scaleX = homeScale
+                                scaleY = homeScale
+                                alpha = homeAlpha
+                            },
+                            containerColor = Color.Transparent
+                        ) { innerPadding ->
                         val navController = rememberNavController()
                         val density = LocalDensity.current
                     val tintTransparency by viewModel.tintTransparency.collectAsState()
@@ -244,12 +252,17 @@ class MainActivity : ComponentActivity() {
                     val artworkUrl = if (isMiniPlayerVisible) currentlyPlaying?.artworkUri ?: currentlyPlaying?.albumId?.let { "content://media/external/audio/albumart/$it" } else null
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
                     
+                    val effectiveGlowIntensity = if (isSplashDismissed) glowIntensity else {
+                        val bloomProgress = ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
+                        glowIntensity * bloomProgress
+                    }
+                    
                     val view = androidx.compose.ui.platform.LocalView.current
                     if (!view.isInEditMode) {
                         val window = this@MainActivity.window
                         val baseBgLuminance = MaterialTheme.colorScheme.background.luminance()
                         val glowLuminance = glowColor.luminance()
-                        val effectiveLuminance = glowLuminance * glowIntensity + baseBgLuminance * (1f - glowIntensity)
+                        val effectiveLuminance = glowLuminance * effectiveGlowIntensity + baseBgLuminance * (1f - effectiveGlowIntensity)
                         val isLightBg = effectiveLuminance > 0.5f
                         
                         androidx.compose.runtime.SideEffect {
@@ -426,7 +439,7 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Box(modifier = Modifier.fillMaxSize()) {
                                         Box(modifier = Modifier.fillMaxSize().applyHazeAndBackdrop(hazeState = hazeState)) {
-                                            AnimatedGlowBackground(glowIntensity = glowIntensity, color = glowColor)
+                                            AnimatedGlowBackground(glowIntensity = effectiveGlowIntensity, color = glowColor)
                                             NavHost(
                                                 navController = navController,
                                                 startDestination = startDest,
@@ -1156,12 +1169,25 @@ class MainActivity : ComponentActivity() {
                                     onCreatePlaylist = { name, description, coverArtUri, trackIds ->
                                         viewModel.createPlaylist(name, description, coverArtUri, trackIds)
                                     }
+                                    }
                                 )
                             }
                         }
                     }
                 }
             }
+                        
+                        if (!isSplashDismissed) {
+                            val splashAlpha = if (splashProgress.value > 1.8f) {
+                                1f - ((splashProgress.value - 1.8f) / 0.2f).coerceIn(0f, 1f)
+                            } else 1f
+                            
+                            com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
+                                progress = splashProgress.value,
+                                modifier = Modifier.graphicsLayer { alpha = splashAlpha }
+                            )
+                        }
+                    }
             }
         }
     }
