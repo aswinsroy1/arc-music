@@ -379,10 +379,16 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
 
     ArcModalBottomSheet(
         currentSheet = if (showAddToPlaylistSheet) "ADD" else null,
-        onDismissRequest = { showAddToPlaylistSheet = false }
+        onDismissRequest = { 
+            showAddToPlaylistSheet = false
+            selectedItems.clear()
+        }
     ) { _ ->
         val trackIds = selectedItems.mapNotNull { if (it.startsWith("track_")) it.removePrefix("track_") else null }
-        AddToPlaylistContent(trackIds = trackIds, onDismissRequest = { showAddToPlaylistSheet = false })
+        AddToPlaylistContent(trackIds = trackIds, onDismissRequest = { 
+            showAddToPlaylistSheet = false
+            selectedItems.clear()
+        })
     }
 }
 
@@ -623,6 +629,7 @@ fun LibraryMainSection(
                                     }
                                 }
                                 showRenameDialog = false
+                                onClearSelection()
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
