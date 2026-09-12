@@ -69,8 +69,6 @@ data class ListeningStatsData(
     val totalMinutes: Long,
     val weekOverWeekPct: Int?,          // null = hide the trend line
     val weeklyMinutesByDay: List<Long>, // 7 entries Mon-Sun
-    val monthlyMinutesByDay: List<Long>, // 30 entries
-    val dailyMinutesByHour: List<Long>, // 24 entries
     val topArtists: List<ArtistStatEntry>,
     val topGenres: List<GenreStatEntry>,
     val nightOwlMinutesByHour: List<Long> // 24 values of total minutes per hour-of-day
@@ -1456,7 +1454,7 @@ class MusicViewModel @Inject constructor(
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            ListeningStatsData(0L, null, List(7) { 0L }, List(30) { 0L }, List(24) { 0L }, emptyList(), emptyList(), List(24) { 0L })
+            ListeningStatsData(0L, null, List(7) { 0L }, emptyList(), emptyList(), List(24) { 0L })
         )
 
         // --- Collection Health computation ---
@@ -1910,8 +1908,6 @@ class MusicViewModel @Inject constructor(
                 totalMinutes = 0,
                 weekOverWeekPct = null,
                 weeklyMinutesByDay = List(7) { 0L },
-                monthlyMinutesByDay = List(30) { 0L },
-                dailyMinutesByHour = List(24) { 0L },
                 topArtists = emptyList(),
                 topGenres = computeTopGenresByCount(tracks),
                 nightOwlMinutesByHour = List(24) { 0L }
@@ -1962,32 +1958,6 @@ class MusicViewModel @Inject constructor(
                 .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
         }
 
-        // --- Monthly activity: minutes per day of last 30 days ---
-        val monthlyMinutesByDay = (29 downTo 0).map { daysAgo ->
-            val dayStart = cal.timeInMillis - daysAgo * dayMs
-            val dayEnd = dayStart + dayMs
-            history
-                .filter { it.timestamp in dayStart until dayEnd }
-                .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
-        }
-
-        // --- Daily activity: minutes per hour of last 24 hours ---
-        val currentHourStartCal = java.util.Calendar.getInstance().apply {
-            timeInMillis = now
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        val currentHourStartMs = currentHourStartCal.timeInMillis
-        val hourMs = 3600 * 1000L
-        val dailyMinutesByHour = (23 downTo 0).map { hoursAgo ->
-            val hourStart = currentHourStartMs - hoursAgo * hourMs
-            val hourEnd = hourStart + hourMs
-            history
-                .filter { it.timestamp in hourStart until hourEnd }
-                .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
-        }
-
         // --- Top Artists (by approximate listening time) ---
         val artistMinutes = mutableMapOf<String, Long>()
         history.forEach { ph ->
@@ -2026,8 +1996,6 @@ class MusicViewModel @Inject constructor(
             totalMinutes = totalMinutes,
             weekOverWeekPct = weekOverWeekPct,
             weeklyMinutesByDay = weeklyMinutesByDay,
-            monthlyMinutesByDay = monthlyMinutesByDay,
-            dailyMinutesByHour = dailyMinutesByHour,
             topArtists = topArtists,
             topGenres = topGenres,
             nightOwlMinutesByHour = nightOwlData
