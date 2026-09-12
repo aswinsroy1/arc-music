@@ -225,17 +225,17 @@ class MainActivity : ComponentActivity() {
                     )
                 ) {
                     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        val homeOffsetY = if (isSplashDismissed) 0f else {
-                            val p = ((splashProgress.value - 1.0f) / 1.0f).coerceIn(0f, 1f)
-                            (1f - p) * 150f // slide up by 150 pixels
+                        val homeScale = if (isSplashDismissed) 1f else {
+                            0.95f + (0.05f * ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f))
                         }
                         val homeAlpha = if (isSplashDismissed) 1f else {
-                            ((splashProgress.value - 1.0f) / 1.0f).coerceIn(0f, 1f)
+                            ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
                         }
                         
                         Scaffold(
                             modifier = Modifier.fillMaxSize().graphicsLayer {
-                                translationY = homeOffsetY
+                                scaleX = homeScale
+                                scaleY = homeScale
                                 alpha = homeAlpha
                             },
                             containerColor = Color.Transparent
@@ -253,7 +253,7 @@ class MainActivity : ComponentActivity() {
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
                     
                     val effectiveGlowIntensity = if (isSplashDismissed) glowIntensity else {
-                        val bloomProgress = ((splashProgress.value - 1.5f) / 0.5f).coerceIn(0f, 1f)
+                        val bloomProgress = ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
                         glowIntensity * bloomProgress
                     }
                     
@@ -1177,8 +1177,13 @@ class MainActivity : ComponentActivity() {
             } // end Scaffold trailing lambda
             
             if (!isSplashDismissed) {
+                val splashAlpha = if (splashProgress.value > 1.8f) {
+                    1f - ((splashProgress.value - 1.8f) / 0.2f).coerceIn(0f, 1f)
+                } else 1f
+                
                 com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
-                    progress = splashProgress.value
+                    progress = splashProgress.value,
+                    modifier = Modifier.graphicsLayer { alpha = splashAlpha }
                 )
             }
         } // end Box A (AnimatedSplashScreen container)
@@ -1648,7 +1653,7 @@ fun HeroSection(
                 )
 
                 val midStop by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (isNowPlayingMode) 0.6f else 0.35f,
+                    targetValue = if (isNowPlayingMode) 0.6f else 0.65f,
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 50f)
                 )
 
