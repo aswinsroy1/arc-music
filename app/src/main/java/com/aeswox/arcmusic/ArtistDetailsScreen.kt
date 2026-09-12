@@ -554,7 +554,6 @@ fun ArtistImageSearchBottomSheet(
     onDismiss: () -> Unit,
     onImageSelected: (String) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var images by remember { mutableStateOf<List<String>?>(null) }
 
     LaunchedEffect(artistName) {
@@ -563,11 +562,10 @@ fun ArtistImageSearchBottomSheet(
         }
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
-    ) {
+    ArcModalBottomSheet(
+        currentSheet = "IMAGE_SEARCH",
+        onDismissRequest = onDismiss
+    ) { _ ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()

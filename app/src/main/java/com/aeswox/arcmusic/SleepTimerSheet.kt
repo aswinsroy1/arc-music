@@ -28,7 +28,7 @@ import com.aeswox.arcmusic.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SleepTimerSheet(
+fun SleepTimerContent(
     isActive: Boolean,
     timeLeft: Long,
     pauseWhenSongEnd: Boolean,
@@ -36,8 +36,6 @@ fun SleepTimerSheet(
     onStart: (Int, Boolean) -> Unit,
     onClear: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
     // -1 represents "End of track", positive numbers represent minutes
     var selectedPreset by remember { 
         mutableIntStateOf(if (isActive && pauseWhenSongEnd) -1 else if (isActive) (timeLeft / 60000).toInt() else 30) 
@@ -49,21 +47,7 @@ fun SleepTimerSheet(
     var customMins by remember { mutableIntStateOf(selectedPreset.coerceAtLeast(0) % 60) }
     var finishCurrentSong by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp, bottom = 8.dp)
-                    .size(width = 32.dp, height = 4.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            )
-        }
-    ) {
-        Column(
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -407,7 +391,6 @@ fun SleepTimerSheet(
                     )
                 }
             }
-        }
     }
 }
 

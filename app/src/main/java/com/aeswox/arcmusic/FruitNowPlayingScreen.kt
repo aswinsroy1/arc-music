@@ -276,15 +276,9 @@ fun FruitNowPlayingScreen(
     val hazeState = remember { HazeState() }
 
 
-    var showOptionsSheet by remember { mutableStateOf(false) }
-
-    var showAddToPlaylistSheet by remember { mutableStateOf(false) }
+    var currentSheet by remember { mutableStateOf<NowPlayingSheet?>(null) }
 
     var showDetailsDialog by remember { mutableStateOf(false) }
-
-    var showSleepTimerDialog by remember { mutableStateOf(false) }
-
-    var showDeviceSheet by remember { mutableStateOf(false) }
 
     var showLyrics by remember { mutableStateOf(false) }
 
@@ -702,7 +696,7 @@ fun FruitNowPlayingScreen(
 
                                     .background(textColor.copy(alpha = 0.15f))
 
-                                    .clickable { showOptionsSheet = true },
+                                    .clickable { currentSheet = NowPlayingSheet.OPTIONS },
 
                                 contentAlignment = Alignment.Center
 
@@ -899,7 +893,7 @@ fun FruitNowPlayingScreen(
 
                                     .fillMaxHeight()
 
-                                    .clickable { showDeviceSheet = true },
+                                    .clickable { currentSheet = NowPlayingSheet.DEVICE },
 
                                 contentAlignment = Alignment.Center
 
@@ -939,7 +933,7 @@ fun FruitNowPlayingScreen(
 
                                     .fillMaxHeight()
 
-                                    .clickable { showSleepTimerDialog = true },
+                                    .clickable { currentSheet = NowPlayingSheet.SLEEP_TIMER },
 
                                 contentAlignment = Alignment.Center
 
@@ -1001,93 +995,43 @@ fun FruitNowPlayingScreen(
             }
         }
 
-        if (showSleepTimerDialog) {
-
-            SleepTimerSheet(
-
-                isActive = isTimerActive,
-
-                timeLeft = sleepTimerTimeLeft,
-
-                pauseWhenSongEnd = sleepTimerPauseWhenSongEnd,
-
-                onDismiss = { showSleepTimerDialog = false },
-
-                onStart = { minute, finishCurrentSong ->
-
-                    viewModel.startSleepTimer(minute, finishCurrentSong)
-
-                    showSleepTimerDialog = false
-
-                },
-
-                onClear = {
-
-                    viewModel.clearSleepTimer()
-
-                    showSleepTimerDialog = false
-
-                }
-
-            )
-
-        }
 
 
 
-        if (showDeviceSheet) {
-
-            DeviceSheet(
-
-                volume = deviceVolume,
-
-                maxVolume = deviceMaxVolume,
-
-                onVolumeChange = { viewModel.setDeviceVolume(it) },
-
-                onDismiss = { showDeviceSheet = false }
-
-            )
-
-        }
-
-    }
-
-
-
-    if (showOptionsSheet) {
-
-        ModalBottomSheet(
-
-            onDismissRequest = { showOptionsSheet = false },
-
-            sheetState = sheetState,
-
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-
-            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
-
-            scrimColor = Color.Black.copy(alpha = 0.4f),
-
-            dragHandle = {
-
-                Box(
-
-                    modifier = Modifier
-
-                        .padding(top = 16.dp, bottom = 8.dp)
-
-                        .size(width = 32.dp, height = 4.dp)
-
-                        .clip(CircleShape)
-
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-
+    ArcModalBottomSheet(
+        currentSheet = currentSheet,
+        onDismissRequest = { currentSheet = null }
+    ) { sheet ->
+        when (sheet) {
+            NowPlayingSheet.SLEEP_TIMER -> {
+                SleepTimerContent(
+                    isActive = isTimerActive,
+                    timeLeft = sleepTimerTimeLeft,
+                    pauseWhenSongEnd = sleepTimerPauseWhenSongEnd,
+                    onDismiss = { currentSheet = null },
+                    onStart = { minute, finishCurrentSong ->
+                        viewModel.startSleepTimer(minute, finishCurrentSong)
+                        currentSheet = null
+                    },
+                    onClear = {
+                        viewModel.clearSleepTimer()
+                        currentSheet = null
+                    }
                 )
-
             }
-
-        ) {
+            NowPlayingSheet.DEVICE -> {
+                DeviceContent(
+                    volume = deviceVolume,
+                    maxVolume = deviceMaxVolume,
+                    onVolumeChange = { viewModel.setDeviceVolume(it) },
+                    onDismiss = { currentSheet = null }
+                )
+            }
+            NowPlayingSheet.ADD_TO_PLAYLIST -> {
+                val trackIds = songToPlay?.let { listOf(it.id) } ?: emptyList()
+                AddToPlaylistContent(trackIds = trackIds, onDismissRequest = { currentSheet = null })
+            }
+            NowPlayingSheet.OPTIONS -> {
 
             Column(
 
@@ -1205,11 +1149,11 @@ fun FruitNowPlayingScreen(
 
                             .jellyClick { 
 
-                                showOptionsSheet = false 
+                                currentSheet = null 
 
                                 if (title == "Add to playlist") {
 
-                                    showAddToPlaylistSheet = true
+                                    currentSheet = NowPlayingSheet.ADD_TO_PLAYLIST
 
                                 } else if (title == "Add to favorites" || title == "Remove from favorites") {
 
@@ -1327,15 +1271,12 @@ fun FruitNowPlayingScreen(
 
 
 
-    if (showAddToPlaylistSheet) {
 
-        val trackIds = songToPlay?.let { listOf(it.id) } ?: emptyList()
 
-        AddToPlaylistSheet(trackIds = trackIds, onDismissRequest = { showAddToPlaylistSheet = false })
 
+
+        }
     }
-
-
 
     if (showDetailsDialog) {
 

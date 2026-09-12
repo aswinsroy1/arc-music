@@ -37,34 +37,17 @@ data class PlaylistSimple(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddToPlaylistSheet(
+fun AddToPlaylistContent(
     trackIds: List<String>,
     onDismissRequest: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val viewModel: MusicViewModel = hiltViewModel()
     val playlists by viewModel.libraryPlaylists.collectAsState()
     val playlistsContainingTracks by viewModel.getPlaylistsContainingTracks(trackIds).collectAsState(initial = emptyList())
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
-        scrimColor = Color.Black.copy(alpha = 0.4f),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp, bottom = 8.dp)
-                    .size(width = 32.dp, height = 4.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            )
-        }
-    ) {
-        Column(
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 32.dp)
@@ -176,8 +159,7 @@ fun AddToPlaylistSheet(
                 }
             }
         }
-    }
-
+    
     if (showNewPlaylistDialog) {
         var playlistName by remember { mutableStateOf("") }
         androidx.compose.ui.window.Dialog(onDismissRequest = { showNewPlaylistDialog = false }) {

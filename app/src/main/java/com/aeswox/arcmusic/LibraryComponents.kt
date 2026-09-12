@@ -33,6 +33,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import com.aeswox.arcmusic.ui.components.ArcModalBottomSheet
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -267,13 +268,10 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
         }
     }
 
-    if (showRearrangeSheet) {
-        val sheetState = rememberModalBottomSheetState()
-        ModalBottomSheet(
-            onDismissRequest = { showRearrangeSheet = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ) {
+    ArcModalBottomSheet(
+        currentSheet = if (showRearrangeSheet) "REARRANGE" else null,
+        onDismissRequest = { showRearrangeSheet = false }
+    ) { _ ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -378,11 +376,13 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
             }
         }
     }
-}
 
-    if (showAddToPlaylistSheet) {
+    ArcModalBottomSheet(
+        currentSheet = if (showAddToPlaylistSheet) "ADD" else null,
+        onDismissRequest = { showAddToPlaylistSheet = false }
+    ) { _ ->
         val trackIds = selectedItems.mapNotNull { if (it.startsWith("track_")) it.removePrefix("track_") else null }
-        AddToPlaylistSheet(trackIds = trackIds, onDismissRequest = { showAddToPlaylistSheet = false })
+        AddToPlaylistContent(trackIds = trackIds, onDismissRequest = { showAddToPlaylistSheet = false })
     }
 }
 
@@ -509,6 +509,7 @@ fun LibraryHeader(
 
 
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryMainSection(
     modifier: Modifier = Modifier, 
@@ -769,8 +770,11 @@ fun LibraryMainSection(
         }
     }
 
-    if (sortExpanded) {
-        SortBottomSheet(
+    ArcModalBottomSheet(
+        currentSheet = if (sortExpanded) "SORT" else null,
+        onDismissRequest = { sortExpanded = false }
+    ) { _ ->
+        SortContent(
             onDismissRequest = { sortExpanded = false },
             currentSortOption = sortOption,
             currentSortOrder = sortOrder,
@@ -1315,24 +1319,16 @@ data class LibrarySection(val name: String, val isVisible: Boolean)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SortBottomSheet(
+fun SortContent(
     onDismissRequest: () -> Unit,
     currentSortOption: String,
     currentSortOrder: String,
     onApply: (String, String) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var sortOption by remember { mutableStateOf(currentSortOption) }
     var sortOrder by remember { mutableStateOf(currentSortOrder) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
-    ) {
-        Column(
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -1427,7 +1423,6 @@ fun SortBottomSheet(
                 )
             }
         }
-    }
 }
 
 @Composable

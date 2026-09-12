@@ -35,29 +35,14 @@ import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceSheet(
+fun DeviceContent(
     volume: Int,
     maxVolume: Int,
     onVolumeChange: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp, bottom = 8.dp)
-                    .size(width = 32.dp, height = 4.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            )
-        }
-    ) {
-        Column(
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -132,7 +117,6 @@ fun DeviceSheet(
             )
         }
     }
-}
 
 @Composable
 fun SamsungVolumeSlider(

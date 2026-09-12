@@ -263,13 +263,10 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             }
         }
 
-        if (selectedDiscoveryCard != null) {
-            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-            ModalBottomSheet(
-                onDismissRequest = { selectedDiscoveryCard = null },
-                sheetState = sheetState,
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
+        ArcModalBottomSheet(
+            currentSheet = if (selectedDiscoveryCard != null) "DISCOVERY" else null,
+            onDismissRequest = { selectedDiscoveryCard = null }
+        ) { _ ->
                 DiscoveryBottomSheetContent(
                     card = selectedDiscoveryCard!!,
                     onDismiss = { 
@@ -280,7 +277,6 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
                     onDownloadLongClick = { performSpotiFlacManualSearch(context, selectedDiscoveryCard!!.suggestedArtistName) },
                     onClose = { selectedDiscoveryCard = null }
                 )
-            }
         }
     }
 }
