@@ -204,28 +204,44 @@ fun SleepTimerContent(
                     verticalAlignment = Alignment.Bottom,
                     modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
                 ) {
-                    if (selectedPreset == -1) {
-                        Text(
-                            text = "End of track",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 32.sp
-                            )
-                        )
-                    } else {
-                        Text(
-                            text = selectedPreset.toString(),
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 48.sp
-                            )
-                        )
-                        Text(
-                            text = " min",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                    AnimatedContent(
+                        targetState = selectedPreset,
+                        transitionSpec = {
+                            val t = if (targetState == -1) 999 else targetState
+                            val i = if (initialState == -1) 999 else initialState
+                            if (t > i) {
+                                (androidx.compose.animation.slideInVertically { height -> height } + fadeIn()) togetherWith (androidx.compose.animation.slideOutVertically { height -> -height } + fadeOut())
+                            } else {
+                                (androidx.compose.animation.slideInVertically { height -> -height } + fadeIn()) togetherWith (androidx.compose.animation.slideOutVertically { height -> height } + fadeOut())
+                            }
+                        },
+                        label = "TimerValueMorph"
+                    ) { preset ->
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            if (preset == -1) {
+                                Text(
+                                    text = "End of track",
+                                    style = MaterialTheme.typography.headlineLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 32.sp
+                                    )
+                                )
+                            } else {
+                                Text(
+                                    text = preset.toString(),
+                                    style = MaterialTheme.typography.headlineLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 48.sp
+                                    )
+                                )
+                                Text(
+                                    text = " min",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -273,12 +289,15 @@ fun SleepTimerContent(
                     
                     // End of track (spans 2 columns)
                     val isEotSelected = selectedPreset == -1
+                    val eotBgColor by androidx.compose.animation.animateColorAsState(if (isEotSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), label = "EotBg")
+                    val eotIconColor by androidx.compose.animation.animateColorAsState(if (isEotSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface, label = "EotIcon")
+                    
                     Box(
                         modifier = Modifier
                             .weight(2f)
                             .height(110.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isEotSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                            .background(eotBgColor)
                             .jellyClick { selectedPreset = -1 },
                         contentAlignment = Alignment.Center
                     ) {
@@ -289,13 +308,13 @@ fun SleepTimerContent(
                             Icon(
                                 imageVector = Icons.Outlined.DarkMode,
                                 contentDescription = "End of track",
-                                tint = if (isEotSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                                tint = eotIconColor,
                                 modifier = Modifier.size(24.dp).padding(bottom = 8.dp)
                             )
                             Text(
                                 text = "End of track",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                color = if (isEotSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
+                                color = eotIconColor
                             )
                         }
                     }
@@ -536,11 +555,15 @@ fun PresetBlock(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val bgColor by androidx.compose.animation.animateColorAsState(if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), label = "Bg")
+    val titleColor by androidx.compose.animation.animateColorAsState(if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface, label = "Title")
+    val subtitleColor by androidx.compose.animation.animateColorAsState(if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant, label = "Subtitle")
+
     Box(
         modifier = modifier
             .height(110.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+            .background(bgColor)
             .jellyClick { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -554,12 +577,12 @@ fun PresetBlock(
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp
                 ),
-                color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
+                color = titleColor
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                color = subtitleColor
             )
         }
     }
