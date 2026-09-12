@@ -79,8 +79,10 @@ fun ListeningStatsScreenContent(
             )
         }
         item {
-            WeeklyActivitySection(
-                weeklyMinutesByDay = stats.weeklyMinutesByDay,
+            ActivitySection(
+                dailyMinutes = stats.dailyMinutesByHour,
+                weeklyMinutes = stats.weeklyMinutesByDay,
+                monthlyMinutes = stats.monthlyMinutesByDay,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
@@ -200,28 +202,22 @@ fun TotalListeningTimeCard(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun WeeklyActivitySection(
-    weeklyMinutesByDay: List<Long>,
+fun ActivitySection(
+    dailyMinutes: List<Long>,
+    weeklyMinutes: List<Long>,
+    monthlyMinutes: List<Long>,
     modifier: Modifier = Modifier
 ) {
-    // Day labels starting from 6 days ago → today
-    val cal = java.util.Calendar.getInstance()
-    val labels = (6 downTo 0).map { daysAgo ->
-        val tmp = java.util.Calendar.getInstance()
-        tmp.timeInMillis = cal.timeInMillis - daysAgo * 24L * 3600 * 1000
-        when (tmp.get(java.util.Calendar.DAY_OF_WEEK)) {
-            java.util.Calendar.MONDAY    -> "M"
-            java.util.Calendar.TUESDAY   -> "T"
-            java.util.Calendar.WEDNESDAY -> "W"
-            java.util.Calendar.THURSDAY  -> "T"
-            java.util.Calendar.FRIDAY    -> "F"
-            java.util.Calendar.SATURDAY  -> "S"
-            else                         -> "S" // SUNDAY
-        }
-    }
-
-    val maxMinutes = weeklyMinutesByDay.maxOrNull()?.takeIf { it > 0L } ?: 1L
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = 1,
+        pageCount = { 3 }
+    )
+    val springSpec = androidx.compose.animation.core.spring<Float>(
+        dampingRatio = 0.8f,
+        stiffness = 300f
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -229,50 +225,137 @@ fun WeeklyActivitySection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Text(
-                text = "Weekly Activity",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Past 7 Days",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            val title = when (pagerState.currentPage) {
+                0 -> "Daily Activity"
+                1 -> "Weekly Activity"
+                2 -> "Monthly Activity"
+                else -> "Activity"
+            }
+            val subtitle = when (pagerState.currentPage) {
+                0 -> "Past 24 Hours"
+                1 -> "Past 7 Days"
+                2 -> "Past 30 Days"
+                else -> ""
+            }
+
+            androidx.compose.animation.Crossfade(
+                targetState = title,
+                animationSpec = androidx.compose.animation.core.tween(300)
+            ) { targetTitle ->
+                Text(
+                    text = targetTitle,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            androidx.compose.animation.Crossfade(
+                targetState = subtitle,
+                animationSpec = androidx.compose.animation.core.tween(300)
+            ) { targetSubtitle ->
+                Text(
+                    text = targetSubtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        GlassCard(modifier = Modifier
-            .fillMaxWidth()
-            .height(256.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                weeklyMinutesByDay.forEachIndexed { index, minutes ->
-                    val heightFraction = (minutes.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
-                    val opacity = (heightFraction * 0.85f + 0.15f).coerceIn(0.15f, 1f)
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.6f)
-                                .fillMaxHeight(heightFraction)
-                                .clip(RoundedCornerShape(50))
-                                .background(
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = opacity)
+        
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(
+                state = pagerState,
+                snapAnimationSpec = springSpec
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(256.dp)
+        ) { page ->
+            GlassCard(modifier = Modifier.fillMaxSize()) {
+                val data = when (page) {
+                    0 -> dailyMinutes
+                    1 -> weeklyMinutes
+                    2 -> monthlyMinutes
+                    else -> weeklyMinutes
+                }
+
+                val labels = when (page) {
+                    0 -> {
+                        val cal = java.util.Calendar.getInstance()
+                        val currentHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                        (23 downTo 0).map { hoursAgo ->
+                            val h = (currentHour - hoursAgo + 24) % 24
+                            if (hoursAgo == 23 || hoursAgo == 11 || hoursAgo == 0) {
+                                val amPm = if (h >= 12) "PM" else "AM"
+                                val displayH = if (h % 12 == 0) 12 else h % 12
+                                "$displayH$amPm"
+                            } else ""
+                        }
+                    }
+                    1 -> {
+                        val cal = java.util.Calendar.getInstance()
+                        (6 downTo 0).map { daysAgo ->
+                            val tmp = java.util.Calendar.getInstance()
+                            tmp.timeInMillis = cal.timeInMillis - daysAgo * 24L * 3600 * 1000
+                            when (tmp.get(java.util.Calendar.DAY_OF_WEEK)) {
+                                java.util.Calendar.MONDAY    -> "M"
+                                java.util.Calendar.TUESDAY   -> "T"
+                                java.util.Calendar.WEDNESDAY -> "W"
+                                java.util.Calendar.THURSDAY  -> "T"
+                                java.util.Calendar.FRIDAY    -> "F"
+                                java.util.Calendar.SATURDAY  -> "S"
+                                else                         -> "S"
+                            }
+                        }
+                    }
+                    2 -> {
+                        (29 downTo 0).map { daysAgo ->
+                            if (daysAgo == 29) "30d" else if (daysAgo == 14) "15d" else if (daysAgo == 0) "1d" else ""
+                        }
+                    }
+                    else -> emptyList()
+                }
+
+                val maxMinutes = data.maxOrNull()?.takeIf { it > 0L } ?: 1L
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    data.forEachIndexed { index, minutes ->
+                        val heightFraction = (minutes.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
+                        val opacity = (heightFraction * 0.85f + 0.15f).coerceIn(0.15f, 1f)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.BottomCenter,
+                                modifier = Modifier.weight(1f).fillMaxWidth()
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(if (page == 1) 0.6f else 0.8f)
+                                        .fillMaxHeight(heightFraction)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = opacity)
+                                        )
                                 )
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = labels[index],
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = labels.getOrElse(index) { "" },
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = if (page == 2) 8.sp else 11.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
