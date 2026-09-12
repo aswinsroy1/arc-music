@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
                 )
                 splashProgress.animateTo(
                     targetValue = 2f,
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 700, easing = androidx.compose.animation.core.FastOutSlowInEasing)
                 )
                 isSplashDismissed = true
             }
@@ -225,12 +225,16 @@ class MainActivity : ComponentActivity() {
                     )
                 ) {
                     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        val revealProgress = if (isSplashDismissed) 1f else {
+                            ((splashProgress.value - 1.45f) / 0.55f).coerceIn(0f, 1f)
+                        }
+                        val easedReveal = if (isSplashDismissed) 1f else {
+                            androidx.compose.animation.core.FastOutSlowInEasing.transform(revealProgress)
+                        }
                         val homeScale = if (isSplashDismissed) 1f else {
-                            0.95f + (0.05f * ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f))
+                            0.85f + (0.15f * easedReveal)
                         }
-                        val homeAlpha = if (isSplashDismissed) 1f else {
-                            ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
-                        }
+                        val homeAlpha = if (isSplashDismissed) 1f else easedReveal
                         
                         Scaffold(
                             modifier = Modifier.fillMaxSize().graphicsLayer {
@@ -253,8 +257,7 @@ class MainActivity : ComponentActivity() {
                     val glowColor by rememberDominantColor(imageUrl = artworkUrl, defaultColor = Color(0xFF5E90A7))
                     
                     val effectiveGlowIntensity = if (isSplashDismissed) glowIntensity else {
-                        val bloomProgress = ((splashProgress.value - 1.6f) / 0.4f).coerceIn(0f, 1f)
-                        glowIntensity * bloomProgress
+                        glowIntensity * easedReveal
                     }
                     
                     val view = androidx.compose.ui.platform.LocalView.current
@@ -1183,9 +1186,7 @@ class MainActivity : ComponentActivity() {
             } // end Scaffold trailing lambda
             
             if (!isSplashDismissed) {
-                val splashAlpha = if (splashProgress.value > 1.8f) {
-                    1f - ((splashProgress.value - 1.8f) / 0.2f).coerceIn(0f, 1f)
-                } else 1f
+                val splashAlpha = if (isSplashDismissed) 0f else (1f - easedReveal)
                 
                 com.aeswox.arcmusic.ui.components.AnimatedSplashScreen(
                     progress = splashProgress.value,
