@@ -235,6 +235,12 @@ class MusicViewModel @Inject constructor(
     private val _healthState = MutableStateFlow(CollectionHealthState())
     val healthState: StateFlow<CollectionHealthState> = _healthState.asStateFlow()
     
+    private val _showWelcomeOverlay = MutableStateFlow(false)
+    val showWelcomeOverlay: StateFlow<Boolean> = _showWelcomeOverlay.asStateFlow()
+    
+    fun setShowWelcomeOverlay(show: Boolean) {
+        _showWelcomeOverlay.value = show
+    }
     fun setHeroCardPlayingStateEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setHeroCardPlayingStateEnabled(enabled)

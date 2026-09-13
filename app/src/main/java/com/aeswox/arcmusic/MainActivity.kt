@@ -480,7 +480,10 @@ class MainActivity : ComponentActivity() {
                                                 composable("onboarding") {
                                                     com.aeswox.arcmusic.ui.screens.OnboardingScreen(
                                                         viewModel = viewModel,
-                                                        onFinish = {
+                                                        onFinish = { showWelcome ->
+                                                            if (showWelcome) {
+                                                                viewModel.setShowWelcomeOverlay(true)
+                                                            }
                                                             navController.navigate("home") {
                                                                 popUpTo("onboarding") { inclusive = true }
                                                             }
@@ -1455,6 +1458,73 @@ fun MusicHomeScreen(
                         ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) }, onNavigateToArtist = onNavigateToArtistDetails)
                     }
                 }
+        }
+
+        val showWelcomeOverlay by viewModel.showWelcomeOverlay.collectAsState()
+        
+        AnimatedVisibility(
+            visible = showWelcomeOverlay,
+            enter = fadeIn(androidx.compose.animation.core.tween(0)),
+            exit = fadeOut(androidx.compose.animation.core.tween(600)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {}, // block touches
+                contentAlignment = Alignment.Center
+            ) {
+                // Hide home screen while it's composing/loading
+                AnimatedGlowBackground(
+                    modifier = Modifier.fillMaxSize(),
+                    glowIntensity = glowIntensity,
+                    color = glowColor
+                )
+                
+                var stage by remember { mutableStateOf(0) }
+
+                LaunchedEffect(showWelcomeOverlay) {
+                    if (showWelcomeOverlay) {
+                        stage = 0
+                        kotlinx.coroutines.delay(300)
+                        stage = 1
+                        kotlinx.coroutines.delay(600)
+                        stage = 2
+                        kotlinx.coroutines.delay(1200)
+                        stage = 3
+                        kotlinx.coroutines.delay(500)
+                        viewModel.setShowWelcomeOverlay(false)
+                    }
+                }
+
+                val textAlpha by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (stage == 1 || stage == 2) 1f else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(500),
+                    label = "welcomeAlpha"
+                )
+                val textOffsetY by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (stage == 0) 30f else if (stage == 3) -10f else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(600),
+                    label = "welcomeOffset"
+                )
+                val textScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (stage == 3) 1.05f else 1f,
+                    animationSpec = androidx.compose.animation.core.tween(500),
+                    label = "welcomeScale"
+                )
+
+                Text(
+                    text = "Welcome",
+                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = textAlpha
+                        translationY = textOffsetY
+                        scaleX = textScale
+                        scaleY = textScale
+                    }
+                )
+            }
         }
     }
 }

@@ -50,7 +50,7 @@ import androidx.compose.animation.core.tween
 fun OnboardingScreen(
     viewModel: MusicViewModel,
     modifier: Modifier = Modifier,
-    onFinish: () -> Unit
+    onFinish: (showWelcome: Boolean) -> Unit
 ) {
     var currentPage by remember { mutableStateOf(0) }
     
@@ -66,56 +66,18 @@ fun OnboardingScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
-        bottomBar = {
-            AnimatedVisibility(
-                visible = currentPage < 5,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                // Dot indicator
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                    .padding(bottom = 48.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(5) { index ->
-                    val isSelected = currentPage == index
-                    val width by animateFloatAsState(targetValue = if (isSelected) 24f else 8f, label = "dotWidth")
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .height(8.dp)
-                            .width(width.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary 
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                            )
-                    )
-                }
-            }
-            }
-        }
-    ) { innerPadding ->
+    Box(modifier = modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = currentPage,
             transitionSpec = {
-                if (targetState == 5) {
-                    fadeIn(tween(500)) togetherWith fadeOut(tween(400))
-                } else if (targetState > initialState) {
+                if (targetState > initialState) {
                     NavTransitions.DetailEnter togetherWith NavTransitions.DetailPopExit
                 } else {
                     NavTransitions.DetailPopEnter togetherWith NavTransitions.DetailExit
                 }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
         ) { page ->
             when (page) {
                 0 -> WelcomePage(
@@ -159,46 +121,43 @@ fun OnboardingScreen(
                 4 -> LibraryScanningPage(
                     viewModel = viewModel,
                     onFinish = {
-                        currentPage = 5
-                    }
-                )
-                5 -> WelcomeTransitionPage(
-                    onFinish = {
                         viewModel.setHasCompletedOnboarding(true)
-                        onFinish()
+                        onFinish(true)
                     }
                 )
             }
         }
-    }
-}
 
-@Composable
-fun WelcomeTransitionPage(onFinish: () -> Unit) {
-    var stage by remember { mutableStateOf(0) }
-
-    LaunchedEffect(Unit) {
-        delay(300)
-        stage = 1
-        delay(600)
-        stage = 2
-        delay(1200)
-        stage = 3
-        delay(500)
-        onFinish()
-    }
-
-    AnimatedVisibility(
-        visible = stage == 1 || stage == 2,
-        enter = fadeIn(tween(600)) + slideInVertically(tween(600), initialOffsetY = { 30 }),
-        exit = fadeOut(tween(500)) + scaleOut(tween(500), targetScale = 1.05f)
-    ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Welcome",
-                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground
-            )
+        // Dot indicator as overlay
+        AnimatedVisibility(
+            visible = currentPage < 4,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 48.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(5) { index ->
+                    val isSelected = currentPage == index
+                    val width by animateFloatAsState(targetValue = if (isSelected) 24f else 8f, label = "dotWidth")
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .height(8.dp)
+                            .width(width.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary 
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            )
+                    )
+                }
+            }
         }
     }
 }
