@@ -279,11 +279,6 @@ fun SettingsScreen(
                                         selected = nowPlayingStyle == NowPlayingStyle.ARC,
                                         onClick = { onNowPlayingStyleChange(NowPlayingStyle.ARC) }
                                     )
-                                    LyricsStyleChip(
-                                        label = "Fruit",
-                                        selected = nowPlayingStyle == NowPlayingStyle.FRUIT,
-                                        onClick = { onNowPlayingStyleChange(NowPlayingStyle.FRUIT) }
-                                    )
                                 }
                             }
                         )

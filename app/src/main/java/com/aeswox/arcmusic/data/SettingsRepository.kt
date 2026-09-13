@@ -91,7 +91,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     val nowPlayingStyle: Flow<NowPlayingStyle> = context.dataStore.data.map { preferences ->
         when (preferences[NOW_PLAYING_STYLE_KEY]) {
-            "fruit" -> NowPlayingStyle.FRUIT
             else    -> NowPlayingStyle.ARC
         }
     }
@@ -308,7 +307,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit {
             it[NOW_PLAYING_STYLE_KEY] = when (style) {
                 NowPlayingStyle.ARC   -> "arc"
-                NowPlayingStyle.FRUIT -> "fruit"
             }
         }
     }

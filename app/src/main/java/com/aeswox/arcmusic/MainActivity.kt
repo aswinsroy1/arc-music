@@ -296,7 +296,7 @@ class MainActivity : ComponentActivity() {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route ?: startDest
                     val showWelcomeOverlay by viewModel.showWelcomeOverlay.collectAsState()
-                    val isNavBarVisible = currentRoute == "home" && !isLibrarySelectionMode && currentTab in 0..2 && selectedGenre == null && !showWelcomeOverlay
+                    val isNavBarVisible = currentRoute == "home" && !isLibrarySelectionMode && currentTab in 0..2 && selectedGenre == null
                     
                     LaunchedEffect(isNavBarVisible) {
                         viewModel.setNavBarVisible(isNavBarVisible)
@@ -384,9 +384,7 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             viewModel.setPlayerExpanded(false)
                                         }
-                                        when (nowPlayingStyle) {
-                                            com.aeswox.arcmusic.data.model.NowPlayingStyle.ARC -> {
-                                                ArcNowPlayingScreen(
+                                        ArcNowPlayingScreen(
                                                     tintTransparency = tintTransparency,
                                                     noiseFactor = noiseFactor,
                                                     glowIntensity = glowIntensity,
@@ -410,34 +408,6 @@ class MainActivity : ComponentActivity() {
                                                         navController.navigate("edit_metadata/$trackId?readOnly=true") 
                                                     }
                                                 )
-                                            }
-                                            com.aeswox.arcmusic.data.model.NowPlayingStyle.FRUIT -> {
-                                                FruitNowPlayingScreen(
-                                                    tintTransparency = tintTransparency,
-                                                    noiseFactor = noiseFactor,
-                                                    glowIntensity = glowIntensity,
-                                                    isDarkTheme = !lightThemeForNowPlaying,
-                                                    onNavigateBack = { viewModel.setPlayerExpanded(false) },
-                                                     onNavigateToQueue = {}, // Handled in-screen
-                                                    onNavigateToAlbum = { albumId -> 
-                                                        viewModel.setPlayerExpanded(false)
-                                                        navController.navigate("album_details/$albumId") 
-                                                    },
-                                                    onNavigateToArtist = { artistId -> 
-                                                        viewModel.setPlayerExpanded(false)
-                                                        navController.navigate("artist_details/$artistId") 
-                                                    },
-                                                    onNavigateToShare = { type, id ->
-                                                        viewModel.setPlayerExpanded(false)
-                                                        navController.navigate("share?type=$type&id=$id")
-                                                    },
-                                                    onNavigateToEditMetadata = { trackId -> 
-                                                        viewModel.setPlayerExpanded(false)
-                                                        navController.navigate("edit_metadata/$trackId?readOnly=true") 
-                                                    }
-                                                )
-                                            }
-                                        }
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 ) {
@@ -1175,6 +1145,71 @@ class MainActivity : ComponentActivity() {
                                                 )
                                             }
                                         }
+                                        
+                                        AnimatedVisibility(
+                                            visible = showWelcomeOverlay,
+                                            enter = fadeIn(androidx.compose.animation.core.tween(1000)),
+                                            exit = fadeOut(androidx.compose.animation.core.tween(2500)),
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .pointerInput(Unit) {}, // block touches
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                // Hide home screen while it's composing/loading
+                                                AnimatedGlowBackground(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    glowIntensity = glowIntensity,
+                                                    color = glowColor
+                                                )
+                                                
+                                                var stage by remember { mutableStateOf(0) }
+                                
+                                                LaunchedEffect(showWelcomeOverlay) {
+                                                    if (showWelcomeOverlay) {
+                                                        stage = 0
+                                                        kotlinx.coroutines.delay(300)
+                                                        stage = 1
+                                                        kotlinx.coroutines.delay(600)
+                                                        stage = 2
+                                                        kotlinx.coroutines.delay(1200)
+                                                        stage = 3
+                                                        kotlinx.coroutines.delay(500)
+                                                        viewModel.setShowWelcomeOverlay(false)
+                                                    }
+                                                }
+                                
+                                                val textAlpha by androidx.compose.animation.core.animateFloatAsState(
+                                                    targetValue = if (stage == 1 || stage == 2) 1f else 0f,
+                                                    animationSpec = androidx.compose.animation.core.tween(1000),
+                                                    label = "welcomeAlpha"
+                                                )
+                                                val textOffsetY by androidx.compose.animation.core.animateFloatAsState(
+                                                    targetValue = if (stage == 0) 30f else if (stage == 3) -10f else 0f,
+                                                    animationSpec = androidx.compose.animation.core.tween(800),
+                                                    label = "welcomeOffset"
+                                                )
+                                                val textScale by androidx.compose.animation.core.animateFloatAsState(
+                                                    targetValue = if (stage == 3) 1.05f else 1f,
+                                                    animationSpec = androidx.compose.animation.core.tween(800),
+                                                    label = "welcomeScale"
+                                                )
+                                
+                                                Text(
+                                                    text = "Welcome",
+                                                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.onBackground,
+                                                    modifier = Modifier.graphicsLayer {
+                                                        alpha = textAlpha
+                                                        translationY = textOffsetY
+                                                        scaleX = textScale
+                                                        scaleY = textScale
+                                                    }
+                                                )
+                                            }
+                                        }
                                     } // Box (line 287)
                                 } // PlayerBottomSheet trailing lambda
                             
@@ -1329,6 +1364,13 @@ fun MusicHomeScreen(
             },
             label = "tab_switch"
         ) { tab ->
+            val animMiniPlayerHeightContrib by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (isMiniPlayerVisible && currentlyPlayingEntity != null) 80.dp else 0.dp,
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
+                label = "miniPlayerHeightContrib"
+            )
+            val dynamicBottomPadding = 88.dp + animMiniPlayerHeightContrib
+            
             when (tab) {
                 0 -> {
                     if (isLibraryLoaded) {
@@ -1336,7 +1378,7 @@ fun MusicHomeScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = 24.dp, bottom = bottomPadding)
+                                    .padding(top = 24.dp, bottom = dynamicBottomPadding)
                             ) {
                                 Header(modifier = Modifier.padding(horizontal = 24.dp), onSettingsClick = onNavigateToSettings, onTitleLongClick = onNavigateToReceive)
                                 
@@ -1398,7 +1440,7 @@ fun MusicHomeScreen(
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding + 24.dp),
+                                contentPadding = PaddingValues(top = 24.dp, bottom = dynamicBottomPadding + 24.dp),
                                 verticalArrangement = Arrangement.spacedBy(32.dp),
                                 modifier = Modifier.physicsBounceOverscroll()
                                     .fillMaxSize()
@@ -1446,89 +1488,24 @@ fun MusicHomeScreen(
                         if (selectedGenre != null) {
                             GenreHubScreenContent(
                                 genreName = selectedGenre!!,
-                                bottomPadding = bottomPadding,
+                                bottomPadding = dynamicBottomPadding,
                                 onNavigateBack = { onGenreSelected(null) }
                             )
                         } else {
-                            SearchScreenContent(viewModel = viewModel, bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { onGenreSelected(it) })
+                            SearchScreenContent(viewModel = viewModel, bottomPadding = dynamicBottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { onGenreSelected(it) })
                         }
                     }
                     2 -> {
-                        LibraryScreenContent(bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onNavigateToShare = onNavigateToShare, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
+                        LibraryScreenContent(bottomPadding = dynamicBottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onNavigateToShare = onNavigateToShare, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
                     }
                     3 -> {
                         val stats by viewModel.listeningStats.collectAsState()
-                        ListeningStatsScreenContent(stats = stats, bottomPadding = bottomPadding, onNavigateBack = { onTabSelected(0) }, onNavigateToArtist = onNavigateToArtistDetails)
+                        ListeningStatsScreenContent(stats = stats, bottomPadding = dynamicBottomPadding, onNavigateBack = { onTabSelected(0) }, onNavigateToArtist = onNavigateToArtistDetails)
                     }
                 }
         }
 
-        val showWelcomeOverlay by viewModel.showWelcomeOverlay.collectAsState()
-        
-        AnimatedVisibility(
-            visible = showWelcomeOverlay,
-            enter = fadeIn(androidx.compose.animation.core.tween(1000)),
-            exit = fadeOut(androidx.compose.animation.core.tween(1200)),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {}, // block touches
-                contentAlignment = Alignment.Center
-            ) {
-                // Hide home screen while it's composing/loading
-                AnimatedGlowBackground(
-                    modifier = Modifier.fillMaxSize(),
-                    glowIntensity = glowIntensity,
-                    color = glowColor
-                )
-                
-                var stage by remember { mutableStateOf(0) }
 
-                LaunchedEffect(showWelcomeOverlay) {
-                    if (showWelcomeOverlay) {
-                        stage = 0
-                        kotlinx.coroutines.delay(300)
-                        stage = 1
-                        kotlinx.coroutines.delay(600)
-                        stage = 2
-                        kotlinx.coroutines.delay(1200)
-                        stage = 3
-                        kotlinx.coroutines.delay(500)
-                        viewModel.setShowWelcomeOverlay(false)
-                    }
-                }
-
-                val textAlpha by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (stage == 1 || stage == 2) 1f else 0f,
-                    animationSpec = androidx.compose.animation.core.tween(500),
-                    label = "welcomeAlpha"
-                )
-                val textOffsetY by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (stage == 0) 30f else if (stage == 3) -10f else 0f,
-                    animationSpec = androidx.compose.animation.core.tween(600),
-                    label = "welcomeOffset"
-                )
-                val textScale by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (stage == 3) 1.05f else 1f,
-                    animationSpec = androidx.compose.animation.core.tween(500),
-                    label = "welcomeScale"
-                )
-
-                Text(
-                    text = "Welcome",
-                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = textAlpha
-                        translationY = textOffsetY
-                        scaleX = textScale
-                        scaleY = textScale
-                    }
-                )
-            }
-        }
     }
 }
 

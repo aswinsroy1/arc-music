@@ -77,7 +77,7 @@ fun OnboardingScreen(
                 }
             },
             contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize().padding(bottom = 72.dp)
+            modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(bottom = 80.dp)
         ) { page ->
             when (page) {
                 0 -> WelcomePage(
@@ -138,7 +138,8 @@ fun OnboardingScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .navigationBarsPadding()
+                    .padding(bottom = 32.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
