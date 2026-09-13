@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.LayersClear
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aeswox.arcmusic.db.entities.Track
+import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
 import java.util.Locale
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -64,13 +67,16 @@ fun DuplicateSongsScreen(
         label = "duplicateListBottom"
     )
     
-    // Map of group Title+Artist string to the track ID that is selected to be KEPT
+    // Map of group id to the track ID that is selected to be KEPT
     val selectedTracksToKeep = remember { mutableStateMapOf<String, String>() }
+    
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
+    var pendingTracksToDelete by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // Initialize default selections (best track per group)
     LaunchedEffect(duplicateGroups) {
         duplicateGroups.forEach { group ->
-            val groupId = "${group.title}_${group.artist}"
+            val groupId = group.id
             if (!selectedTracksToKeep.containsKey(groupId)) {
                 // Find the best track by file size and bitrate as a simple heuristic
                 val bestTrack = group.tracks.maxByOrNull { (it.bitrate ?: 0) * 1000 + (it.fileSizeBytes) } ?: group.tracks.first()
@@ -112,7 +118,7 @@ fun DuplicateSongsScreen(
                         onClick = {
                             val tracksToDelete = mutableListOf<String>()
                             duplicateGroups.forEach { group ->
-                                val groupId = "${group.title}_${group.artist}"
+                                val groupId = group.id
                                 val keepId = selectedTracksToKeep[groupId]
                                 group.tracks.forEach { track ->
                                     if (track.id != keepId) {
@@ -121,9 +127,11 @@ fun DuplicateSongsScreen(
                                 }
                             }
                             if (tracksToDelete.isNotEmpty()) {
-                                viewModel.deleteTracks(tracksToDelete)
+                                pendingTracksToDelete = tracksToDelete
+                                showBatchDeleteDialog = true
+                            } else {
+                                onNavigateBack()
                             }
-                            onNavigateBack()
                         },
                         containerColor = MaterialTheme.colorScheme.onBackground,
                         contentColor = MaterialTheme.colorScheme.background,
@@ -227,7 +235,7 @@ fun DuplicateSongsScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                     items(duplicateGroups) { group ->
-                        val groupId = "${group.title}_${group.artist}"
+                        val groupId = group.id
                         val bestTrack = remember(group) {
                             group.tracks.maxByOrNull { (it.bitrate ?: 0) * 1000 + (it.fileSizeBytes) } ?: group.tracks.first()
                         }
@@ -240,7 +248,11 @@ fun DuplicateSongsScreen(
                                 selectedTracksToKeep[groupId] = selectedId
                             },
                             onDeleteIndividual = { trackId ->
-                                viewModel.deleteTracks(listOf(trackId))
+                                pendingTracksToDelete = listOf(trackId)
+                                showBatchDeleteDialog = true
+                            },
+                            onPlayPreview = { track ->
+                                viewModel.setCurrentlyPlaying(track, group.tracks)
                             }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -252,6 +264,39 @@ fun DuplicateSongsScreen(
                 }
             }
         }
+        
+        if (showBatchDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showBatchDeleteDialog = false 
+                    pendingTracksToDelete = emptyList()
+                },
+                title = {
+                    Text(text = "Delete Duplicates")
+                },
+                text = {
+                    Text("Are you sure you want to delete ${pendingTracksToDelete.size} track(s)? This will remove them from your library.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.deleteTracks(pendingTracksToDelete)
+                        showBatchDeleteDialog = false
+                        pendingTracksToDelete = emptyList()
+                        onNavigateBack()
+                    }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showBatchDeleteDialog = false 
+                        pendingTracksToDelete = emptyList()
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -261,7 +306,8 @@ fun DuplicateGroupCard(
     bestTrackId: String,
     selectedKeepId: String,
     onSelectKeep: (String) -> Unit,
-    onDeleteIndividual: (String) -> Unit
+    onDeleteIndividual: (String) -> Unit,
+    onPlayPreview: (Track) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -361,6 +407,33 @@ fun DuplicateGroupCard(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
+                val badgeRes = track.getQualityBadgeResId()
+                if (badgeRes != null) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = badgeRes),
+                        contentDescription = "Quality Badge",
+                        modifier = Modifier.width(36.dp).height(16.dp).alpha(0.7f),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                // Play / Preview button
+                IconButton(
+                    onClick = { onPlayPreview(track) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Preview Track",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(4.dp))
+                
                 if (isBest) {
                     // Best Quality Pill
                     Box(
@@ -377,21 +450,15 @@ fun DuplicateGroupCard(
                     }
                 } else if (!isSelected) {
                     // Individual delete button
-                    Row(
-                        modifier = Modifier.jellyClick { onDeleteIndividual(track.id) },
-                        verticalAlignment = Alignment.CenterVertically
+                    IconButton(
+                        onClick = { onDeleteIndividual(track.id) },
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete",
                             tint = Color(0xFFC62828),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Delete",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFFC62828)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

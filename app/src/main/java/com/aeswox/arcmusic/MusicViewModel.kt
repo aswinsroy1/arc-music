@@ -76,6 +76,7 @@ data class ListeningStatsData(
 
 // --- Collection Health data model ---
 data class DuplicateGroup(
+    val id: String = java.util.UUID.randomUUID().toString(),
     val title: String,
     val artist: String,
     val tracks: List<Track>
@@ -1488,12 +1489,32 @@ class MusicViewModel @Inject constructor(
                     return@combine CollectionHealthState()
                 }
 
-                // Calculate duplicates (Group by title + artist, then fuzzy duration Â±5s)
-                val duplicateGroups = tracks.groupBy { "${it.title.lowercase()}_${it.artist.lowercase()}" }
+                // Calculate duplicates (Group by title + artist, then fuzzy duration ±5s)
+                val duplicateGroups = tracks.groupBy { "${it.title.trim().lowercase()}_${it.artist.trim().lowercase()}" }
                     .filter { it.value.size > 1 }
                     .map { entry -> 
-                        val groupedByDuration = entry.value.groupBy { it.durationMs / 5000 }
-                        groupedByDuration.values.filter { it.size > 1 }.map { duplicates ->
+                        val tracksForGroup = entry.value.sortedBy { it.durationMs }
+                        val clusters = mutableListOf<List<Track>>()
+                        var currentCluster = mutableListOf<Track>()
+                        
+                        for (track in tracksForGroup) {
+                            if (currentCluster.isEmpty()) {
+                                currentCluster.add(track)
+                            } else {
+                                // If within 5 seconds of the first track in the cluster, add it
+                                if (track.durationMs - currentCluster.first().durationMs <= 5000L) {
+                                    currentCluster.add(track)
+                                } else {
+                                    clusters.add(currentCluster)
+                                    currentCluster = mutableListOf(track)
+                                }
+                            }
+                        }
+                        if (currentCluster.isNotEmpty()) {
+                            clusters.add(currentCluster)
+                        }
+                        
+                        clusters.filter { it.size > 1 }.map { duplicates ->
                             DuplicateGroup(
                                 title = duplicates.first().title,
                                 artist = duplicates.first().artist,
