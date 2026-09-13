@@ -42,6 +42,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
+import com.aeswox.arcmusic.AnimatedGlowBackground
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -55,6 +56,7 @@ fun OnboardingScreen(
     val themeMode by viewModel.themeMode.collectAsState()
     val availableFolders by viewModel.availableAudioFolders.collectAsState()
     var checkedFolders by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val glowIntensity by viewModel.glowIntensity.collectAsState()
     
     // Automatically select all folders initially when they load
     LaunchedEffect(availableFolders) {
@@ -63,14 +65,19 @@ fun OnboardingScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            // Dot indicator
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
+    Box(modifier = modifier.fillMaxSize()) {
+        AnimatedGlowBackground(
+            modifier = Modifier.fillMaxSize(),
+            glowIntensity = glowIntensity
+        )
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            bottomBar = {
+                // Dot indicator
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
                     .padding(bottom = 48.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -155,6 +162,7 @@ fun OnboardingScreen(
             }
         }
     }
+}
 }
 
 @Composable

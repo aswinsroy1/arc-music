@@ -1073,20 +1073,23 @@ class MainActivity : ComponentActivity() {
                                     currentCacheSizeMb = currentCacheSizeMb,
                                     onClearCache = {
                                         viewModel.canvasCacheManager.clearCache()
-                                        currentCacheSizeMb = 0L
+                                        // Refresh cache size
+                                        val bytes = viewModel.canvasCacheManager.getCacheSizeBytes()
+                                        currentCacheSizeMb = bytes / (1024 * 1024)
                                     },
                                     onFetchCanvases = {
                                         val intent = android.content.Intent(this@MainActivity, com.aeswox.arcmusic.service.CanvasFetchService::class.java)
                                         startService(intent)
                                     },
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = { navController.popBackStack() },
+                                    glowIntensity = glowIntensity
                                 )
                             }
                         }
                     } // NavHost
                                         } // Box (applyHazeAndBackdrop)
                                         
-                                        // â”€â”€ Gradient scrim behind bottom chrome â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                                        // ── Gradient scrim behind bottom chrome ──────────────────────────────
                                         // Mirrors Rhythm's LocalNavigation approach: the scrim height is animated
                                         // so it grows/shrinks as the nav bar and miniplayer come and go.
                                         val miniPlayerVisible = isMiniPlayerVisible && currentlyPlaying != null

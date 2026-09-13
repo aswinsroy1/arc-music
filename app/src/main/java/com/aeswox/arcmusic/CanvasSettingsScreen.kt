@@ -33,11 +33,16 @@ fun CanvasSettingsScreen(
     onClearCache: () -> Unit,
     onFetchCanvases: () -> Unit,
     onNavigateBack: () -> Unit,
+    glowIntensity: Float,
     modifier: Modifier = Modifier
 ) {
     val hazeState = remember { HazeState() }
     
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(modifier = modifier.fillMaxSize()) {
+        AnimatedGlowBackground(
+            modifier = Modifier.fillMaxSize(),
+            glowIntensity = glowIntensity
+        )
         LazyColumn(
             modifier = Modifier.fillMaxSize().haze(state = hazeState),
             contentPadding = PaddingValues(top = 100.dp, bottom = 40.dp)
