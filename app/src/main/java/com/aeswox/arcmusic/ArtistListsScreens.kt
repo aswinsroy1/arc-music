@@ -34,6 +34,19 @@ fun ArtistTracksScreen(
     val tracks by viewModel.getTracksByArtist(artistId).collectAsState(initial = emptyList())
     val artist by viewModel.getArtistById(artistId).collectAsState(initial = null)
 
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "artistTracksBottomPadding"
+    )
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -77,7 +90,7 @@ fun ArtistTracksScreen(
                 )
             }
             item {
-                Spacer(modifier = Modifier.height(130.dp))
+                Spacer(modifier = Modifier.height(bottomPadding))
             }
         }
     }
@@ -92,6 +105,19 @@ fun ArtistAlbumsScreen(
 ) {
     val albums by viewModel.getAlbumsByArtist(artistId).collectAsState(initial = emptyList())
     val artist by viewModel.getArtistById(artistId).collectAsState(initial = null)
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "artistAlbumsBottomPadding"
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -137,7 +163,7 @@ fun ArtistAlbumsScreen(
                 )
             }
             item {
-                Spacer(modifier = Modifier.height(130.dp))
+                Spacer(modifier = Modifier.height(bottomPadding))
             }
         }
     }

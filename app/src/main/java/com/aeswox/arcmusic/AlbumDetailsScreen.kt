@@ -45,6 +45,18 @@ fun AlbumDetailsScreen(
     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
 
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "albumDetailsBottomPadding"
+    )
+
     val menuItems = remember(album, sortedTracks) {
         val list = mutableListOf<MorphingMenuItem>()
         if (sortedTracks.isNotEmpty() && album != null) {
@@ -96,7 +108,7 @@ fun AlbumDetailsScreen(
             .fillMaxSize()
             .physicsBounceOverscroll()
             .padding(horizontal = 24.dp),
-        contentPadding = PaddingValues(top = 48.dp, bottom = 130.dp)
+        contentPadding = PaddingValues(top = 48.dp, bottom = bottomPadding)
     ) {
         item {
             AlbumDetailsHeader(onNavigateBack = onNavigateBack, menuItems = menuItems)

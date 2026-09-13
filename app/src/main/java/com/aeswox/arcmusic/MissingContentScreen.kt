@@ -58,6 +58,18 @@ fun MissingContentScreen(
         rememberLazyListState()
     )
 
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 24.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "missingContentBottomPadding"
+    )
     LaunchedEffect(Unit) {
         viewModel.loadMissingContent()
     }
@@ -178,7 +190,7 @@ fun MissingContentScreen(
                             LazyColumn(
                                 state = listStates[currentTab],
                                 modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-                                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 130.dp),
+                                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = bottomPadding),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 itemsGrouped.forEach { (artistName, items) ->

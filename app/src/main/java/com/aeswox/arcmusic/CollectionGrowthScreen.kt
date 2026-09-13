@@ -48,6 +48,19 @@ fun CollectionGrowthScreen(
 ) {
     val growthState by viewModel.growthState.collectAsState()
     var selectedDiscoveryCard by remember { mutableStateOf<GrowthCard.Discovery?>(null) }
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "collectionGrowthBottomPadding"
+    )
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -130,7 +143,7 @@ fun CollectionGrowthScreen(
                             )
                             .fillMaxSize()
                             .padding(innerPadding),
-                        contentPadding = PaddingValues(bottom = 130.dp),
+                        contentPadding = PaddingValues(bottom = bottomPadding),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         if (completeCollectionCards.isNotEmpty()) {

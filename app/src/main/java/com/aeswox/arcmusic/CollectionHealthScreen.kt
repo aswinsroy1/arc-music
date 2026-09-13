@@ -43,6 +43,18 @@ fun CollectionHealthScreen(
 ) {
     val healthState by viewModel.healthState.collectAsState()
 
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "collectionHealthBottomPadding"
+    )
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
@@ -73,7 +85,7 @@ fun CollectionHealthScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 24.dp),
-                contentPadding = PaddingValues(bottom = 130.dp),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 verticalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 item {

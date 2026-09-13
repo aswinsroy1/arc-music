@@ -60,6 +60,18 @@ fun PlaylistDetailsScreen(
         return
     }
 
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "playlistDetailsBottomPadding"
+    )
+
     val totalDurationMs = tracks.sumOf { it.durationMs }
     val totalHours = totalDurationMs / (1000 * 60 * 60)
     val totalMinutes = (totalDurationMs % (1000 * 60 * 60)) / (1000 * 60)
@@ -89,7 +101,7 @@ fun PlaylistDetailsScreen(
 
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 130.dp) // space for mini player
+            contentPadding = PaddingValues(bottom = bottomPadding) // space for mini player
         ) {
             item {
                 // Top App Bar
@@ -650,7 +662,7 @@ fun PlaylistDetailsSkeleton(onNavigateBack: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 130.dp)
+            contentPadding = PaddingValues(bottom = 48.dp)
         ) {
             item {
                 Row(

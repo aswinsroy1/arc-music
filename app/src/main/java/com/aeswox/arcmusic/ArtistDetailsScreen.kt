@@ -62,6 +62,19 @@ fun ArtistDetailsScreen(
     val artist by viewModel.getArtistById(artistId).collectAsState(initial = null)
     val tracks by viewModel.getTracksByArtist(artistId).collectAsState(initial = emptyList())
     val albums by viewModel.getAlbumsByArtist(artistId).collectAsState(initial = emptyList())
+    
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        ),
+        label = "artistDetailsBottomPadding"
+    )
 
     if (artist == null) {
         ArtistDetailsSkeleton(onNavigateBack = onNavigateBack)
@@ -98,7 +111,7 @@ fun ArtistDetailsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 130.dp)
+            contentPadding = PaddingValues(bottom = bottomPadding)
         ) {
             item {
                 ArtistHeroSection(artist = artist, tracks = tracks, viewModel = viewModel)
