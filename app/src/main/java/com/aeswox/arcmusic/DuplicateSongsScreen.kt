@@ -1,6 +1,8 @@
 package com.aeswox.arcmusic
 
-import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -12,15 +14,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.LayersClear
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,14 +30,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aeswox.arcmusic.db.entities.Track
-import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
-import java.util.Locale
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
-import com.aeswox.arcmusic.ui.animations.jelly
-import com.aeswox.arcmusic.ui.components.*
+import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
+import com.aeswox.arcmusic.ui.components.JellyButton
+import com.aeswox.arcmusic.ui.components.JellyExtendedFloatingActionButton
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,12 +65,15 @@ fun DuplicateSongsScreen(
         ),
         label = "duplicateListBottom"
     )
-    
+
     // Map of group id to the track ID that is selected to be KEPT
     val selectedTracksToKeep = remember { mutableStateMapOf<String, String>() }
     
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
     var pendingTracksToDelete by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    var totalDuplicatesCount by remember { mutableStateOf(0) }
+    var totalSavedMb by remember { mutableStateOf(0.0) }
 
     // Initialize default selections (best track per group)
     LaunchedEffect(duplicateGroups) {
@@ -83,6 +85,22 @@ fun DuplicateSongsScreen(
                 selectedTracksToKeep[groupId] = bestTrack.id
             }
         }
+    }
+
+    LaunchedEffect(duplicateGroups, selectedTracksToKeep.toMap()) {
+        var count = 0
+        var savedSize = 0L
+        duplicateGroups.forEach { group ->
+            val keepId = selectedTracksToKeep[group.id]
+            group.tracks.forEach { track ->
+                if (track.id != keepId) {
+                    count++
+                    savedSize += track.fileSizeBytes
+                }
+            }
+        }
+        totalDuplicatesCount = count
+        totalSavedMb = savedSize / (1024.0 * 1024.0)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -100,11 +118,31 @@ fun DuplicateSongsScreen(
                         )
                     },
                     navigationIcon = {
-                        JellyIconButton(onClick = onNavigateBack) {
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 16.dp)
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .jellyClick { onNavigateBack() },
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     },
-
+                    actions = {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .jellyClick { /* TODO */ },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent
                     )
@@ -113,7 +151,8 @@ fun DuplicateSongsScreen(
             containerColor = Color.Transparent,
             floatingActionButtonPosition = FabPosition.Center,
             floatingActionButton = {
-                if (duplicateGroups.isNotEmpty()) {
+                if (duplicateGroups.isNotEmpty() && totalDuplicatesCount > 0) {
+                    val savedMbStr = String.format(Locale.getDefault(), "%.1f", totalSavedMb)
                     JellyExtendedFloatingActionButton(
                         onClick = {
                             val tracksToDelete = mutableListOf<String>()
@@ -129,18 +168,24 @@ fun DuplicateSongsScreen(
                             if (tracksToDelete.isNotEmpty()) {
                                 pendingTracksToDelete = tracksToDelete
                                 showBatchDeleteDialog = true
-                            } else {
-                                onNavigateBack()
                             }
                         },
                         containerColor = MaterialTheme.colorScheme.onBackground,
                         contentColor = MaterialTheme.colorScheme.background,
                         shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.padding(bottom = fabBottomPadding)
+                        modifier = Modifier.padding(bottom = fabBottomPadding).fillMaxWidth(0.9f)
                     ) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Delete Selected Duplicates", fontWeight = FontWeight.Bold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE57373))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Delete $totalDuplicatesCount Duplicates", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.background)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("• Saves $savedMbStr MB", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
@@ -214,24 +259,72 @@ fun DuplicateSongsScreen(
                 ) {
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Duplicate Songs",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Start
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "We found some matching tracks in your library. Choose which version to keep.",
-                            style = MaterialTheme.typography.bodyMedium.copy(
+                        
+                        // Library Optimization Card
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(32.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(24.dp)
+                        ) {
+                            Text(
+                                text = "Library Optimization",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "We identified identical audio titles in multiple qualities. Keep the lossless version and reclaim storage.",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Start
-                        )
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Green dot pill
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.onBackground)
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "$totalDuplicatesCount duplicates found",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.background
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(12.dp))
+                                
+                                // Reclaims size pill
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.InsertDriveFile,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    val savedMbStr = String.format(Locale.getDefault(), "%.1f", totalSavedMb)
+                                    Text(
+                                        text = "Reclaims $savedMbStr MB",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                     items(duplicateGroups) { group ->
@@ -313,157 +406,222 @@ fun DuplicateGroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(16.dp)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(24.dp)
     ) {
         // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 20.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = group.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = group.tracks.firstOrNull()?.let { "${it.artist} • ${it.album}" } ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = group.title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "${group.tracks.size} files",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         // Tracks
-        group.tracks.forEach { track ->
+        group.tracks.forEachIndexed { index, track ->
             val isSelected = track.id == selectedKeepId
-            val isBest = track.id == bestTrackId
             
             val containerModifier = if (isSelected) {
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.onBackground)
                     .jellyClick { onSelectKeep(track.id) }
-                    .padding(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
             } else {
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Transparent)
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .jellyClick { onSelectKeep(track.id) }
-                    .padding(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
             }
 
             Row(
                 modifier = containerModifier,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                RadioButton(
-                    selected = isSelected,
-                    onClick = { onSelectKeep(track.id) },
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = MaterialTheme.colorScheme.onSurface,
-                        unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                // Radio Button Custom
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = 2.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.outline,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.background)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "${track.artist} - ${track.album}",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = getCodecFriendlyName(track),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        val isLossless = track.codec?.lowercase() in listOf("flac", "alac", "wav")
+                        if (isLossless) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onBackground)
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "BEST QUALITY",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
+                                    color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.background
+                                )
+                            }
+                        } else if (track.codec?.lowercase()?.contains("eac3") == true || track.codec?.lowercase()?.contains("ac3") == true) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "ATMOS",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
+                                    color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
                     
-                    val formatStr = track.codec?.uppercase(Locale.getDefault()) ?: "Unknown"
-                    val sampleRateStr = track.sampleRate?.let { "${it / 1000.0}kHz" } ?: ""
-                    val bitDepthStr = track.bitDepth?.let { "${it}bit" } ?: ""
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    val sampleRateStr = track.sampleRate?.let { "${it / 1000.0} kHz" } ?: ""
+                    val bitDepthStr = track.bitDepth?.takeIf { it > 16 }?.let { "${it}-bit" } ?: ""
                     val sizeMb = track.fileSizeBytes / (1024.0 * 1024.0)
                     val sizeStr = String.format(Locale.getDefault(), "%.1f MB", sizeMb)
                     
                     val details = listOf(
-                        formatStr,
-                        if (sampleRateStr.isNotEmpty() && bitDepthStr.isNotEmpty()) "$sampleRateStr / $bitDepthStr" else "",
+                        bitDepthStr,
+                        sampleRateStr,
                         sizeStr
                     ).filter { it.isNotEmpty() }.joinToString(" • ")
                     
                     Text(
                         text = details,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isSelected) MaterialTheme.colorScheme.background.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 
                 Spacer(modifier = Modifier.width(8.dp))
-                
-                val badgeRes = track.getQualityBadgeResId()
-                if (badgeRes != null) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = badgeRes),
-                        contentDescription = "Quality Badge",
-                        modifier = Modifier.width(36.dp).height(16.dp).alpha(0.7f),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
 
-                // Play / Preview button
-                IconButton(
-                    onClick = { onPlayPreview(track) },
-                    modifier = Modifier.size(32.dp)
+                // Play Button Custom
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface)
+                        .jellyClick { onPlayPreview(track) },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Preview Track",
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        tint = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                 }
                 
-                Spacer(modifier = Modifier.width(4.dp))
-                
-                if (isBest) {
-                    // Best Quality Pill
-                    Box(
+                if (!isSelected) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFE57373),
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "BEST QUALITY",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
-                            color = Color.White
-                        )
-                    }
-                } else if (!isSelected) {
-                    // Individual delete button
-                    IconButton(
-                        onClick = { onDeleteIndividual(track.id) },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = Color(0xFFC62828),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                            .size(24.dp)
+                            .jellyClick { onDeleteIndividual(track.id) }
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            if (index < group.tracks.lastIndex) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
+    }
+}
+
+fun getCodecFriendlyName(track: Track): String {
+    val codec = track.codec?.lowercase() ?: return "Unknown"
+    return when {
+        codec.contains("flac") -> "Lossless FLAC"
+        codec.contains("alac") -> "Lossless ALAC"
+        codec.contains("eac3") && codec.contains("joc") -> "Spatial EAC3-JOC"
+        codec.contains("eac3") -> "Dolby Digital Plus (E-AC-3)"
+        codec.contains("aac") -> "AAC Low Bitrate"
+        codec.contains("mp3") -> "MP3 Audio"
+        codec.contains("wav") -> "Lossless WAV"
+        else -> codec.uppercase(Locale.getDefault())
     }
 }
