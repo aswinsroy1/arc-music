@@ -295,7 +295,8 @@ class MainActivity : ComponentActivity() {
                     
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route ?: startDest
-                    val isNavBarVisible = currentRoute == "home" && !isLibrarySelectionMode && currentTab in 0..2 && selectedGenre == null
+                    val showWelcomeOverlay by viewModel.showWelcomeOverlay.collectAsState()
+                    val isNavBarVisible = currentRoute == "home" && !isLibrarySelectionMode && currentTab in 0..2 && selectedGenre == null && !showWelcomeOverlay
                     
                     LaunchedEffect(isNavBarVisible) {
                         viewModel.setNavBarVisible(isNavBarVisible)
@@ -1464,8 +1465,8 @@ fun MusicHomeScreen(
         
         AnimatedVisibility(
             visible = showWelcomeOverlay,
-            enter = fadeIn(androidx.compose.animation.core.tween(0)),
-            exit = fadeOut(androidx.compose.animation.core.tween(600)),
+            enter = fadeIn(androidx.compose.animation.core.tween(1000)),
+            exit = fadeOut(androidx.compose.animation.core.tween(1200)),
             modifier = Modifier.fillMaxSize()
         ) {
             Box(
