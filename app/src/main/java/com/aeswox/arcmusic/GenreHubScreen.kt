@@ -36,6 +36,8 @@ import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.db.entities.Album
 import com.aeswox.arcmusic.db.entities.Artist
 
+import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
+
 @Composable
 fun GenreHubScreenContent(
     genreName: String = "Pop",
@@ -50,6 +52,7 @@ fun GenreHubScreenContent(
     val libraryTracks by viewModel.libraryTracks.collectAsState()
     val libraryAlbums by viewModel.libraryAlbums.collectAsState()
     val libraryArtists by viewModel.libraryArtists.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     
     val genreTracks = remember(genreName, libraryTracks) {
         val target = genreName.trim()
@@ -116,8 +119,9 @@ fun GenreHubScreenContent(
                 GenreTopTracksSection(
                     tracks = genreTracks.take(10),
                     allTracks = genreTracks,
+                    currentPlayingId = currentlyPlaying?.id,
                     onTrackClick = onSongClick,
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
         }
@@ -149,15 +153,10 @@ fun GenreHeroSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0xFFFF6B6B).copy(alpha = 0.15f), Color.Transparent),
-                    radius = 800f,
-                    center = androidx.compose.ui.geometry.Offset(800f, 0f)
-                )
-            )
-            .padding(vertical = 32.dp, horizontal = 16.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(28.dp))
+            .padding(vertical = 32.dp, horizontal = 24.dp)
     ) {
         Column {
             Box(
@@ -199,6 +198,7 @@ fun GenreHeroSection(
 fun GenreTopTracksSection(
     tracks: List<Track>,
     allTracks: List<Track>,
+    currentPlayingId: String? = null,
     onTrackClick: (Track, List<Track>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
@@ -207,7 +207,9 @@ fun GenreTopTracksSection(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -227,52 +229,19 @@ fun GenreTopTracksSection(
         }
         Spacer(modifier = Modifier.height(16.dp))
         
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             displayTracks.forEach { track ->
-                val durationFormatted = String.format("%d:%02d", (track.durationMs / 60000), (track.durationMs % 60000) / 1000)
                 val artwork = track.artworkUri ?: track.albumId?.let { albumId -> "content://media/external/audio/albumart/$albumId" } ?: ""
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .jellyClick { onTrackClick(track, allTracks) }
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AsyncImage(
-                        model = artwork,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = track.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = track.artist,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = durationFormatted,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                SongResultItem(
+                    title = track.title,
+                    artist = track.artist,
+                    duration = formatDuration(track.durationMs),
+                    imageUrl = artwork,
+                    isActive = currentPlayingId == track.id,
+                    qualityBadgeResId = track.getQualityBadgeResId(),
+                    isExplicit = track.isExplicit == true,
+                    onClick = { onTrackClick(track, allTracks) }
+                )
             }
         }
     }
@@ -299,35 +268,14 @@ fun GenreEssentialAlbumsSection(
         ) {
             items(albums.size) { index ->
                 val album = albums[index]
-                Column(
-                    modifier = Modifier
-                        .width(176.dp)
-                        .jellyClick { onNavigateToAlbum(album.id) }
-                ) {
-                    AsyncImage(
-                        model = album.artworkUri ?: "",
-                        contentDescription = album.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(176.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = album.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = album.artist,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                val fallbackImage = R.drawable.ic_default_artwork
+                AlbumResultItem(
+                    title = album.title,
+                    year = album.artist,
+                    imageUrl = album.artworkUri ?: fallbackImage,
+                    modifier = Modifier.width(140.dp),
+                    onClick = { onNavigateToAlbum(album.id) }
+                )
             }
         }
     }
@@ -350,32 +298,17 @@ fun GenreFeaturedArtistsSection(
         LazyRow(
             modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             items(artists.size) { index ->
                 val artist = artists[index]
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .width(112.dp)
-                        .jellyClick { onNavigateToArtist(artist.name) }
-                ) {
-                    ArtistImage(
-                        model = artist.photoUri,
-                        contentDescription = artist.name,
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = artist.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                val fallbackImage = R.drawable.ic_default_artwork
+                ArtistResultItem(
+                    name = artist.name,
+                    imageUrl = artist.photoUri ?: fallbackImage,
+                    modifier = Modifier.width(100.dp),
+                    onClick = { onNavigateToArtist(artist.name) }
+                )
             }
         }
     }

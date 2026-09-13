@@ -83,22 +83,6 @@ fun PlaylistDetailsScreen(
         ?: "https://lh3.googleusercontent.com/aida-public/AB6AXuDK2gSPmhFiKqcqPLlCJlIp7lxpTt2scS9SuOmzxmZKXa1UQIjSKITZh8tGxaLLsMWtK_rqugpIF6kWjdqifIFpbIHQ51KFkHHGCwprGn7T1jWwAFiUiOgft22mJtHc311emev_Y9qChhO44k-VwJC7dvX80Zs-JHFurqrp7BRfflgHO2uz-vspGyR9BoWhQUaXuELDgddlmK__JFlAjdrkjKUgyxH0SVRHhhE0iqWq7lQMTieDIl6s1Oh1frE5nhxruwt9dXwi3SRK" // Fallback
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Ambient glow
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(400.dp)
-                .background(
-                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFA3DEFE).copy(alpha = 0.4f),
-                            Color.Transparent
-                        ),
-                        radius = 800f
-                    )
-                )
-        )
-
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
             contentPadding = PaddingValues(bottom = bottomPadding) // space for mini player
