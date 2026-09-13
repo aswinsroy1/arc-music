@@ -1773,8 +1773,21 @@ val rawSyncedLines = lyricsData?.synced
     }
 
     // â”€â”€ Active-line tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    var activeLineIndex by remember { mutableIntStateOf(0) }
-    var activeWordIndex by remember { mutableIntStateOf(0) }
+    val currentPosition = viewModel.currentPlaybackPosition.value
+    val initialActiveIndex = remember(syncedLines) {
+        if (!syncedLines.isNullOrEmpty()) {
+            syncedLines.indexOfLast { it.time <= currentPosition }.coerceAtLeast(0)
+        } else 0
+    }
+
+    var activeLineIndex by remember(syncedLines) { mutableIntStateOf(initialActiveIndex) }
+    var activeWordIndex by remember(syncedLines) {
+        val line = syncedLines?.getOrNull(initialActiveIndex)
+        val wordIdx = if (line != null && !line.words.isNullOrEmpty()) {
+            line.words.indexOfLast { it.time <= currentPosition }.coerceAtLeast(0)
+        } else 0
+        mutableIntStateOf(wordIdx)
+    }
 
     LaunchedEffect(syncedLines) {
         viewModel.currentPlaybackPosition.collect { pos ->
@@ -1802,7 +1815,9 @@ val rawSyncedLines = lyricsData?.synced
     val activeWordIndexProvider = remember { { activeWordIndex } }
 
     // â”€â”€ Scroll state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    val listState = rememberLazyListState()
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialActiveIndex
+    )
 
     LaunchedEffect(activeLineIndex) {
         if (activeLineIndex in 0 until linesToRender.size) {
