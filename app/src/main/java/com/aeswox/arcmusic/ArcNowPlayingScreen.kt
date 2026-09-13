@@ -362,10 +362,30 @@ fun ArcNowPlayingScreen(
         showQueue = false
     }
 
-    var accentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
+    var targetAccentColor by remember { mutableStateOf(Color(0xFFB28D84)) } // Dusty rose/peach accent fallback
     var isWhiteArtwork by remember { mutableStateOf(false) } // true when artwork bottom is near-white
+    val targetIsArtworkDark by remember(targetAccentColor) { derivedStateOf { targetAccentColor.luminance() < 0.4f } }
+    
+    val targetLightThemeBgColor = if (targetIsArtworkDark) targetAccentColor else androidx.compose.ui.graphics.lerp(targetAccentColor, Color.White, 0.7f)
+    val targetTextColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (targetIsArtworkDark) Color.White else Color.Black
+
+    val accentColor by animateColorAsState(
+        targetValue = targetAccentColor,
+        animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+        label = "accentColor"
+    )
+    val lightThemeBgColor by animateColorAsState(
+        targetValue = targetLightThemeBgColor,
+        animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+        label = "lightThemeBgColor"
+    )
+    val textColor by animateColorAsState(
+        targetValue = targetTextColor,
+        animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+        label = "textColor"
+    )
+
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
-    val lightThemeBgColor = if (isArtworkDark) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     
     val gradientTopAlpha by animateFloatAsState(
         targetValue = if (showLyrics || showQueue) 0.88f else 0.0f,
@@ -373,7 +393,6 @@ fun ArcNowPlayingScreen(
         label = "gradientTopAlpha"
     )
     
-    val textColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (isArtworkDark) Color.White else Color.Black
     val textAlpha = if (isDarkTheme) 0.7f else 0.6f
 
     val imageUrl = songToPlay?.artworkUri ?: songToPlay?.albumId?.let { "content://media/external/audio/albumart/$it" } ?: ""
@@ -472,10 +491,10 @@ fun ArcNowPlayingScreen(
                         // approach Apple Music uses for bright artworks.
                         if (avgColor.luminance() > 0.65f) {
                             isWhiteArtwork = true
-                            accentColor = Color(0xFF666666)
+                            targetAccentColor = Color(0xFF666666)
                         } else {
                             isWhiteArtwork = false
-                            accentColor = avgColor
+                            targetAccentColor = avgColor
                         }
 
                     }
@@ -550,6 +569,15 @@ fun ArcNowPlayingScreen(
                         url = activeCanvasUrl,
                         isPlaying = isPlaying,
                         cacheDataSourceFactory = viewModel.canvasCacheManager.getCacheDataSourceFactory(),
+                        onCanvasColorExtracted = { canvasColor ->
+                            if (canvasColor.luminance() > 0.65f) {
+                                isWhiteArtwork = true
+                                targetAccentColor = Color(0xFF666666)
+                            } else {
+                                isWhiteArtwork = false
+                                targetAccentColor = canvasColor
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxSize()
                             .scale(1.05f)

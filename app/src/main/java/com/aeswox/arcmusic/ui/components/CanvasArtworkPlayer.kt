@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.isEmpty
@@ -22,6 +23,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.ui.AspectRatioFrameLayout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 /**
@@ -35,16 +38,50 @@ fun CanvasArtworkPlayer(
     url: String,
     isPlaying: Boolean,
     cacheDataSourceFactory: CacheDataSource.Factory? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCanvasColorExtracted: ((Color) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var isVideoReady by remember(url) { mutableStateOf(false) }
     var firstFrameRendered by remember(url) { mutableStateOf(false) }
+    var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
 
     LaunchedEffect(firstFrameRendered) {
         if (firstFrameRendered) {
             kotlinx.coroutines.delay(100)
             isVideoReady = true
+            
+            // Wait a bit more for a representative frame beyond the fade-in
+            kotlinx.coroutines.delay(300)
+            textureViewRef?.let { tv ->
+                try {
+                    val bitmap = tv.getBitmap(100, 100)
+                    if (bitmap != null) {
+                        withContext(Dispatchers.Default) {
+                            var rSum = 0L; var gSum = 0L; var bSum = 0L
+                            val pixels = IntArray(bitmap.width * bitmap.height)
+                            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                            pixels.forEach { px ->
+                                rSum += android.graphics.Color.red(px)
+                                gSum += android.graphics.Color.green(px)
+                                bSum += android.graphics.Color.blue(px)
+                            }
+                            val count = pixels.size.toLong().coerceAtLeast(1L)
+                            val avgColor = Color(
+                                red   = (rSum / count).toInt().coerceIn(0, 255),
+                                green = (gSum / count).toInt().coerceIn(0, 255),
+                                blue  = (bSum / count).toInt().coerceIn(0, 255)
+                            )
+                            bitmap.recycle()
+                            withContext(Dispatchers.Main) {
+                                onCanvasColorExtracted?.invoke(avgColor)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CanvasArtworkPlayer", "Failed to extract canvas color", e)
+                }
+            }
         }
     }
     val currentIsPlaying by rememberUpdatedState(isPlaying)
@@ -133,6 +170,7 @@ fun CanvasArtworkPlayer(
                         layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
                     }
                     addView(textureView)
+                    textureViewRef = textureView
                     exoPlayer.setVideoTextureView(textureView)
                 }
             }
