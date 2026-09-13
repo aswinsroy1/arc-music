@@ -1463,9 +1463,7 @@ fun MusicHomeScreen(
                                 item {
                                     RecentlyPlayedSection(onSongClick = onSongClick)
                                 }
-                                item {
-                                    RandomPicksSection(onSongClick = onSongClick)
-                                }
+
                                 item {
                                     RecommendedDownloadsSection(onNavigateToCollectionGrowth = onNavigateToCollectionGrowth)
                                 }
@@ -2066,14 +2064,6 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
     }
 }
 
-@Composable
-fun RandomPicksSection(modifier: Modifier = Modifier, onSongClick: (Track, List<Track>?) -> Unit = { _, _ -> }) {
-    val viewModel: MusicViewModel = hiltViewModel()
-    val songs by viewModel.randomPicks.collectAsState()
-    if (songs.isEmpty()) return
-    
-    HorizontalArtworkListSection(title = "Random picks", songs = songs, onSongClick = onSongClick, modifier = modifier)
-}
 
 
 @Composable

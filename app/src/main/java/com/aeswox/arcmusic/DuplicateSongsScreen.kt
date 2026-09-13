@@ -60,8 +60,8 @@ fun DuplicateSongsScreen(
         label = "duplicateListBottom"
     )
 
-    // Set of track IDs selected for deletion
-    val selectedTracksToDelete = remember { mutableStateListOf<String>() }
+    // Map of group id to the track ID that is selected for deletion
+    val selectedTracksToDelete = remember { mutableStateMapOf<String, String>() }
     
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
     var pendingTracksToDelete by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -72,27 +72,24 @@ fun DuplicateSongsScreen(
     var isMenuExpanded by remember { mutableStateOf(false) }
     var isScanning by remember { mutableStateOf(false) }
 
-    // Initialize default selections (best track per group kept, others selected for deletion)
+    // Initialize default selections (best track per group kept, worst track selected for deletion)
     LaunchedEffect(duplicateGroups) {
         if (selectedTracksToDelete.isEmpty() && duplicateGroups.isNotEmpty()) {
             duplicateGroups.forEach { group ->
-                // Find the best track to keep
-                val bestTrack = group.tracks.maxByOrNull { (it.bitrate ?: 0) * 1000 + (it.fileSizeBytes) } ?: group.tracks.first()
-                group.tracks.forEach { track ->
-                    if (track.id != bestTrack.id && !selectedTracksToDelete.contains(track.id)) {
-                        selectedTracksToDelete.add(track.id)
-                    }
-                }
+                // Find the worst track to delete (lowest bitrate/size)
+                val worstTrack = group.tracks.minByOrNull { (it.bitrate ?: 0) * 1000 + (it.fileSizeBytes) } ?: group.tracks.last()
+                selectedTracksToDelete[group.id] = worstTrack.id
             }
         }
     }
 
-    LaunchedEffect(duplicateGroups, selectedTracksToDelete.toList()) {
+    LaunchedEffect(duplicateGroups, selectedTracksToDelete.toMap()) {
         var count = 0
         var savedSize = 0L
         duplicateGroups.forEach { group ->
+            val deleteId = selectedTracksToDelete[group.id]
             group.tracks.forEach { track ->
-                if (selectedTracksToDelete.contains(track.id)) {
+                if (track.id == deleteId) {
                     count++
                     savedSize += track.fileSizeBytes
                 }
@@ -313,13 +310,9 @@ fun DuplicateSongsScreen(
                     items(duplicateGroups) { group ->
                         DuplicateGroupCard(
                             group = group,
-                            selectedToDeleteIds = selectedTracksToDelete,
+                            selectedToDeleteId = selectedTracksToDelete[group.id],
                             onToggleDelete = { trackId ->
-                                if (selectedTracksToDelete.contains(trackId)) {
-                                    selectedTracksToDelete.remove(trackId)
-                                } else {
-                                    selectedTracksToDelete.add(trackId)
-                                }
+                                selectedTracksToDelete[group.id] = trackId
                             },
                             onDeleteIndividual = { trackId ->
                                 pendingTracksToDelete = listOf(trackId)
@@ -337,7 +330,7 @@ fun DuplicateSongsScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             JellyButton(
                                 onClick = {
-                                    pendingTracksToDelete = selectedTracksToDelete.toList()
+                                    pendingTracksToDelete = selectedTracksToDelete.values.toList()
                                     showBatchDeleteDialog = true
                                 },
                                 colors = ButtonDefaults.buttonColors(
@@ -407,7 +400,7 @@ fun DuplicateSongsScreen(
 @Composable
 fun DuplicateGroupCard(
     group: DuplicateGroup,
-    selectedToDeleteIds: List<String>,
+    selectedToDeleteId: String?,
     onToggleDelete: (String) -> Unit,
     onDeleteIndividual: (String) -> Unit,
     onPlayPreview: (Track) -> Unit
@@ -474,21 +467,21 @@ fun DuplicateGroupCard(
 
         // Tracks
         group.tracks.forEachIndexed { index, track ->
-            val isSelectedForDeletion = selectedToDeleteIds.contains(track.id)
+            val isSelectedForDeletion = track.id == selectedToDeleteId
             val isKept = !isSelectedForDeletion
             
-            val containerModifier = if (isKept) {
+            val containerModifier = if (isSelectedForDeletion) {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.onBackground)
+                    .background(MaterialTheme.colorScheme.onBackground) // Black
                     .jellyClick { onToggleDelete(track.id) }
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             } else {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest) // Gray
                     .jellyClick { onToggleDelete(track.id) }
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             }
@@ -504,20 +497,12 @@ fun DuplicateGroupCard(
                         .clip(CircleShape)
                         .border(
                             width = 2.dp,
-                            color = if (isSelectedForDeletion) Color(0xFFE57373) else MaterialTheme.colorScheme.background,
+                            color = if (isSelectedForDeletion) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.outline,
                             shape = CircleShape
-                        )
-                        .background(if (isSelectedForDeletion) Color(0xFFE57373).copy(alpha = 0.2f) else Color.Transparent),
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelectedForDeletion) {
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE57373))
-                        )
-                    } else {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
@@ -534,7 +519,7 @@ fun DuplicateGroupCard(
                         Text(
                             text = getCodecFriendlyName(track),
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
+                            color = if (isSelectedForDeletion) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -546,26 +531,26 @@ fun DuplicateGroupCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(if (isKept) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onBackground)
+                                    .background(if (isSelectedForDeletion) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onBackground)
                                     .padding(horizontal = 6.dp, vertical = 3.dp)
                             ) {
                                 Text(
                                     text = "BEST QUALITY",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
-                                    color = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.background
+                                    color = if (isSelectedForDeletion) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.background
                                 )
                             }
                         } else if (track.codec?.lowercase()?.contains("eac3") == true || track.codec?.lowercase()?.contains("ac3") == true) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(if (isKept) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .background(if (isSelectedForDeletion) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .padding(horizontal = 6.dp, vertical = 3.dp)
                             ) {
                                 Text(
                                     text = "ATMOS",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
-                                    color = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
+                                    color = if (isSelectedForDeletion) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -587,7 +572,7 @@ fun DuplicateGroupCard(
                     Text(
                         text = details,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isKept) MaterialTheme.colorScheme.background.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isSelectedForDeletion) MaterialTheme.colorScheme.background.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -612,14 +597,14 @@ fun DuplicateGroupCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(if (isKept) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface)
+                        .background(if (isSelectedForDeletion) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface)
                         .jellyClick { onPlayPreview(track) },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Preview Track",
-                        tint = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
+                        tint = if (isSelectedForDeletion) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                 }
