@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
@@ -29,15 +30,20 @@ import coil.compose.AsyncImage
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.JellyIconButton
-import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
-import com.aeswox.arcmusic.ui.components.JellyFilledTonalIconButton
-import com.aeswox.arcmusic.ui.components.JellyOutlinedIconButton
+import com.aeswox.arcmusic.ui.components.ArtistImage
+import com.aeswox.arcmusic.utils.ArtistUtils
+import com.aeswox.arcmusic.db.entities.Track
+import com.aeswox.arcmusic.db.entities.Album
+import com.aeswox.arcmusic.db.entities.Artist
 
 @Composable
 fun GenreHubScreenContent(
     genreName: String = "Pop",
     bottomPadding: Dp,
     onNavigateBack: () -> Unit = {},
+    onNavigateToAlbum: (String) -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
+    onSongClick: (Track, List<Track>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
@@ -46,19 +52,30 @@ fun GenreHubScreenContent(
     val libraryArtists by viewModel.libraryArtists.collectAsState()
     
     val genreTracks = remember(genreName, libraryTracks) {
-        libraryTracks.filter { it.genre?.trim().equals(genreName, ignoreCase = true) }
+        val target = genreName.trim()
+        libraryTracks.filter { track ->
+            val g = track.genre?.trim() ?: return@filter false
+            g.split(",", "/", ";", "\\")
+                .any { it.trim().equals(target, ignoreCase = true) }
+        }
     }
     
-    val genreAlbums = remember(genreName, genreTracks, libraryAlbums) {
-        val albumNames = genreTracks.mapNotNull { it.album }.distinct()
-        libraryAlbums.filter { albumNames.contains(it.title) }
+    val genreAlbums = remember(genreTracks, libraryAlbums) {
+        val albumTitles = genreTracks.mapNotNull { 
+            it.album.trim().takeIf { a -> a.isNotEmpty() && !a.equals("Unknown Album", ignoreCase = true) }
+        }.map { it.lowercase() }.toSet()
+        libraryAlbums.filter { album ->
+            albumTitles.contains(album.title.trim().lowercase())
+        }
     }
     
-    val genreArtistNames = remember(genreName, genreTracks) {
-        genreTracks.mapNotNull { it.artist }.flatMap { it.split(",").map(String::trim) }.distinct()
-    }
-    val genreArtists = remember(genreArtistNames, libraryArtists) {
-        libraryArtists.filter { genreArtistNames.contains(it.name) }
+    val genreArtists = remember(genreTracks, libraryArtists) {
+        val artistNames = genreTracks.flatMap { 
+            ArtistUtils.splitArtists(it.artist) + ArtistUtils.splitArtists(it.albumArtist)
+        }.map { it.trim().lowercase() }.filter { it.isNotEmpty() && it != "unknown artist" }.toSet()
+        libraryArtists.filter { artist ->
+            artistNames.contains(artist.name.trim().lowercase())
+        }
     }
 
     LazyColumn(
@@ -67,37 +84,68 @@ fun GenreHubScreenContent(
         modifier = modifier.physicsBounceOverscroll().fillMaxSize()
     ) {
         item {
-            Header(
-                modifier = Modifier.padding(horizontal = 24.dp),
-                title = null,
-                fontSize = 28.sp,
-                onSettingsClick = { },
-                onBackClick = onNavigateBack
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                JellyIconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
         }
         item {
-            GenreHeroSection(genreName = genreName, modifier = Modifier.padding(horizontal = 24.dp))
+            GenreHeroSection(
+                genreName = genreName,
+                onShuffleClick = {
+                    if (genreTracks.isNotEmpty()) {
+                        val shuffled = genreTracks.shuffled()
+                        onSongClick(shuffled.first(), shuffled)
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
         }
         if (genreTracks.isNotEmpty()) {
             item {
-                GenreTopTracksSection(tracks = genreTracks.take(10), modifier = Modifier.padding(horizontal = 24.dp))
+                GenreTopTracksSection(
+                    tracks = genreTracks.take(10),
+                    allTracks = genreTracks,
+                    onTrackClick = onSongClick,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
             }
         }
         if (genreAlbums.isNotEmpty()) {
             item {
-                GenreEssentialAlbumsSection(albums = genreAlbums.take(10))
+                GenreEssentialAlbumsSection(
+                    albums = genreAlbums.take(15),
+                    onNavigateToAlbum = onNavigateToAlbum
+                )
             }
         }
         if (genreArtists.isNotEmpty()) {
             item {
-                GenreFeaturedArtistsSection(artists = genreArtists.take(10))
+                GenreFeaturedArtistsSection(
+                    artists = genreArtists.take(15),
+                    onNavigateToArtist = onNavigateToArtist
+                )
             }
         }
     }
 }
 
 @Composable
-fun GenreHeroSection(genreName: String, modifier: Modifier = Modifier) {
+fun GenreHeroSection(
+    genreName: String,
+    onShuffleClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -140,7 +188,7 @@ fun GenreHeroSection(genreName: String, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(24.dp))
             AppPrimaryButton(
                 text = "Shuffle Genre",
-                onClick = {},
+                onClick = onShuffleClick,
                 icon = Icons.Default.Shuffle
             )
         }
@@ -148,7 +196,15 @@ fun GenreHeroSection(genreName: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, modifier: Modifier = Modifier) {
+fun GenreTopTracksSection(
+    tracks: List<Track>,
+    allTracks: List<Track>,
+    onTrackClick: (Track, List<Track>) -> Unit = { _, _ -> },
+    modifier: Modifier = Modifier
+) {
+    var showAll by remember { mutableStateOf(false) }
+    val displayTracks = if (showAll) allTracks else tracks
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -160,30 +216,32 @@ fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, m
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = "View All",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.jellyClick { }
-            )
+            if (allTracks.size > 10) {
+                Text(
+                    text = if (showAll) "Show Less" else "View All",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.jellyClick { showAll = !showAll }
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         
-        val tracksUi = tracks.map { Triple(it.title, it.artist, String.format("%d:%02d", (it.durationMs / 60000), (it.durationMs % 60000) / 1000)) }
-        val images = tracks.map { it.artworkUri ?: it.albumId?.let { albumId -> "content://media/external/audio/albumart/$albumId" } ?: "" }
-        
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            tracksUi.forEachIndexed { index, track ->
+            displayTracks.forEach { track ->
+                val durationFormatted = String.format("%d:%02d", (track.durationMs / 60000), (track.durationMs % 60000) / 1000)
+                val artwork = track.artworkUri ?: track.albumId?.let { albumId -> "content://media/external/audio/albumart/$albumId" } ?: ""
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .jellyClick { }
+                        .jellyClick { onTrackClick(track, allTracks) }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
-                        model = images[index],
+                        model = artwork,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -193,25 +251,26 @@ fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, m
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = track.first,
+                            text = track.title,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = track.second,
+                            text = track.artist,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = track.third,
+                            text = durationFormatted,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        JellyIconButton(onClick = { }, modifier = Modifier.size(24.dp)) {
-                            Icon(imageVector = Icons.Default.MoreHoriz, contentDescription = "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
                     }
                 }
             }
@@ -220,7 +279,10 @@ fun GenreTopTracksSection(tracks: List<com.aeswox.arcmusic.db.entities.Track>, m
 }
 
 @Composable
-fun GenreEssentialAlbumsSection(albums: List<com.aeswox.arcmusic.db.entities.Album>) {
+fun GenreEssentialAlbumsSection(
+    albums: List<Album>,
+    onNavigateToAlbum: (String) -> Unit = {}
+) {
     Column {
         Text(
             text = "Essential Albums",
@@ -230,19 +292,21 @@ fun GenreEssentialAlbumsSection(albums: List<com.aeswox.arcmusic.db.entities.Alb
         )
         Spacer(modifier = Modifier.height(16.dp))
         
-        val albumsUi = albums.map { Triple(it.title, it.artist ?: "Unknown Artist", it.artworkUri ?: "") }
-        
         LazyRow(
-modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
-
+            modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(albumsUi.size) { index ->
-                Column(modifier = Modifier.width(176.dp).jellyClick { }) {
+            items(albums.size) { index ->
+                val album = albums[index]
+                Column(
+                    modifier = Modifier
+                        .width(176.dp)
+                        .jellyClick { onNavigateToAlbum(album.id) }
+                ) {
                     AsyncImage(
-                        model = albumsUi[index].third,
-                        contentDescription = null,
+                        model = album.artworkUri ?: "",
+                        contentDescription = album.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(176.dp)
@@ -250,15 +314,18 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = albumsUi[index].first,
+                        text = album.title,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = albumsUi[index].second,
+                        text = album.artist,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -267,7 +334,10 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
 }
 
 @Composable
-fun GenreFeaturedArtistsSection(artists: List<com.aeswox.arcmusic.db.entities.Artist>) {
+fun GenreFeaturedArtistsSection(
+    artists: List<Artist>,
+    onNavigateToArtist: (String) -> Unit = {}
+) {
     Column {
         Text(
             text = "Featured Artists",
@@ -277,30 +347,33 @@ fun GenreFeaturedArtistsSection(artists: List<com.aeswox.arcmusic.db.entities.Ar
         )
         Spacer(modifier = Modifier.height(16.dp))
         
-        val artistsUi = artists.map { Pair(it.name, it.photoUri ?: "") }
-        
         LazyRow(
-modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
-
+            modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(artistsUi.size) { index ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(112.dp).jellyClick { }) {
-                    AsyncImage(
-                        model = artistsUi[index].second,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
+            items(artists.size) { index ->
+                val artist = artists[index]
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .width(112.dp)
+                        .jellyClick { onNavigateToArtist(artist.name) }
+                ) {
+                    ArtistImage(
+                        model = artist.photoUri,
+                        contentDescription = artist.name,
                         modifier = Modifier
                             .size(96.dp)
                             .clip(CircleShape)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = artistsUi[index].first,
+                        text = artist.name,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

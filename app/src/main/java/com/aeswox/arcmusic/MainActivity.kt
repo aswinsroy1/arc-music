@@ -1487,7 +1487,10 @@ fun MusicHomeScreen(
                             GenreHubScreenContent(
                                 genreName = selectedGenre!!,
                                 bottomPadding = dynamicBottomPadding,
-                                onNavigateBack = { onGenreSelected(null) }
+                                onNavigateBack = { onGenreSelected(null) },
+                                onNavigateToAlbum = onNavigateToAlbumDetails,
+                                onNavigateToArtist = onNavigateToArtistDetails,
+                                onSongClick = onSongClick
                             )
                         } else {
                             SearchScreenContent(viewModel = viewModel, bottomPadding = dynamicBottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onGenreClick = { onGenreSelected(it) })

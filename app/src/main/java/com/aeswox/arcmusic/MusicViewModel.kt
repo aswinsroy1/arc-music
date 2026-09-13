@@ -1420,7 +1420,19 @@ class MusicViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
             
         genreCounts = repository.getAllTracks().map { tracks ->
-            tracks.mapNotNull { it.genre?.trim()?.takeIf { g -> g.isNotEmpty() } }
+            tracks.flatMap { track ->
+                val genre = track.genre?.trim() ?: return@flatMap emptyList<String>()
+                genre.split(",", "/", ";", "\\")
+                    .map { it.trim() }
+                    .filter { g ->
+                        g.isNotEmpty() &&
+                        !g.equals("Unknown", ignoreCase = true) &&
+                        !g.equals("Unknown Genre", ignoreCase = true) &&
+                        !g.equals("Other", ignoreCase = true)
+                    }
+                    .map { it.replaceFirstChar { c -> c.uppercase() } }
+                    .distinct()
+            }
                 .groupingBy { it }
                 .eachCount()
                 .entries
