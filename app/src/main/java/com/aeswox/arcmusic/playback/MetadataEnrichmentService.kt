@@ -165,14 +165,18 @@ class MetadataEnrichmentService : Service() {
                             file.readLong(); file.readLong()
                             val ts = file.readInt().toLong() and 0xFFFFFFFFL
                             val dur = file.readLong()
-                            timescale = ts
-                            if (mvhdDuration == 0L && dur > 0L) mvhdDuration = dur
+                            if (mvhdDuration == 0L && dur > 0L) {
+                                mvhdDuration = dur
+                                timescale = ts
+                            }
                         } else {
                             file.readInt(); file.readInt()
                             val ts = file.readInt().toLong() and 0xFFFFFFFFL
                             val dur = file.readInt().toLong() and 0xFFFFFFFFL
-                            timescale = ts
-                            if (mvhdDuration == 0L && dur > 0L) mvhdDuration = dur
+                            if (mvhdDuration == 0L && dur > 0L) {
+                                mvhdDuration = dur
+                                timescale = ts
+                            }
                         }
                         pos += size
                     }
