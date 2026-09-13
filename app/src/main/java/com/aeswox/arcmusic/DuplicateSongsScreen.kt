@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
@@ -33,7 +34,8 @@ import com.aeswox.arcmusic.db.entities.Track
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import com.aeswox.arcmusic.ui.components.JellyButton
-import com.aeswox.arcmusic.ui.components.JellyExtendedFloatingActionButton
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,15 +49,7 @@ fun DuplicateSongsScreen(
     val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
     val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
     val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
-
-    val fabBottomPadding by animateDpAsState(
-        targetValue = if (hasMiniPlayer) 112.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "duplicateFabBottom"
-    )
+    val coroutineScope = rememberCoroutineScope()
 
     val listBottomSpacer by animateDpAsState(
         targetValue = if (hasMiniPlayer) 190.dp else 90.dp,
@@ -66,34 +60,39 @@ fun DuplicateSongsScreen(
         label = "duplicateListBottom"
     )
 
-    // Map of group id to the track ID that is selected to be KEPT
-    val selectedTracksToKeep = remember { mutableStateMapOf<String, String>() }
+    // Set of track IDs selected for deletion
+    val selectedTracksToDelete = remember { mutableStateListOf<String>() }
     
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
     var pendingTracksToDelete by remember { mutableStateOf<List<String>>(emptyList()) }
 
     var totalDuplicatesCount by remember { mutableStateOf(0) }
     var totalSavedMb by remember { mutableStateOf(0.0) }
+    
+    var isMenuExpanded by remember { mutableStateOf(false) }
+    var isScanning by remember { mutableStateOf(false) }
 
-    // Initialize default selections (best track per group)
+    // Initialize default selections (best track per group kept, others selected for deletion)
     LaunchedEffect(duplicateGroups) {
-        duplicateGroups.forEach { group ->
-            val groupId = group.id
-            if (!selectedTracksToKeep.containsKey(groupId)) {
-                // Find the best track by file size and bitrate as a simple heuristic
+        if (selectedTracksToDelete.isEmpty() && duplicateGroups.isNotEmpty()) {
+            duplicateGroups.forEach { group ->
+                // Find the best track to keep
                 val bestTrack = group.tracks.maxByOrNull { (it.bitrate ?: 0) * 1000 + (it.fileSizeBytes) } ?: group.tracks.first()
-                selectedTracksToKeep[groupId] = bestTrack.id
+                group.tracks.forEach { track ->
+                    if (track.id != bestTrack.id && !selectedTracksToDelete.contains(track.id)) {
+                        selectedTracksToDelete.add(track.id)
+                    }
+                }
             }
         }
     }
 
-    LaunchedEffect(duplicateGroups, selectedTracksToKeep.toMap()) {
+    LaunchedEffect(duplicateGroups, selectedTracksToDelete.toList()) {
         var count = 0
         var savedSize = 0L
         duplicateGroups.forEach { group ->
-            val keepId = selectedTracksToKeep[group.id]
             group.tracks.forEach { track ->
-                if (track.id != keepId) {
+                if (selectedTracksToDelete.contains(track.id)) {
                     count++
                     savedSize += track.fileSizeBytes
                 }
@@ -137,10 +136,30 @@ fun DuplicateSongsScreen(
                                 .size(48.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surface)
-                                .jellyClick { /* TODO */ },
+                                .jellyClick { isMenuExpanded = true },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
+                            ArcDropdownMenu(
+                                expanded = isMenuExpanded,
+                                onDismissRequest = { isMenuExpanded = false }
+                            ) {
+                                ArcDropdownMenuItem(
+                                    text = "Scan for duplicates",
+                                    icon = Icons.Default.Refresh,
+                                    onClick = {
+                                        isMenuExpanded = false
+                                        if (!isScanning) {
+                                            isScanning = true
+                                            coroutineScope.launch {
+                                                // Fake background scan delay for UX
+                                                delay(1500)
+                                                isScanning = false
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -148,47 +167,7 @@ fun DuplicateSongsScreen(
                     )
                 )
             },
-            containerColor = Color.Transparent,
-            floatingActionButtonPosition = FabPosition.Center,
-            floatingActionButton = {
-                if (duplicateGroups.isNotEmpty() && totalDuplicatesCount > 0) {
-                    val savedMbStr = String.format(Locale.getDefault(), "%.1f", totalSavedMb)
-                    JellyExtendedFloatingActionButton(
-                        onClick = {
-                            val tracksToDelete = mutableListOf<String>()
-                            duplicateGroups.forEach { group ->
-                                val groupId = group.id
-                                val keepId = selectedTracksToKeep[groupId]
-                                group.tracks.forEach { track ->
-                                    if (track.id != keepId) {
-                                        tracksToDelete.add(track.id)
-                                    }
-                                }
-                            }
-                            if (tracksToDelete.isNotEmpty()) {
-                                pendingTracksToDelete = tracksToDelete
-                                showBatchDeleteDialog = true
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.onBackground,
-                        contentColor = MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.padding(bottom = fabBottomPadding).fillMaxWidth(0.9f)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE57373))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Delete $totalDuplicatesCount Duplicates", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.background)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("• Saves $savedMbStr MB", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
+            containerColor = Color.Transparent
         ) { innerPadding ->
             if (duplicateGroups.isEmpty()) {
                 Column(
@@ -258,7 +237,11 @@ fun DuplicateSongsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        if (isScanning) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                         
                         // Library Optimization Card
                         Column(
@@ -275,7 +258,7 @@ fun DuplicateSongsScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "We identified identical audio titles in multiple qualities. Keep the lossless version and reclaim storage.",
+                                text = "We identified identical audio titles in multiple qualities. Select the versions you want to delete and reclaim storage.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -293,7 +276,7 @@ fun DuplicateSongsScreen(
                                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "$totalDuplicatesCount duplicates found",
+                                        text = "$totalDuplicatesCount selected",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.background
                                     )
@@ -328,17 +311,15 @@ fun DuplicateSongsScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                     items(duplicateGroups) { group ->
-                        val groupId = group.id
-                        val bestTrack = remember(group) {
-                            group.tracks.maxByOrNull { (it.bitrate ?: 0) * 1000 + (it.fileSizeBytes) } ?: group.tracks.first()
-                        }
-                        
                         DuplicateGroupCard(
                             group = group,
-                            bestTrackId = bestTrack.id,
-                            selectedKeepId = selectedTracksToKeep[groupId] ?: bestTrack.id,
-                            onSelectKeep = { selectedId ->
-                                selectedTracksToKeep[groupId] = selectedId
+                            selectedToDeleteIds = selectedTracksToDelete,
+                            onToggleDelete = { trackId ->
+                                if (selectedTracksToDelete.contains(trackId)) {
+                                    selectedTracksToDelete.remove(trackId)
+                                } else {
+                                    selectedTracksToDelete.add(trackId)
+                                }
                             },
                             onDeleteIndividual = { trackId ->
                                 pendingTracksToDelete = listOf(trackId)
@@ -351,6 +332,36 @@ fun DuplicateSongsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                     
+                    if (duplicateGroups.isNotEmpty() && totalDuplicatesCount > 0) {
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            JellyButton(
+                                onClick = {
+                                    pendingTracksToDelete = selectedTracksToDelete.toList()
+                                    showBatchDeleteDialog = true
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.onBackground,
+                                    contentColor = MaterialTheme.colorScheme.background
+                                ),
+                                shape = RoundedCornerShape(32.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE57373))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Delete $totalDuplicatesCount Duplicates", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.background)
+                                }
+                            }
+                        }
+                    }
+
                     item {
                         Spacer(modifier = Modifier.height(listBottomSpacer))
                     }
@@ -396,9 +407,8 @@ fun DuplicateSongsScreen(
 @Composable
 fun DuplicateGroupCard(
     group: DuplicateGroup,
-    bestTrackId: String,
-    selectedKeepId: String,
-    onSelectKeep: (String) -> Unit,
+    selectedToDeleteIds: List<String>,
+    onToggleDelete: (String) -> Unit,
     onDeleteIndividual: (String) -> Unit,
     onPlayPreview: (Track) -> Unit
 ) {
@@ -464,21 +474,22 @@ fun DuplicateGroupCard(
 
         // Tracks
         group.tracks.forEachIndexed { index, track ->
-            val isSelected = track.id == selectedKeepId
+            val isSelectedForDeletion = selectedToDeleteIds.contains(track.id)
+            val isKept = !isSelectedForDeletion
             
-            val containerModifier = if (isSelected) {
+            val containerModifier = if (isKept) {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.onBackground)
-                    .jellyClick { onSelectKeep(track.id) }
+                    .jellyClick { onToggleDelete(track.id) }
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             } else {
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .jellyClick { onSelectKeep(track.id) }
+                    .jellyClick { onToggleDelete(track.id) }
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             }
 
@@ -486,19 +497,27 @@ fun DuplicateGroupCard(
                 modifier = containerModifier,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Radio Button Custom
+                // Checkbox / Radio Button Custom
                 Box(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
                         .border(
                             width = 2.dp,
-                            color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.outline,
+                            color = if (isSelectedForDeletion) Color(0xFFE57373) else MaterialTheme.colorScheme.background,
                             shape = CircleShape
-                        ),
+                        )
+                        .background(if (isSelectedForDeletion) Color(0xFFE57373).copy(alpha = 0.2f) else Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isSelected) {
+                    if (isSelectedForDeletion) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE57373))
+                        )
+                    } else {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
@@ -515,7 +534,7 @@ fun DuplicateGroupCard(
                         Text(
                             text = getCodecFriendlyName(track),
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
+                            color = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -527,26 +546,26 @@ fun DuplicateGroupCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onBackground)
+                                    .background(if (isKept) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onBackground)
                                     .padding(horizontal = 6.dp, vertical = 3.dp)
                             ) {
                                 Text(
                                     text = "BEST QUALITY",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.background
+                                    color = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.background
                                 )
                             }
                         } else if (track.codec?.lowercase()?.contains("eac3") == true || track.codec?.lowercase()?.contains("ac3") == true) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                    .background(if (isKept) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .padding(horizontal = 6.dp, vertical = 3.dp)
                             ) {
                                 Text(
                                     text = "ATMOS",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
+                                    color = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -568,7 +587,7 @@ fun DuplicateGroupCard(
                     Text(
                         text = details,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isSelected) MaterialTheme.colorScheme.background.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isKept) MaterialTheme.colorScheme.background.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -576,25 +595,7 @@ fun DuplicateGroupCard(
                 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Play Button Custom
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface)
-                        .jellyClick { onPlayPreview(track) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Preview Track",
-                        tint = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                
-                if (!isSelected) {
-                    Spacer(modifier = Modifier.width(16.dp))
+                if (isSelectedForDeletion) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
@@ -602,6 +603,24 @@ fun DuplicateGroupCard(
                         modifier = Modifier
                             .size(24.dp)
                             .jellyClick { onDeleteIndividual(track.id) }
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+
+                // Play Button Custom
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (isKept) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface)
+                        .jellyClick { onPlayPreview(track) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Preview Track",
+                        tint = if (isKept) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
