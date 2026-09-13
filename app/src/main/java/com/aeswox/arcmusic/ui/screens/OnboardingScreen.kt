@@ -42,7 +42,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
-import com.aeswox.arcmusic.AnimatedGlowBackground
+import kotlinx.coroutines.delay
+import androidx.compose.animation.core.tween
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -65,15 +66,15 @@ fun OnboardingScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        AnimatedGlowBackground(
-            modifier = Modifier.fillMaxSize(),
-            glowIntensity = glowIntensity
-        )
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = Color.Transparent,
-            bottomBar = {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
+        bottomBar = {
+            AnimatedVisibility(
+                visible = currentPage < 5,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
                 // Dot indicator
                 Row(
                     modifier = Modifier
@@ -98,12 +99,15 @@ fun OnboardingScreen(
                     )
                 }
             }
+            }
         }
     ) { innerPadding ->
         AnimatedContent(
             targetState = currentPage,
             transitionSpec = {
-                if (targetState > initialState) {
+                if (targetState == 5) {
+                    fadeIn(tween(500)) togetherWith fadeOut(tween(400))
+                } else if (targetState > initialState) {
                     NavTransitions.DetailEnter togetherWith NavTransitions.DetailPopExit
                 } else {
                     NavTransitions.DetailPopEnter togetherWith NavTransitions.DetailExit
@@ -155,6 +159,11 @@ fun OnboardingScreen(
                 4 -> LibraryScanningPage(
                     viewModel = viewModel,
                     onFinish = {
+                        currentPage = 5
+                    }
+                )
+                5 -> WelcomeTransitionPage(
+                    onFinish = {
                         viewModel.setHasCompletedOnboarding(true)
                         onFinish()
                     }
@@ -163,6 +172,35 @@ fun OnboardingScreen(
         }
     }
 }
+
+@Composable
+fun WelcomeTransitionPage(onFinish: () -> Unit) {
+    var stage by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        stage = 1
+        delay(600)
+        stage = 2
+        delay(1200)
+        stage = 3
+        delay(500)
+        onFinish()
+    }
+
+    AnimatedVisibility(
+        visible = stage == 1 || stage == 2,
+        enter = fadeIn(tween(600)) + slideInVertically(tween(600), initialOffsetY = { 30 }),
+        exit = fadeOut(tween(500)) + scaleOut(tween(500), targetScale = 1.05f)
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = "Welcome",
+                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+    }
 }
 
 @Composable
