@@ -52,7 +52,7 @@ fun DuplicateSongsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val listBottomSpacer by animateDpAsState(
-        targetValue = if (hasMiniPlayer) 190.dp else 90.dp,
+        targetValue = if (hasMiniPlayer) 120.dp else 40.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessLow
@@ -60,11 +60,28 @@ fun DuplicateSongsScreen(
         label = "duplicateListBottom"
     )
 
-    // Map of group id to the track ID that is selected for deletion
-    val selectedTracksToDelete = remember { mutableStateMapOf<String, String>() }
-    
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
     var pendingTracksToDelete by remember { mutableStateOf<List<String>>(emptyList()) }
+    
+    // Map of group id to the track ID that is selected for deletion
+    val selectedTracksToDelete = remember { mutableStateMapOf<String, String>() }
+
+    val deleteLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            viewModel.deleteTracks(pendingTracksToDelete)
+            pendingTracksToDelete.forEach { deletedId ->
+                val entry = selectedTracksToDelete.entries.find { it.value == deletedId }
+                if (entry != null) {
+                    selectedTracksToDelete.remove(entry.key)
+                }
+            }
+        }
+        showBatchDeleteDialog = false
+        pendingTracksToDelete = emptyList()
+    }
 
     var totalDuplicatesCount by remember { mutableStateOf(0) }
     var totalSavedMb by remember { mutableStateOf(0.0) }
@@ -376,10 +393,33 @@ fun DuplicateSongsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.deleteTracks(pendingTracksToDelete)
-                        showBatchDeleteDialog = false
-                        pendingTracksToDelete = emptyList()
-                        onNavigateBack()
+                        if (pendingTracksToDelete.isNotEmpty() && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                            try {
+                                val uris = pendingTracksToDelete.map { android.content.ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, it.toLong()) }
+                                val pendingIntent = android.provider.MediaStore.createDeleteRequest(context.contentResolver, uris)
+                                deleteLauncher.launch(androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                showBatchDeleteDialog = false
+                            }
+                        } else {
+                            if (pendingTracksToDelete.isNotEmpty()) {
+                                try {
+                                    pendingTracksToDelete.forEach { id ->
+                                        context.contentResolver.delete(android.content.ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id.toLong()), null, null)
+                                    }
+                                    viewModel.deleteTracks(pendingTracksToDelete)
+                                    pendingTracksToDelete.forEach { deletedId ->
+                                        val entry = selectedTracksToDelete.entries.find { it.value == deletedId }
+                                        if (entry != null) {
+                                            selectedTracksToDelete.remove(entry.key)
+                                        }
+                                    }
+                                } catch(e: Exception) { e.printStackTrace() }
+                            }
+                            showBatchDeleteDialog = false
+                            pendingTracksToDelete = emptyList()
+                        }
                     }) {
                         Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                     }
