@@ -1911,26 +1911,7 @@ fun WordSyncedLyrics(
     }
 
     val activeLineText   = linesToRender.getOrElse(activeLineIndex) { "" }
-    val heroFontSize = 20f
-
-    val textMeasurer     = rememberTextMeasurer()
-    val configuration    = LocalConfiguration.current
-    val density          = LocalDensity.current
-    val availableWidthPx = remember(configuration.screenWidthDp, density) {
-        with(density) { (configuration.screenWidthDp.dp - 48.dp).toPx().toInt().coerceAtLeast(1) }
-    }
-    
-    val activeLineCount = remember(activeLineText, heroFontSize, availableWidthPx) {
-        textMeasurer.measure(
-            text = activeLineText,
-            style = TextStyle(
-                fontSize   = heroFontSize.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = (heroFontSize * 1.3f).sp
-            ),
-            constraints = Constraints(maxWidth = availableWidthPx)
-        ).lineCount.coerceAtLeast(1)
-    }
+    val heroFontSize = 24f
 
     androidx.compose.animation.AnimatedContent(
         targetState = Pair(activeLineIndex, activeLineText),
@@ -2006,24 +1987,6 @@ fun WordSyncedLyrics(
                             )
                         )
                     }
-                }
-            }
-            
-            // "Next Line Shadow" if current is 1 line
-            if (activeLineCount == 1 && idx + 1 < linesToRender.size) {
-                val nextLineText = linesToRender[idx + 1]
-                if (nextLineText.isNotBlank()) {
-                    Text(
-                        text = nextLineText,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = textColor.copy(alpha = 0.4f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
                 }
             }
         }
