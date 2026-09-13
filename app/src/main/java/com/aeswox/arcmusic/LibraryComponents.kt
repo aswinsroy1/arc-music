@@ -178,6 +178,7 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
             modifier = Modifier.weight(1f),
             pagerState = pagerState,
             tabs = tabs,
+            bottomPadding = bottomPadding,
             onNavigateToAlbumDetails = onNavigateToAlbumDetails,
             onNavigateToPlaylistDetails = onNavigateToPlaylistDetails,
             onNavigateToArtistDetails = onNavigateToArtistDetails,
@@ -430,6 +431,7 @@ fun LibraryPagerContent(
     modifier: Modifier = Modifier,
     pagerState: androidx.compose.foundation.pager.PagerState,
     tabs: List<String>,
+    bottomPadding: androidx.compose.ui.unit.Dp = 100.dp,
     onNavigateToAlbumDetails: (String) -> Unit = {},
     onNavigateToPlaylistDetails: (String) -> Unit = {},
     onNavigateToArtistDetails: (String) -> Unit = {},
@@ -451,6 +453,7 @@ fun LibraryPagerContent(
         LibraryMainSection(
             modifier = Modifier.fillMaxSize(),
             tabName = currentTab, 
+            bottomPadding = bottomPadding,
             onNavigateToAlbumDetails = onNavigateToAlbumDetails, 
             onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, 
             onNavigateToArtistDetails = onNavigateToArtistDetails,

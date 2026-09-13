@@ -73,7 +73,7 @@ fun CollectionHealthScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 24.dp),
-                contentPadding = PaddingValues(bottom = 120.dp),
+                contentPadding = PaddingValues(bottom = 130.dp),
                 verticalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 item {

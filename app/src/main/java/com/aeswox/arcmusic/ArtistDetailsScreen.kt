@@ -98,7 +98,7 @@ fun ArtistDetailsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp)
+            contentPadding = PaddingValues(bottom = 130.dp)
         ) {
             item {
                 ArtistHeroSection(artist = artist, tracks = tracks, viewModel = viewModel)

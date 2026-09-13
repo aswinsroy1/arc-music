@@ -96,7 +96,7 @@ fun AlbumDetailsScreen(
             .fillMaxSize()
             .physicsBounceOverscroll()
             .padding(horizontal = 24.dp),
-        contentPadding = PaddingValues(top = 48.dp, bottom = 120.dp)
+        contentPadding = PaddingValues(top = 48.dp, bottom = 130.dp)
     ) {
         item {
             AlbumDetailsHeader(onNavigateBack = onNavigateBack, menuItems = menuItems)

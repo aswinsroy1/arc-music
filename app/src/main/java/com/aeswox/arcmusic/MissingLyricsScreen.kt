@@ -37,6 +37,9 @@ import coil.compose.AsyncImage
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -52,6 +55,19 @@ fun MissingLyricsScreen(
     val isSyncing by viewModel.isSyncingLyrics.collectAsState()
     val glowIntensity by viewModel.glowIntensity.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomSpacer by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 32.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "lyricsBottomSpacer"
+    )
     
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -256,7 +272,7 @@ fun MissingLyricsScreen(
             }
             
             item {
-                Spacer(modifier = Modifier.height(100.dp))
+                Spacer(modifier = Modifier.height(bottomSpacer))
             }
         }
     }

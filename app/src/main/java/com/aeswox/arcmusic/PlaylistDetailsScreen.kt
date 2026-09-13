@@ -89,7 +89,7 @@ fun PlaylistDetailsScreen(
 
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp) // space for mini player
+            contentPadding = PaddingValues(bottom = 130.dp) // space for mini player
         ) {
             item {
                 // Top App Bar
@@ -650,7 +650,7 @@ fun PlaylistDetailsSkeleton(onNavigateBack: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp)
+            contentPadding = PaddingValues(bottom = 130.dp)
         ) {
             item {
                 Row(

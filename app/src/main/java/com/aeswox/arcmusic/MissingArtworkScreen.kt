@@ -27,6 +27,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aeswox.arcmusic.db.entities.Track
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -41,6 +44,28 @@ fun MissingArtworkScreen(
     val missingTracks = healthState.missingArtworkTracks
     val isAutoFinding by viewModel.isAutoFindingArtwork.collectAsState()
     val autoFindProgress by viewModel.autoFindProgress.collectAsState()
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val fabBottomPadding by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 112.dp else 8.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "missingArtworkFabBottom"
+    )
+
+    val listBottomPadding by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 190.dp else 100.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "missingArtworkListBottom"
+    )
 
     var trackIdToEdit by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -87,7 +112,7 @@ fun MissingArtworkScreen(
                 ),
                 shape = RoundedCornerShape(50),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = fabBottomPadding)
             ) {
                 if (isAutoFinding) {
                     CircularProgressIndicator(
@@ -144,7 +169,7 @@ fun MissingArtworkScreen(
 
             LazyColumn(
                 modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 100.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = listBottomPadding),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 itemsIndexed(missingTracks) { index, track ->

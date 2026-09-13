@@ -33,6 +33,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import java.io.File
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -53,6 +56,18 @@ fun EditMetadataScreen(
     isReadOnlyDefault: Boolean = false,
     onNavigateBack: () -> Unit
 ) {
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomSpacer by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 48.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "editMetadataBottomSpacer"
+    )
     val track = viewModel.getTrackFromLibrary(trackId)
     val context = LocalContext.current
 
@@ -462,7 +477,7 @@ fun EditMetadataScreen(
                 }
             }
             
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(bottomSpacer))
         }
     }
 }

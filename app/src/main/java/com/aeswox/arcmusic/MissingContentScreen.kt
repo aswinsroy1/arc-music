@@ -178,7 +178,7 @@ fun MissingContentScreen(
                             LazyColumn(
                                 state = listStates[currentTab],
                                 modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-                                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 120.dp),
+                                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 130.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 itemsGrouped.forEach { (artistName, items) ->
@@ -402,7 +402,7 @@ fun MissingItemRow(item: MissingContentItem) {
 private fun SkeletonMissingContent() {
     LazyColumn(
         modifier = Modifier.physicsBounceOverscroll().fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 120.dp),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 130.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         userScrollEnabled = false
     ) {

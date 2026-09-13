@@ -77,7 +77,7 @@ fun ArtistTracksScreen(
                 )
             }
             item {
-                Spacer(modifier = Modifier.height(120.dp))
+                Spacer(modifier = Modifier.height(130.dp))
             }
         }
     }
@@ -137,7 +137,7 @@ fun ArtistAlbumsScreen(
                 )
             }
             item {
-                Spacer(modifier = Modifier.height(120.dp))
+                Spacer(modifier = Modifier.height(130.dp))
             }
         }
     }

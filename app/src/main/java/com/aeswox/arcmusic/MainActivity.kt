@@ -881,9 +881,11 @@ class MainActivity : ComponentActivity() {
                             val payloadType = backStackEntry.arguments?.getString("type")
                             val payloadId = backStackEntry.arguments?.getString("id")
                             Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                val dynamicShareBottomPadding = if (isMiniPlayerVisible && currentlyPlaying != null) 130.dp else 24.dp
                                 ShareScreen(
                                     onNavigateBack = { navController.popBackStack() },
-                                    onExternalShareClick = { /* TODO implement external share intent */ }
+                                    onExternalShareClick = { /* TODO implement external share intent */ },
+                                    bottomPadding = dynamicShareBottomPadding
                                 )
                             }
                         }
@@ -1396,7 +1398,7 @@ fun MusicHomeScreen(
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding),
+                                contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding + 24.dp),
                                 verticalArrangement = Arrangement.spacedBy(32.dp),
                                 modifier = Modifier.physicsBounceOverscroll()
                                     .fillMaxSize()
@@ -1452,7 +1454,7 @@ fun MusicHomeScreen(
                         }
                     }
                     2 -> {
-                        LibraryScreenContent(bottomPadding = if (isLibrarySelectionMode) 100.dp else bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onNavigateToShare = onNavigateToShare, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
+                        LibraryScreenContent(bottomPadding = bottomPadding, onNavigateToAlbumDetails = onNavigateToAlbumDetails, onNavigateToPlaylistDetails = onNavigateToPlaylistDetails, onNavigateToArtistDetails = onNavigateToArtistDetails, onNavigateToShare = onNavigateToShare, onSelectionModeChange = { onLibrarySelectionModeChange(it) }, onCreatePlaylistClick = { onShowCreatePlaylistFlowChange(true) })
                     }
                     3 -> {
                         val stats by viewModel.listeningStats.collectAsState()
@@ -2522,7 +2524,7 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
     }
     
     LazyColumn(
-        contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding),
+        contentPadding = PaddingValues(top = 24.dp, bottom = bottomPadding + 24.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp),
         modifier = modifier.physicsBounceOverscroll().fillMaxSize()
     ) {

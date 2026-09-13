@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Track
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -48,6 +51,19 @@ fun CorruptedTagsScreen(
 ) {
     val corruptedTracks by viewModel.corruptedTracks.collectAsState()
     val context = LocalContext.current
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomSpacer by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 32.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "corruptedBottomSpacer"
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -220,7 +236,7 @@ fun CorruptedTagsScreen(
                     }
                     
                     item {
-                        Spacer(modifier = Modifier.height(80.dp)) // padding for FAB
+                        Spacer(modifier = Modifier.height(bottomSpacer))
                     }
                 }
             }

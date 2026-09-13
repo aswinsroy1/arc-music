@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aeswox.arcmusic.db.entities.Track
 import java.util.Locale
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -39,6 +42,27 @@ fun DuplicateSongsScreen(
 ) {
     val healthState by viewModel.healthState.collectAsState()
     val duplicateGroups = healthState.duplicateGroups
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val fabBottomPadding by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 112.dp else 16.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "duplicateFabBottom"
+    )
+
+    val listBottomSpacer by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 190.dp else 90.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "duplicateListBottom"
+    )
     
     // Map of group Title+Artist string to the track ID that is selected to be KEPT
     val selectedTracksToKeep = remember { mutableStateMapOf<String, String>() }
@@ -104,7 +128,7 @@ fun DuplicateSongsScreen(
                         containerColor = MaterialTheme.colorScheme.onBackground,
                         contentColor = MaterialTheme.colorScheme.background,
                         shape = RoundedCornerShape(32.dp),
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(bottom = fabBottomPadding)
                     ) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -223,7 +247,7 @@ fun DuplicateSongsScreen(
                     }
                     
                     item {
-                        Spacer(modifier = Modifier.height(80.dp)) // padding for FAB
+                        Spacer(modifier = Modifier.height(listBottomSpacer))
                     }
                 }
             }

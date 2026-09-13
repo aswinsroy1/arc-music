@@ -26,6 +26,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Track
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.*
@@ -40,6 +43,19 @@ fun MissingMetadataScreen(
     val missingMetadataTracks by viewModel.missingMetadataTracks.collectAsState()
     val isFetchingMetadata by viewModel.isFetchingMetadata.collectAsState()
     val context = LocalContext.current
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomSpacer by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 32.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "metadataBottomSpacer"
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -141,7 +157,7 @@ fun MissingMetadataScreen(
                 }
                 
                 item {
-                    Spacer(modifier = Modifier.height(100.dp))
+                    Spacer(modifier = Modifier.height(bottomSpacer))
                 }
             }
         }

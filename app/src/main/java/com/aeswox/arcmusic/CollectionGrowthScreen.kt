@@ -130,7 +130,7 @@ fun CollectionGrowthScreen(
                             )
                             .fillMaxSize()
                             .padding(innerPadding),
-                        contentPadding = PaddingValues(bottom = 120.dp),
+                        contentPadding = PaddingValues(bottom = 130.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         if (completeCollectionCards.isNotEmpty()) {

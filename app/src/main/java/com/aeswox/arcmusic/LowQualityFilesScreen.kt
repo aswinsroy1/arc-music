@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.aeswox.arcmusic.db.entities.Track
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import com.aeswox.arcmusic.ui.animations.jelly
 import com.aeswox.arcmusic.ui.components.JellyIconButton
@@ -46,6 +49,19 @@ fun LowQualityFilesScreen(
 ) {
     val lowQualityTracks by viewModel.lowQualityTracks.collectAsState()
     val context = LocalContext.current
+
+    val isMiniPlayerVisible by viewModel.isMiniPlayerVisible.collectAsState()
+    val currentlyPlaying by viewModel.currentlyPlaying.collectAsState()
+    val hasMiniPlayer = isMiniPlayerVisible && currentlyPlaying != null
+
+    val bottomSpacer by animateDpAsState(
+        targetValue = if (hasMiniPlayer) 130.dp else 32.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "lowQualityBottomSpacer"
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -190,7 +206,7 @@ fun LowQualityFilesScreen(
                     }
                     
                     item {
-                        Spacer(modifier = Modifier.height(80.dp))
+                        Spacer(modifier = Modifier.height(bottomSpacer))
                     }
                 }
             }
