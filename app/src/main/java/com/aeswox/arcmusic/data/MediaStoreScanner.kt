@@ -5,8 +5,14 @@ import android.media.AudioFormat
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.provider.MediaStore
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+
+// ─── ARC SCAN DIAGNOSTICS ────────────────────────────────────────────────────
+// Tag for all scan-pipeline diagnostic logs.
+// To watch on device: adb logcat -s ARC_SCAN_DIAG
+private const val TAG = "ARC_SCAN_DIAG"
 
 class MediaStoreScanner @Inject constructor(
     @ApplicationContext private val context: Context
@@ -15,6 +21,16 @@ class MediaStoreScanner @Inject constructor(
         val tracks = mutableListOf<ScannedTrack>()
         val contentResolver = context.contentResolver
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+
+        // ── DIAG: log scan entry ──────────────────────────────────────────────
+        val nowMs = System.currentTimeMillis()
+        val nowSec = nowMs / 1000L
+        Log.i(TAG, "╔══ scanAudioFiles() ENTRY ══════════════════════════════════")
+        Log.i(TAG, "║  targetFolder = $targetFolder")
+        Log.i(TAG, "║  System.currentTimeMillis() = $nowMs  (ms since epoch)")
+        Log.i(TAG, "║  Same value in seconds      = $nowSec  (what DATE_ADDED uses)")
+        Log.i(TAG, "╚════════════════════════════════════════════════════════════")
+        // ─────────────────────────────────────────────────────────────────────
 
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -66,7 +82,13 @@ class MediaStoreScanner @Inject constructor(
             val bitrateColumn = cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE)
 
             val seenPaths = mutableSetOf<String>()
+            var diagTotalCursorRows = 0
+            var diagDroppedBlankPath = 0
+            var diagDroppedFileNotFound = 0
+            var diagDroppedDuplicatePath = 0
+
             while (cursor.moveToNext()) {
+                diagTotalCursorRows++
                 val id = cursor.getLong(idColumn).toString()
                 val title = cursor.getString(titleColumn) ?: "Unknown Title"
                 val artist = cursor.getString(artistColumn) ?: "Unknown Artist"
@@ -91,13 +113,48 @@ class MediaStoreScanner @Inject constructor(
                 
                 var durationMs = cursor.getLong(durationColumn)
                 val filePath = cursor.getString(dataColumn) ?: ""
-                
-                if (filePath.isBlank() || !java.io.File(filePath).exists() || !seenPaths.add(filePath)) {
+
+                // ── DIAG: read DATE_ADDED here for logging before any continue ─
+                val dateAddedRawSec = cursor.getLong(dateAddedColumn)
+                val dateAddedAsMs = dateAddedRawSec * 1000L
+                // ─────────────────────────────────────────────────────────────
+
+                if (filePath.isBlank()) {
+                    diagDroppedBlankPath++
+                    Log.w(TAG, "DROPPED [blank-path] id=$id title='$title' DATE_ADDED_sec=$dateAddedRawSec")
+                    continue
+                }
+
+                // ── DIAG: File.exists() check — THIS IS THE SUSPECTED KILLER ──
+                val fileExistsResult = java.io.File(filePath).exists()
+                if (!fileExistsResult) {
+                    diagDroppedFileNotFound++
+                    // Log full details for every file-not-found drop so we can
+                    // confirm whether scoped-storage is silently eating new files.
+                    Log.w(TAG, "DROPPED [file-not-found] id=$id title='$title' artist='$artist'")
+                    Log.w(TAG, "  path            = $filePath")
+                    Log.w(TAG, "  DATE_ADDED_sec  = $dateAddedRawSec  (seconds since epoch — MediaStore native unit)")
+                    Log.w(TAG, "  DATE_ADDED_ms   = $dateAddedAsMs   (×1000 — what we store in DB as dateAdded)")
+                    Log.w(TAG, "  now_ms          = $nowMs")
+                    Log.w(TAG, "  now_sec         = $nowSec")
+                    Log.w(TAG, "  age_sec         = ${nowSec - dateAddedRawSec} s  (positive = file was added in the past)")
+                    // ⚠️  DO NOT skip this track — include it anyway so we can
+                    // verify that removing File.exists() fixes the rescan issue.
+                    // A separate log line marks it as "included-despite-missing".
+                    Log.w(TAG, "  → INCLUDED ANYWAY for diagnostics (file-not-found tracks should appear in library)")
+                }
+
+                if (!seenPaths.add(filePath)) {
+                    diagDroppedDuplicatePath++
+                    Log.d(TAG, "DROPPED [duplicate-path] id=$id title='$title' path=$filePath")
                     continue
                 }
                 
                 val sizeBytes = cursor.getLong(sizeColumn)
-                val dateAdded = cursor.getLong(dateAddedColumn) * 1000L // MediaStore stores in seconds usually, wait, DATE_ADDED is in seconds!
+                // DATE_ADDED and DATE_MODIFIED from MediaStore are in SECONDS since epoch.
+                // We multiply by 1000 to convert to milliseconds for internal storage.
+                // dateAddedRawSec already read above for diagnostics.
+                val dateAdded = dateAddedAsMs  // already computed as dateAddedRawSec * 1000L
                 val dateModified = cursor.getLong(dateModifiedColumn) * 1000L
                 val mimeType = cursor.getString(mimeTypeColumn) ?: ""
                 val bitrate = if (bitrateColumn >= 0) cursor.getInt(bitrateColumn) else 0
@@ -143,6 +200,22 @@ class MediaStoreScanner @Inject constructor(
                     )
                 )
             }
+
+            // ── DIAG: end-of-cursor summary ───────────────────────────────────
+            Log.i(TAG, "╔══ scanAudioFiles() SUMMARY ════════════════════════════════")
+            Log.i(TAG, "║  Total MediaStore rows        : $diagTotalCursorRows")
+            Log.i(TAG, "║  Dropped – blank path         : $diagDroppedBlankPath")
+            Log.i(TAG, "║  Dropped – File.exists()=false: $diagDroppedFileNotFound  ← *** KEY METRIC ***")
+            Log.i(TAG, "║  Dropped – duplicate path     : $diagDroppedDuplicatePath")
+            Log.i(TAG, "║  Tracks passed to caller      : ${tracks.size}")
+            Log.i(TAG, "╚════════════════════════════════════════════════════════════")
+            if (diagDroppedFileNotFound > 0) {
+                Log.w(TAG, "⚠ ${diagDroppedFileNotFound} track(s) had File.exists()=false.")
+                Log.w(TAG, "  If these are newly-downloaded files that the app should see,")
+                Log.w(TAG, "  scoped-storage path inaccessibility is the root cause.")
+                Log.w(TAG, "  They have been INCLUDED in this diagnostic build — check the library!")
+            }
+            // ─────────────────────────────────────────────────────────────────
         }
 
         return tracks

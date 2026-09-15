@@ -21,7 +21,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.util.Log
 import javax.inject.Inject
+
+private const val STAG = "ARC_SCAN_DIAG"
 
 @AndroidEntryPoint
 class MediaScannerService : Service() {
@@ -75,7 +78,15 @@ class MediaScannerService : Service() {
     }
 
     private fun performScan(targetFolder: String? = null) {
-        if (mediaScannerManager.scanProgress.value.isRunning) return
+        if (mediaScannerManager.scanProgress.value.isRunning) {
+            // ── DIAG ─────────────────────────────────────────────────────────
+            Log.w(STAG, "performScan() SKIPPED: isRunning=true (scan already in progress or stuck).")
+            Log.w(STAG, "  If you just pressed Scan and see this, the previous scan is still running")
+            Log.w(STAG, "  OR the isRunning flag got stuck. Force-stop the app to reset.")
+            // ─────────────────────────────────────────────────────────────────
+            return
+        }
+        Log.i(STAG, "performScan() STARTED targetFolder=$targetFolder")
         
         serviceScope.launch {
             mediaScannerManager.updateProgress(isRunning = true, phase = ScanPhase.FETCHING_MEDIASTORE)
@@ -107,6 +118,10 @@ class MediaScannerService : Service() {
                     total = result.trackCount,
                     isCompleted = true
                 )
+                // ── DIAG ──────────────────────────────────────────────────────
+                Log.i(STAG, "performScan() COMPLETED: tracks=${result.trackCount} albums=${result.albumCount} artists=${result.artistCount}")
+                Log.i(STAG, "  If the new file is NOT reflected, check DROPPED [file-not-found] lines above.")
+                // ──────────────────────────────────────────────────────────────
             } catch (e: Exception) {
                 mediaScannerManager.updateResult(null)
                 mediaScannerManager.updateProgress(isRunning = false, isCompleted = false)
