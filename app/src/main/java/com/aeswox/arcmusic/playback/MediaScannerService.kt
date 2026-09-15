@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.aeswox.arcmusic.data.ScanLogger
 import javax.inject.Inject
 
 private const val STAG = "ARC_SCAN_DIAG"
@@ -37,6 +38,9 @@ class MediaScannerService : Service() {
 
     @Inject
     lateinit var mediaScannerManager: MediaScannerManager
+
+    @Inject
+    lateinit var scanLogger: ScanLogger
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
 
@@ -80,13 +84,13 @@ class MediaScannerService : Service() {
     private fun performScan(targetFolder: String? = null) {
         if (mediaScannerManager.scanProgress.value.isRunning) {
             // ── DIAG ─────────────────────────────────────────────────────────
-            Log.w(STAG, "performScan() SKIPPED: isRunning=true (scan already in progress or stuck).")
-            Log.w(STAG, "  If you just pressed Scan and see this, the previous scan is still running")
-            Log.w(STAG, "  OR the isRunning flag got stuck. Force-stop the app to reset.")
+            scanLogger.w("performScan() SKIPPED: isRunning=true (scan already in progress or stuck).")
+            scanLogger.w("  If you just pressed Scan and see this, the previous scan is still running")
+            scanLogger.w("  OR the isRunning flag got stuck. Force-stop the app to reset.")
             // ─────────────────────────────────────────────────────────────────
             return
         }
-        Log.i(STAG, "performScan() STARTED targetFolder=$targetFolder")
+        scanLogger.i("performScan() STARTED targetFolder=$targetFolder")
         
         serviceScope.launch {
             mediaScannerManager.updateProgress(isRunning = true, phase = ScanPhase.FETCHING_MEDIASTORE)
@@ -118,9 +122,9 @@ class MediaScannerService : Service() {
                     total = result.trackCount,
                     isCompleted = true
                 )
-                // ── DIAG ──────────────────────────────────────────────────────
-                Log.i(STAG, "performScan() COMPLETED: tracks=${result.trackCount} albums=${result.albumCount} artists=${result.artistCount}")
-                Log.i(STAG, "  If the new file is NOT reflected, check DROPPED [file-not-found] lines above.")
+                // ── DIAG ─────────────────────────────────────────────────────
+                scanLogger.i("performScan() COMPLETED: tracks=${result.trackCount} albums=${result.albumCount} artists=${result.artistCount}")
+                scanLogger.i("  If the new file is NOT reflected, check DROPPED [file-not-found] lines above.")
                 // ──────────────────────────────────────────────────────────────
             } catch (e: Exception) {
                 mediaScannerManager.updateResult(null)

@@ -825,7 +825,13 @@ class MainActivity : ComponentActivity() {
                                     onExportM3u = { uri, playlistId -> viewModel.exportM3uPlaylist(context, uri, playlistId) },
                                     playlists = viewModel.libraryPlaylists.collectAsState().value,
                                     canvasEnabled = viewModel.canvasEnabled.collectAsState().value,
-                                    onCanvasEnabledChange = { viewModel.setCanvasEnabled(it) }
+                                    onCanvasEnabledChange = { viewModel.setCanvasEnabled(it) },
+                                    onClearScanLog = {
+                                        viewModel.clearScanLog()
+                                    },
+                                    onExportScanLog = {
+                                        viewModel.exportScanLog(context)
+                                    }
                                 )
                             }
                         }

@@ -15,7 +15,8 @@ import javax.inject.Inject
 private const val TAG = "ARC_SCAN_DIAG"
 
 class MediaStoreScanner @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val scanLogger: ScanLogger
 ) {
     fun scanAudioFiles(targetFolder: String? = null): List<ScannedTrack> {
         val tracks = mutableListOf<ScannedTrack>()
@@ -25,11 +26,11 @@ class MediaStoreScanner @Inject constructor(
         // ── DIAG: log scan entry ──────────────────────────────────────────────
         val nowMs = System.currentTimeMillis()
         val nowSec = nowMs / 1000L
-        Log.i(TAG, "╔══ scanAudioFiles() ENTRY ══════════════════════════════════")
-        Log.i(TAG, "║  targetFolder = $targetFolder")
-        Log.i(TAG, "║  System.currentTimeMillis() = $nowMs  (ms since epoch)")
-        Log.i(TAG, "║  Same value in seconds      = $nowSec  (what DATE_ADDED uses)")
-        Log.i(TAG, "╚════════════════════════════════════════════════════════════")
+        scanLogger.i("╔══ scanAudioFiles() ENTRY ══════════════════════════════════")
+        scanLogger.i("║  targetFolder = $targetFolder")
+        scanLogger.i("║  System.currentTimeMillis() = $nowMs  (ms since epoch)")
+        scanLogger.i("║  Same value in seconds      = $nowSec  (what DATE_ADDED uses)")
+        scanLogger.i("╚════════════════════════════════════════════════════════════")
         // ─────────────────────────────────────────────────────────────────────
 
         val projection = arrayOf(
@@ -121,7 +122,7 @@ class MediaStoreScanner @Inject constructor(
 
                 if (filePath.isBlank()) {
                     diagDroppedBlankPath++
-                    Log.w(TAG, "DROPPED [blank-path] id=$id title='$title' DATE_ADDED_sec=$dateAddedRawSec")
+                    scanLogger.w("DROPPED [blank-path] id=$id title='$title' DATE_ADDED_sec=$dateAddedRawSec")
                     continue
                 }
 
@@ -131,22 +132,22 @@ class MediaStoreScanner @Inject constructor(
                     diagDroppedFileNotFound++
                     // Log full details for every file-not-found drop so we can
                     // confirm whether scoped-storage is silently eating new files.
-                    Log.w(TAG, "DROPPED [file-not-found] id=$id title='$title' artist='$artist'")
-                    Log.w(TAG, "  path            = $filePath")
-                    Log.w(TAG, "  DATE_ADDED_sec  = $dateAddedRawSec  (seconds since epoch — MediaStore native unit)")
-                    Log.w(TAG, "  DATE_ADDED_ms   = $dateAddedAsMs   (×1000 — what we store in DB as dateAdded)")
-                    Log.w(TAG, "  now_ms          = $nowMs")
-                    Log.w(TAG, "  now_sec         = $nowSec")
-                    Log.w(TAG, "  age_sec         = ${nowSec - dateAddedRawSec} s  (positive = file was added in the past)")
+                    scanLogger.w("DROPPED [file-not-found] id=$id title='$title' artist='$artist'")
+                    scanLogger.w("  path            = $filePath")
+                    scanLogger.w("  DATE_ADDED_sec  = $dateAddedRawSec  (seconds since epoch — MediaStore native unit)")
+                    scanLogger.w("  DATE_ADDED_ms   = $dateAddedAsMs   (×1000 — what we store in DB as dateAdded)")
+                    scanLogger.w("  now_ms          = $nowMs")
+                    scanLogger.w("  now_sec         = $nowSec")
+                    scanLogger.w("  age_sec         = ${nowSec - dateAddedRawSec} s  (positive = file was added in the past)")
                     // ⚠️  DO NOT skip this track — include it anyway so we can
                     // verify that removing File.exists() fixes the rescan issue.
                     // A separate log line marks it as "included-despite-missing".
-                    Log.w(TAG, "  → INCLUDED ANYWAY for diagnostics (file-not-found tracks should appear in library)")
+                    scanLogger.w("  → INCLUDED ANYWAY for diagnostics (file-not-found tracks should appear in library)")
                 }
 
                 if (!seenPaths.add(filePath)) {
                     diagDroppedDuplicatePath++
-                    Log.d(TAG, "DROPPED [duplicate-path] id=$id title='$title' path=$filePath")
+                    scanLogger.d("DROPPED [duplicate-path] id=$id title='$title' path=$filePath")
                     continue
                 }
                 
@@ -202,18 +203,18 @@ class MediaStoreScanner @Inject constructor(
             }
 
             // ── DIAG: end-of-cursor summary ───────────────────────────────────
-            Log.i(TAG, "╔══ scanAudioFiles() SUMMARY ════════════════════════════════")
-            Log.i(TAG, "║  Total MediaStore rows        : $diagTotalCursorRows")
-            Log.i(TAG, "║  Dropped – blank path         : $diagDroppedBlankPath")
-            Log.i(TAG, "║  Dropped – File.exists()=false: $diagDroppedFileNotFound  ← *** KEY METRIC ***")
-            Log.i(TAG, "║  Dropped – duplicate path     : $diagDroppedDuplicatePath")
-            Log.i(TAG, "║  Tracks passed to caller      : ${tracks.size}")
-            Log.i(TAG, "╚════════════════════════════════════════════════════════════")
+            scanLogger.i("╔══ scanAudioFiles() SUMMARY ════════════════════════════════")
+            scanLogger.i("║  Total MediaStore rows        : $diagTotalCursorRows")
+            scanLogger.i("║  Dropped – blank path         : $diagDroppedBlankPath")
+            scanLogger.i("║  Dropped – File.exists()=false: $diagDroppedFileNotFound  ← *** KEY METRIC ***")
+            scanLogger.i("║  Dropped – duplicate path     : $diagDroppedDuplicatePath")
+            scanLogger.i("║  Tracks passed to caller      : ${tracks.size}")
+            scanLogger.i("╚════════════════════════════════════════════════════════════")
             if (diagDroppedFileNotFound > 0) {
-                Log.w(TAG, "⚠ ${diagDroppedFileNotFound} track(s) had File.exists()=false.")
-                Log.w(TAG, "  If these are newly-downloaded files that the app should see,")
-                Log.w(TAG, "  scoped-storage path inaccessibility is the root cause.")
-                Log.w(TAG, "  They have been INCLUDED in this diagnostic build — check the library!")
+                scanLogger.w("⚠ ${diagDroppedFileNotFound} track(s) had File.exists()=false.")
+                scanLogger.w("  If these are newly-downloaded files that the app should see,")
+                scanLogger.w("  scoped-storage path inaccessibility is the root cause.")
+                scanLogger.w("  They have been INCLUDED in this diagnostic build — check the library!")
             }
             // ─────────────────────────────────────────────────────────────────
         }

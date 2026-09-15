@@ -72,6 +72,8 @@ fun SettingsScreen(
     playlists: List<Playlist> = emptyList(),
     canvasEnabled: Boolean = true,
     onCanvasEnabledChange: (Boolean) -> Unit = {},
+    onClearScanLog: () -> Unit = {},
+    onExportScanLog: () -> Unit = {},
     bottomPadding: androidx.compose.ui.unit.Dp = 24.dp,
     modifier: Modifier = Modifier
 ) {
@@ -421,6 +423,74 @@ fun SettingsScreen(
                             onClick = onTestEac3,
                             showArrow = false
                         )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        // ── DIAGNOSTICS ───────────────────────────────────────────────
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Label
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.BugReport,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Scan Diagnostics Log",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Share with developer to diagnose rescan issues",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = onClearScanLog,
+                                        modifier = Modifier.jellyClick { onClearScanLog() },
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.DeleteOutline,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Clear Logs", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                    Button(
+                                        onClick = onExportScanLog,
+                                        modifier = Modifier.jellyClick { onExportScanLog() },
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Share,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Export Logs", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                        // ───────────────────────────────────────────────────────────
                     }
                 }
 

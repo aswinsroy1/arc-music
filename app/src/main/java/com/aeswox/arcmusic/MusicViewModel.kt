@@ -202,7 +202,8 @@ class MusicViewModel @Inject constructor(
     private val musicBrainzService: com.aeswox.arcmusic.data.network.MusicBrainzService,
     private val mediaScannerManager: com.aeswox.arcmusic.db.MediaScannerManager,
     private val canvasProvider: com.aeswox.arcmusic.network.AppleMusicCanvasProvider,
-    val canvasCacheManager: com.aeswox.arcmusic.network.CanvasCacheManager
+    val canvasCacheManager: com.aeswox.arcmusic.network.CanvasCacheManager,
+    private val scanLogger: com.aeswox.arcmusic.data.ScanLogger
 ) : ViewModel() {
 
     val randomPicks: StateFlow<List<Track>>
@@ -533,6 +534,35 @@ class MusicViewModel @Inject constructor(
         } else {
             context.startService(intent)
         }
+    }
+
+    /** Clears the in-app ARC_SCAN_DIAG log file. */
+    fun clearScanLog() {
+        scanLogger.clear()
+    }
+
+    /**
+     * Shares the ARC_SCAN_DIAG log file via the system share sheet.
+     * Uses FileProvider so no extra permissions are needed.
+     */
+    fun exportScanLog(ctx: android.content.Context) {
+        val file = scanLogger.getLogFile()
+        if (file == null) {
+            android.widget.Toast.makeText(ctx, "No scan log found. Run a scan first.", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            ctx,
+            "${ctx.packageName}.fileprovider",
+            file
+        )
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "Arc Music Scan Diagnostics Log")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        ctx.startActivity(android.content.Intent.createChooser(intent, "Share scan log via"))
     }
 
     fun getAlbumById(id: String): Flow<Album?> = repository.getAlbumById(id)
