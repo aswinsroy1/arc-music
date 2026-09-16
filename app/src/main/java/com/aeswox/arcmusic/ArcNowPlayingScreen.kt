@@ -324,6 +324,20 @@ fun ArcNowPlayingScreen(
     }
 
     var showQueue by remember { mutableStateOf(false) }
+    var queueControlsVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(showQueue) {
+        if (!showQueue) {
+            queueControlsVisible = true
+        }
+    }
+
+    LaunchedEffect(showQueue, queueControlsVisible) {
+        if (showQueue && queueControlsVisible) {
+            delay(LYRICS_CONTROLS_IDLE_MS)
+            queueControlsVisible = false
+        }
+    }
 
     
 
@@ -415,7 +429,7 @@ fun ArcNowPlayingScreen(
     )
     
     val backgroundDimAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.38f else 0.0f,
+        targetValue = if (showLyrics || showQueue) 0.38f else 0.0f,
         animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
         label = "backgroundDimAlpha"
     )
@@ -755,6 +769,10 @@ fun ArcNowPlayingScreen(
                             ArcQueueContent(
                                 textColor = textColor,
                                 accentColor = accentColor,
+                                controlsHeightPx = controlsHeightPx,
+                                queueControlsVisible = queueControlsVisible,
+                                onRevealControls = { queueControlsVisible = true },
+                                onHideControls = { queueControlsVisible = false },
                                 onDismiss = { showQueue = false }
                             )
                         }
@@ -807,7 +825,7 @@ fun ArcNowPlayingScreen(
 
             // â”€â”€ Persistent Glassmorphic Controls Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             AnimatedVisibility(
-                visible = !showLyrics || lyricsControlsVisible,
+                visible = (!showLyrics && !showQueue) || (showLyrics && lyricsControlsVisible) || (showQueue && queueControlsVisible),
                 modifier = Modifier.align(Alignment.BottomCenter),
                 enter = fadeIn(tween(220)),
                 exit = fadeOut(tween(160)),
@@ -2033,6 +2051,10 @@ fun LyricLine(
 fun ArcQueueContent(
     textColor: Color,
     accentColor: Color,
+    controlsHeightPx: Int = 0,
+    queueControlsVisible: Boolean = true,
+    onRevealControls: () -> Unit = {},
+    onHideControls: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
@@ -2052,6 +2074,18 @@ fun ArcQueueContent(
 
     val listState = rememberLazyListState()
 
+    val fadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
+    val controlsFadeTop by animateFloatAsState(
+        targetValue = if (queueControlsVisible) controlsHeightPx.toFloat() + fadeHeightPx else fadeHeightPx,
+        animationSpec = tween(durationMillis = 220),
+        label = "controlsFadeTop"
+    )
+    val controlsFadeBottom by animateFloatAsState(
+        targetValue = if (queueControlsVisible) controlsHeightPx.toFloat() else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "controlsFadeBottom"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -2065,12 +2099,28 @@ fun ArcQueueContent(
                     }
                 )
             }
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onRevealControls() })
+            }
     ) {
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 300.dp),
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    if (controlsFadeTop > 0f) {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Black, Color.Transparent),
+                                startY = size.height - controlsFadeTop,
+                                endY = size.height - controlsFadeBottom
+                            ),
+                            blendMode = BlendMode.DstIn
+                        )
+                    }
+                },
             contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
         ) {
             // ── Currently Playing ─────────────────────────────────────────────
