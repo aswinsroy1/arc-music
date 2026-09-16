@@ -466,7 +466,7 @@ private fun ContentDrawScope.sweepTo(layout: TextLayoutResult, revealedChars: Fl
         val cut = revealedChars < end
         val overhang = GLOW_ROOM.toPx()
         val internalOverhang = 12f
-        val verticalShift = 32f
+        val verticalShift = 20f
         val right = if (cut) horizontalAt(layout, revealedChars, visualLine) + internalOverhang else layout.getLineRight(visualLine) + overhang
         val top = if (visualLine == 0) layout.getLineTop(visualLine) - overhang else layout.getLineTop(visualLine) + verticalShift
         val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + overhang else layout.getLineBottom(visualLine) + verticalShift
@@ -501,7 +501,7 @@ private fun ContentDrawScope.riseWith(
     for (visualLine in 0 until layout.lineCount) {
         val lineStart = layout.getLineStart(visualLine)
         val lineEnd = layout.getLineEnd(visualLine, visibleEnd = true)
-        val verticalShift = 32f
+        val verticalShift = 20f
         val top = if (visualLine == 0) layout.getLineTop(visualLine) + inset - overhang else layout.getLineTop(visualLine) + inset + verticalShift
         val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + inset + overhang else layout.getLineBottom(visualLine) + inset + verticalShift
         var at = lineStart
@@ -585,7 +585,7 @@ private fun ContentDrawScope.glowGrown(
             if (to <= from) continue
             val dx = growth.shift * em
             val dy = -growth.rise * peak * fall
-            val verticalShift = 32f
+            val verticalShift = 20f
             val rowTop = if (visualLine == 0) layout.getLineTop(visualLine) + inset - GLOW_ROOM.toPx() else layout.getLineTop(visualLine) + inset + verticalShift
             val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + inset + GLOW_ROOM.toPx() else layout.getLineBottom(visualLine) + inset + verticalShift
             val overhang = (to - from) * (growth.scale - 1f) / 2f
@@ -917,7 +917,7 @@ internal fun ArcLyricsPanel(
             val style = if (isSynced) {
                 MaterialTheme.typography.headlineLarge.copy(
                     fontSize = 34.sp,
-                    lineHeight = 41.sp,
+                    lineHeight = 44.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
             } else {
