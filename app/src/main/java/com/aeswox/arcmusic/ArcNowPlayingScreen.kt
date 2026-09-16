@@ -408,7 +408,7 @@ fun ArcNowPlayingScreen(
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics || showQueue) 0.88f else 0.4f,
+        targetValue = if (showLyrics || showQueue) 0.88f else 0.7f,
         animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
     )
