@@ -46,6 +46,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -606,6 +607,7 @@ internal fun ArcSweptLyricLine(
     glowAlpha: Float = 0f,
     feather: Boolean = false,
     rise: Boolean = true,
+    alignEnd: Boolean = false,
 ) {
     var layout by remember(line) { mutableStateOf<TextLayoutResult?>(null) }
     val growth = remember { ArcCharGrowth() }
@@ -635,13 +637,14 @@ internal fun ArcSweptLyricLine(
 
     androidx.compose.foundation.layout.Box(
         modifier,
-        contentAlignment = Alignment.TopStart,
+        contentAlignment = if (alignEnd) Alignment.TopEnd else Alignment.TopStart,
     ) {
         // Layer 1: dim base
         Text(
             text = line.line,
             style = style,
             color = textColor.copy(alpha = dimAlpha),
+            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
             maxLines = maxLines,
             overflow = overflow,
             onTextLayout = { layout = it },
@@ -911,11 +914,13 @@ internal fun ArcLyricsPanel(
                 )
             }
 
+            val alignEnd = line.voice % 2 == 0
+
             val shape = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
                     scaleX = scale; scaleY = scale
-                    transformOrigin = TransformOrigin(0f, 0.5f)
+                    transformOrigin = TransformOrigin(if (alignEnd) 1f else 0f, 0.5f)
                     alpha = lineAlpha
                     translationY = if (staggerDelay <= 0f) 0f else {
                         val elapsed = since.floatValue
@@ -946,6 +951,7 @@ internal fun ArcLyricsPanel(
                     textColor = textColor,
                     glowAlpha = glow,
                     feather = isActive,
+                    alignEnd = alignEnd,
                     modifier = shape,
                 )
             } else {
@@ -958,6 +964,7 @@ internal fun ArcLyricsPanel(
                     text = line.line,
                     style = style,
                     color = textColor.copy(alpha = lit),
+                    textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
                     modifier = shape.padding(GLOW_ROOM),
                 )
             }

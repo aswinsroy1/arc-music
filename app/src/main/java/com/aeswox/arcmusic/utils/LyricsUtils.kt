@@ -12,6 +12,7 @@ object LyricsUtils {
     private val LRC_WORD_TAG_REGEX = Regex("[<\\[]\\d{1,}:\\d{2}[.:]\\d{2,3}[>\\]]")
     private val LRC_WORD_SPLIT_REGEX = Regex("(?=[<\\[]\\d{1,}:\\d{2}[.:]\\d{2,3}[>\\]])")
     private val LRC_WORD_REGEX = Pattern.compile("^[<\\[](\\d{1,}):(\\d{2})(?:[.:](\\d{2,3}))?[>\\]](.*)$")
+    private val LRC_VOICE_PREFIX_REGEX = Regex("^(?:[<\\[]\\d{1,}:\\d{2}(?:[.:]\\d{2,3})?[>\\]]\\s*)*(v\\d+|b):\\s*", RegexOption.IGNORE_CASE)
 
     fun parseLyrics(lyricsText: String?): Lyrics? {
         if (lyricsText.isNullOrEmpty()) {
@@ -32,7 +33,19 @@ object LyricsUtils {
                 val minutes = lineMatcher.group(1)?.toLong() ?: 0
                 val seconds = lineMatcher.group(2)?.toLong() ?: 0
                 val fraction = lineMatcher.group(3)?.toLong() ?: 0
-                val textWithTags = lineMatcher.group(4)?.trim() ?: ""
+                var textWithTags = lineMatcher.group(4)?.trim() ?: ""
+                
+                val voiceMatch = LRC_VOICE_PREFIX_REGEX.find(textWithTags)
+                val voice = if (voiceMatch != null) {
+                    val voiceStr = voiceMatch.groupValues[1].lowercase()
+                    textWithTags = textWithTags.replace(LRC_VOICE_PREFIX_REGEX) {
+                        it.value.replace(Regex("(v\\d+|b):\\s*", RegexOption.IGNORE_CASE), "")
+                    }
+                    if (voiceStr == "b") 2 else voiceStr.removePrefix("v").toIntOrNull() ?: 1
+                } else {
+                    1
+                }
+                
                 val text = stripLrcTimestamps(textWithTags)
 
                 val millis = if (lineMatcher.group(3)?.length == 2) fraction * 10 else fraction
@@ -88,7 +101,8 @@ object LyricsUtils {
                             SyncedLine(
                                 line = text,
                                 time = lineTimestamp.toInt(),
-                                words = words.takeIf { it.isNotEmpty() }
+                                words = words.takeIf { it.isNotEmpty() },
+                                voice = voice
                             )
                         )
                     }
@@ -98,7 +112,8 @@ object LyricsUtils {
                             SyncedLine(
                                 line = text,
                                 time = lineTimestamp.toInt(),
-                                words = null
+                                words = null,
+                                voice = voice
                             )
                         )
                     }
