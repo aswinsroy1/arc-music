@@ -890,7 +890,7 @@ internal fun ArcLyricsPanel(
         itemsIndexed(lines) { index, line ->
             val offset = if (scrollLine < 0) 0 else index - scrollLine
             val distance = abs(offset)
-            val isActive = isSynced && index in activeRows
+            val isActive = isSynced && if (isHeroMode) index == focusLine else index in activeRows
             val step = distance.coerceAtMost(LINE_FALLOFF_ALPHA.lastIndex)
             val lineAlpha by animateFloatAsState(
                 targetValue = when {
