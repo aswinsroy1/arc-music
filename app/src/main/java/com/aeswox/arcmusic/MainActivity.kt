@@ -1873,134 +1873,45 @@ fun WordSyncedLyrics(
     val plainLines     = lyricsData?.plain
     val duration       by viewModel.duration.collectAsState()
 
-    val syncedLines = remember(rawSyncedLines, duration) {
-        if (rawSyncedLines.isNullOrEmpty()) return@remember null
-        val enriched     = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
-        val gapThreshold = 10_000
-        if (rawSyncedLines.first().time > gapThreshold)
-            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "\u25CF \u25CF \u25CF"))
-        for (i in 0 until rawSyncedLines.size - 1) {
-            enriched.add(rawSyncedLines[i])
-            if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
-                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines[i].time + 5000, line = "\u25CF \u25CF \u25CF"))
+    val syncedLines = remember(rawSyncedLines, duration, plainLines) {
+        if (!rawSyncedLines.isNullOrEmpty()) {
+            val enriched     = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
+            val gapThreshold = 10_000
+            if (rawSyncedLines.first().time > gapThreshold)
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "\u25CF \u25CF \u25CF"))
+            for (i in 0 until rawSyncedLines.size - 1) {
+                enriched.add(rawSyncedLines[i])
+                if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
+                    enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines[i].time + 5000, line = "\u25CF \u25CF \u25CF"))
+            }
+            enriched.add(rawSyncedLines.last())
+            if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines.last().time + 5000, line = "\u25CF \u25CF \u25CF"))
+            enriched.toList()
+        } else if (!plainLines.isNullOrEmpty()) {
+            plainLines.mapIndexed { index, line ->
+                com.aeswox.arcmusic.data.model.SyncedLine(time = (index * 3000), line = line)
+            }
+        } else {
+            listOf(com.aeswox.arcmusic.data.model.SyncedLine(time = 0, line = "\u266A"))
         }
-        enriched.add(rawSyncedLines.last())
-        if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
-            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines.last().time + 5000, line = "\u25CF \u25CF \u25CF"))
-        enriched.toList()
     }
 
-    val linesToRender = remember(syncedLines, plainLines) {
-        syncedLines?.map { it.line } ?: plainLines ?: listOf("\u266A")
-    }
-
-    var activeLineIndex by remember { mutableIntStateOf(0) }
-    var activeWordIndex by remember { mutableIntStateOf(0) }
     val currentPosition by viewModel.currentPlaybackPosition.collectAsState()
+    val isPlaying by viewModel.isPlaying.collectAsState()
 
-    LaunchedEffect(syncedLines) {
-        viewModel.currentPlaybackPosition.collect { pos ->
-            if (!syncedLines.isNullOrEmpty()) {
-                val idx = syncedLines.indexOfLast { it.time <= pos }.coerceAtLeast(0)
-                if (activeLineIndex != idx) activeLineIndex = idx
-                
-                if (idx in syncedLines.indices) {
-                    val line = syncedLines[idx]
-                    if (!line.words.isNullOrEmpty()) {
-                        val newWordIndex = line.words.indexOfLast { it.time <= pos }.coerceAtLeast(0)
-                        if (activeWordIndex != newWordIndex) activeWordIndex = newWordIndex
-                    } else {
-                        if (activeWordIndex != -1) activeWordIndex = -1
-                    }
-                }
-            } else {
-                activeLineIndex = 0
-                activeWordIndex = -1
-            }
-        }
-    }
-
-    val activeLineText   = linesToRender.getOrElse(activeLineIndex) { "" }
-    val heroFontSize = 24f
-
-    androidx.compose.animation.AnimatedContent(
-        targetState = Pair(activeLineIndex, activeLineText),
-        transitionSpec = {
-            ((androidx.compose.animation.slideInVertically(
-                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 280f),
-                initialOffsetY = { (it * 0.45f).toInt() }
-            ) + androidx.compose.animation.fadeIn(
-                animationSpec = androidx.compose.animation.core.tween(300)
-            )) togetherWith (androidx.compose.animation.slideOutVertically(
-                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.99f, stiffness = 380f),
-                targetOffsetY = { -(it * 0.35f).toInt() }
-            ) + androidx.compose.animation.fadeOut(
-                animationSpec = androidx.compose.animation.core.tween(200)
-            ))).using(androidx.compose.animation.SizeTransform(clip = false))
-        },
-        label = "HeroLyricLine",
-        modifier = modifier
-    ) { (idx, lineText) ->
-        val currentSyncedLine = syncedLines?.getOrNull(idx)
-        val words = remember(currentSyncedLine, lineText) {
-            if (currentSyncedLine?.words?.isNotEmpty() == true) {
-                currentSyncedLine.words.map { it.word }
-            } else {
-                lineText.split(" ")
-            }
-        }
-        
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = if (alignment == Alignment.Center) Alignment.CenterHorizontally else Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = horizontalArrangement,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                val words = currentSyncedLine?.words
-                if (words.isNullOrEmpty()) {
-                    val plainWords = lineText.split(" ")
-                    plainWords.forEach { word ->
-                        Text(
-                            text = word,
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = heroFontSize.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                } else {
-                    words.forEach { sw ->
-                        val wordAlpha = when {
-                            currentPosition >= sw.time -> 1f
-                            else -> {
-                                val timeUntilWord = sw.time - currentPosition
-                                if (timeUntilWord < 250) {
-                                    val progress = 1f - (timeUntilWord / 250f)
-                                    0.55f + (progress * 0.45f)
-                                } else {
-                                    0.55f
-                                }
-                            }
-                        }
-                        
-                        Text(
-                            text = sw.word,
-                            color = textColor.copy(alpha = wordAlpha),
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = heroFontSize.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
+    ArcLyricsPanel(
+        lines = syncedLines,
+        positionMs = currentPosition,
+        isPlaying = isPlaying,
+        textColor = textColor,
+        onSeekToLine = { viewModel.seekTo(it.toFloat()) },
+        controlsOpen = false,
+        onRevealControls = {},
+        onHideControls = {},
+        isHeroMode = true,
+        modifier = modifier.heightIn(max = 140.dp)
+    )
 }
 
 

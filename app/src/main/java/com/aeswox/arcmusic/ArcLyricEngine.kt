@@ -707,17 +707,17 @@ internal fun ArcSweptLyricLine(
 // Fading edges modifier
 // ──────────────────────────────────────────────────────────────────────────────
 
-internal fun Modifier.arcFadingEdges(): Modifier = this
+internal fun Modifier.arcFadingEdges(fade: androidx.compose.ui.unit.Dp = 28.dp): Modifier = this
     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
     .drawWithContent {
         drawContent()
-        val fade = 28.dp.toPx()
+        val fadePx = fade.toPx()
         drawRect(
-            brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black), startY = 0f, endY = fade),
+            brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black), startY = 0f, endY = fadePx),
             blendMode = BlendMode.DstIn,
         )
         drawRect(
-            brush = Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = size.height - fade, endY = size.height),
+            brush = Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = size.height - fadePx, endY = size.height),
             blendMode = BlendMode.DstIn,
         )
     }
@@ -758,6 +758,7 @@ internal fun ArcLyricsPanel(
     onRevealControls: () -> Unit,
     onHideControls: () -> Unit,
     onScrollingChange: (Boolean) -> Unit = {},
+    isHeroMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val clock = rememberArcLyricClock(positionMs, isPlaying)
@@ -868,11 +869,17 @@ internal fun ArcLyricsPanel(
 
     LazyColumn(
         state = listState,
+        userScrollEnabled = !isHeroMode,
         modifier = modifier
             .nestedScroll(controlsOnScroll)
             .nestedScroll(keepScroll)
-            .arcFadingEdges(),
-        contentPadding = PaddingValues(
+            .arcFadingEdges(if (isHeroMode) 12.dp else 28.dp),
+        contentPadding = if (isHeroMode) PaddingValues(
+            top = 40.dp,
+            bottom = 40.dp,
+            start = 8.dp,
+            end = 8.dp,
+        ) else PaddingValues(
             top = 40.dp - GLOW_ROOM,
             bottom = with(androidx.compose.ui.platform.LocalDensity.current) { viewportHeight.toDp() } * 0.8f,
             start = 28.dp - GLOW_ROOM,
@@ -916,14 +923,14 @@ internal fun ArcLyricsPanel(
 
             val style = if (isSynced) {
                 MaterialTheme.typography.headlineLarge.copy(
-                    fontSize = 34.sp,
-                    lineHeight = 44.sp,
+                    fontSize = if (isHeroMode) 24.sp else 34.sp,
+                    lineHeight = if (isHeroMode) 34.sp else 44.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
             } else {
                 MaterialTheme.typography.headlineLarge.copy(
-                    fontSize = 30.sp,
-                    lineHeight = 38.sp,
+                    fontSize = if (isHeroMode) 22.sp else 30.sp,
+                    lineHeight = if (isHeroMode) 30.sp else 38.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
             }
