@@ -897,6 +897,7 @@ internal fun ArcLyricsPanel(
                     !isSynced -> 0.95f
                     isActive -> 1f
                     browsing -> BROWSING_ALPHA
+                    isHeroMode -> 0f
                     else -> LINE_FALLOFF_ALPHA[step]
                 },
                 animationSpec = tween(LYRIC_SETTLE_MS, easing = LYRIC_EASING),
