@@ -466,9 +466,10 @@ private fun ContentDrawScope.sweepTo(layout: TextLayoutResult, revealedChars: Fl
         val cut = revealedChars < end
         val overhang = GLOW_ROOM.toPx()
         val internalOverhang = 12f
+        val verticalShift = 16f
         val right = if (cut) horizontalAt(layout, revealedChars, visualLine) + internalOverhang else layout.getLineRight(visualLine) + overhang
-        val top = if (visualLine == 0) layout.getLineTop(visualLine) - overhang else layout.getLineTop(visualLine)
-        val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + overhang else layout.getLineBottom(visualLine)
+        val top = if (visualLine == 0) layout.getLineTop(visualLine) - overhang else layout.getLineTop(visualLine) + verticalShift
+        val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + overhang else layout.getLineBottom(visualLine) + verticalShift
         val left = layout.getLineLeft(visualLine) - overhang
 
         clipRect(left = left, top = top, right = right, bottom = bottom) {
@@ -500,8 +501,9 @@ private fun ContentDrawScope.riseWith(
     for (visualLine in 0 until layout.lineCount) {
         val lineStart = layout.getLineStart(visualLine)
         val lineEnd = layout.getLineEnd(visualLine, visibleEnd = true)
-        val top = if (visualLine == 0) layout.getLineTop(visualLine) + inset - overhang else layout.getLineTop(visualLine) + inset
-        val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + inset + overhang else layout.getLineBottom(visualLine) + inset
+        val verticalShift = 16f
+        val top = if (visualLine == 0) layout.getLineTop(visualLine) + inset - overhang else layout.getLineTop(visualLine) + inset + verticalShift
+        val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + inset + overhang else layout.getLineBottom(visualLine) + inset + verticalShift
         var at = lineStart
         var edge = layout.getLineLeft(visualLine) + inset - overhang
         val ws = line.words ?: continue
@@ -583,8 +585,9 @@ private fun ContentDrawScope.glowGrown(
             if (to <= from) continue
             val dx = growth.shift * em
             val dy = -growth.rise * peak * fall
-            val rowTop = layout.getLineTop(visualLine) + inset
-            val bottom = layout.getLineBottom(visualLine) + inset + GLOW_ROOM.toPx()
+            val verticalShift = 16f
+            val rowTop = if (visualLine == 0) layout.getLineTop(visualLine) + inset - GLOW_ROOM.toPx() else layout.getLineTop(visualLine) + inset + verticalShift
+            val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + inset + GLOW_ROOM.toPx() else layout.getLineBottom(visualLine) + inset + verticalShift
             val overhang = (to - from) * (growth.scale - 1f) / 2f
             clipRect(
                 left = from - overhang + dx, top = rowTop - peak * GROW_HEADROOM,
