@@ -968,7 +968,10 @@ fun ArcNowPlayingScreen(
                                     ) {
                                     // Far Left — Lyrics
                                     IconButton(
-                                        onClick = { showLyrics = true },
+                                        onClick = { 
+                                            showLyrics = true
+                                            showQueue = false 
+                                        },
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Icon(
@@ -1024,7 +1027,10 @@ fun ArcNowPlayingScreen(
 
                                     // Far Right — Queue
                                     IconButton(
-                                        onClick = { showQueue = true },
+                                        onClick = { 
+                                            showQueue = true
+                                            showLyrics = false 
+                                        },
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Icon(
