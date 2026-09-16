@@ -464,9 +464,9 @@ private fun ContentDrawScope.sweepTo(layout: TextLayoutResult, revealedChars: Fl
         if (revealedChars <= start) return
         val end = layout.getLineEnd(visualLine, visibleEnd = true)
         val cut = revealedChars < end
-        
         val overhang = GLOW_ROOM.toPx()
-        val right = if (cut) horizontalAt(layout, revealedChars, visualLine) else layout.getLineRight(visualLine) + overhang
+        val internalOverhang = 12f
+        val right = if (cut) horizontalAt(layout, revealedChars, visualLine) + internalOverhang else layout.getLineRight(visualLine) + overhang
         val top = if (visualLine == 0) layout.getLineTop(visualLine) - overhang else layout.getLineTop(visualLine)
         val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + overhang else layout.getLineBottom(visualLine)
         val left = layout.getLineLeft(visualLine) - overhang
@@ -516,14 +516,17 @@ private fun ContentDrawScope.riseWith(
             val from = layout.xOn(start, visualLine, inset)
             val to = layout.xOn(end, visualLine, inset)
             if (to <= from) continue
-            if (start > at) sliceRisen(edge, top, from, bottom, 0f)
             
-            val wordTo = if (end == lineEnd) to + overhang else to
+            val internalOverhang = 12f
+            val wordFrom = if (start == lineStart) from - overhang else from - internalOverhang
+            val wordTo = if (end == lineEnd) to + overhang else to + internalOverhang
+
+            if (start > at) sliceRisen(edge, top, wordFrom, bottom, 0f)
             
             if (held != null) {
                 growEach(layout, held, line, positionMs, visualLine, start, end, top, bottom, inset, peak, em, growth)
             } else {
-                sliceRisen(from, top - peak, wordTo, bottom, -lift * peak)
+                sliceRisen(wordFrom, top - peak, wordTo, bottom, -lift * peak)
             }
             at = end; edge = wordTo
         }
