@@ -609,7 +609,7 @@ internal fun ArcSweptLyricLine(
 ) {
     var layout by remember(line) { mutableStateOf<TextLayoutResult?>(null) }
     val growth = remember { ArcCharGrowth() }
-    val room = if (glowAlpha > 0f) Modifier.padding(GLOW_ROOM) else Modifier
+    val room = Modifier.padding(GLOW_ROOM)
 
     val riseAgainst: (Modifier) -> Modifier = { inner ->
         if (!rise || line.words.isNullOrEmpty()) {
