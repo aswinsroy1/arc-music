@@ -1623,17 +1623,29 @@ fun ScrubberAndTimer(
         modifier = Modifier
             .fillMaxWidth()
             .height(36.dp)
-            .pointerInput(Unit) {
+            .pointerInput(seekbarThumbRadius) {
+                val thumbRadiusPx = seekbarThumbRadius.dp.toPx()
                 detectTapGestures { offset ->
-                    val newProgress = (offset.x / size.width).coerceIn(0f, 1f)
+                    val trackStart = thumbRadiusPx
+                    val trackEnd = size.width - thumbRadiusPx
+                    val trackWidth = trackEnd - trackStart
+                    val newProgress = if (trackWidth > 0f) {
+                        ((offset.x - trackStart) / trackWidth).coerceIn(0f, 1f)
+                    } else 0f
                     viewModel.seekTo(newProgress)
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(seekbarThumbRadius) {
+                val thumbRadiusPx = seekbarThumbRadius.dp.toPx()
                 detectHorizontalDragGestures(
-                    onDragStart = {
+                    onDragStart = { offset ->
                         isSeeking = true
-                        sliderPosition = (it.x / size.width).coerceIn(0f, 1f)
+                        val trackStart = thumbRadiusPx
+                        val trackEnd = size.width - thumbRadiusPx
+                        val trackWidth = trackEnd - trackStart
+                        sliderPosition = if (trackWidth > 0f) {
+                            ((offset.x - trackStart) / trackWidth).coerceIn(0f, 1f)
+                        } else 0f
                     },
                     onDragEnd = {
                         isSeeking = false
@@ -1642,14 +1654,23 @@ fun ScrubberAndTimer(
                     onDragCancel = { isSeeking = false }
                 ) { change, dragAmount ->
                     change.consume()
-                    sliderPosition = (sliderPosition + dragAmount / size.width).coerceIn(0f, 1f)
+                    val trackStart = thumbRadiusPx
+                    val trackEnd = size.width - thumbRadiusPx
+                    val trackWidth = trackEnd - trackStart
+                    if (trackWidth > 0f) {
+                        sliderPosition = (sliderPosition + dragAmount / trackWidth).coerceIn(0f, 1f)
+                    }
                 }
             }
     ) {
         val w = size.width
         val h = size.height
-        val playedWidth = w * progress
         val thumbRadiusPx = seekbarThumbRadius.dp.toPx()
+        val trackStart = thumbRadiusPx
+        val trackEnd = w - thumbRadiusPx
+        val trackWidth = trackEnd - trackStart
+        val thumbCx = trackStart + trackWidth * progress
+        val playedWidth = thumbCx - trackStart
 
         // --- Geometry ---
         // The track sits vertically centered. We define:
@@ -1676,15 +1697,15 @@ fun ScrubberAndTimer(
         val unplayedCenterY = bottomY - baselineHeightPx / 2f
         drawLine(
             color = textColor.copy(alpha = 0.25f),
-            start = Offset(playedWidth.coerceAtMost(w), unplayedCenterY),
-            end = Offset(w, unplayedCenterY),
+            start = Offset(thumbCx, unplayedCenterY),
+            end = Offset(trackEnd, unplayedCenterY),
             strokeWidth = seekbarUnplayedStroke.dp.toPx(),
             cap = StrokeCap.Round
         )
 
         // --- Draw played region ---
-        if (playedWidth > 1f) {
-            val clampedWidth = playedWidth.coerceAtMost(w)
+        if (playedWidth > 0f) {
+            val clampedWidth = playedWidth
             val steps = clampedWidth.toInt().coerceAtLeast(2)
 
             // Top-edge Y for a given x along the played region.
@@ -1703,37 +1724,36 @@ fun ScrubberAndTimer(
 
             // --- Layer 2 (shadow) â€” phase-shifted, dimmer ---
             val path2 = Path()
-            path2.moveTo(0f, bottomY)
+            path2.moveTo(trackStart, bottomY)
             for (i in 0..steps) {
-                val x = (i.toFloat() / steps) * clampedWidth
-                path2.lineTo(x, waveTopY(x, seekbarShadowOffset))
+                val x = trackStart + (i.toFloat() / steps) * clampedWidth
+                path2.lineTo(x, waveTopY(x - trackStart, seekbarShadowOffset))
             }
-            path2.lineTo(clampedWidth, bottomY)
+            path2.lineTo(trackStart + clampedWidth, bottomY)
             path2.close()
             drawPath(path = path2, color = textColor.copy(alpha = seekbarShadowOpacity))
 
             // Round the ends of the shadow wave
-            drawCircle(color = textColor.copy(alpha = seekbarShadowOpacity), radius = baselineHeightPx / 2f, center = Offset(0f, bottomY - baselineHeightPx / 2f))
-            drawCircle(color = textColor.copy(alpha = seekbarShadowOpacity), radius = baselineHeightPx / 2f, center = Offset(clampedWidth, bottomY - baselineHeightPx / 2f))
+            drawCircle(color = textColor.copy(alpha = seekbarShadowOpacity), radius = baselineHeightPx / 2f, center = Offset(trackStart, bottomY - baselineHeightPx / 2f))
+            drawCircle(color = textColor.copy(alpha = seekbarShadowOpacity), radius = baselineHeightPx / 2f, center = Offset(trackStart + clampedWidth, bottomY - baselineHeightPx / 2f))
 
             // --- Layer 1 (foreground primary wave) ---
             val path1 = Path()
-            path1.moveTo(0f, bottomY)
+            path1.moveTo(trackStart, bottomY)
             for (i in 0..steps) {
-                val x = (i.toFloat() / steps) * clampedWidth
-                path1.lineTo(x, waveTopY(x, 0f))
+                val x = trackStart + (i.toFloat() / steps) * clampedWidth
+                path1.lineTo(x, waveTopY(x - trackStart, 0f))
             }
-            path1.lineTo(clampedWidth, bottomY)
+            path1.lineTo(trackStart + clampedWidth, bottomY)
             path1.close()
             drawPath(path = path1, color = textColor.copy(alpha = seekbarPrimaryOpacity))
             
             // Round the ends of the primary wave
-            drawCircle(color = textColor.copy(alpha = seekbarPrimaryOpacity), radius = baselineHeightPx / 2f, center = Offset(0f, bottomY - baselineHeightPx / 2f))
-            drawCircle(color = textColor.copy(alpha = seekbarPrimaryOpacity), radius = baselineHeightPx / 2f, center = Offset(clampedWidth, bottomY - baselineHeightPx / 2f))
+            drawCircle(color = textColor.copy(alpha = seekbarPrimaryOpacity), radius = baselineHeightPx / 2f, center = Offset(trackStart, bottomY - baselineHeightPx / 2f))
+            drawCircle(color = textColor.copy(alpha = seekbarPrimaryOpacity), radius = baselineHeightPx / 2f, center = Offset(trackStart + clampedWidth, bottomY - baselineHeightPx / 2f))
         }
 
         // --- Thumb circle ---
-        val thumbCx = playedWidth.coerceIn(thumbRadiusPx, w - thumbRadiusPx)
         val thumbCy = bottomY - baselineHeightPx / 2f
         drawCircle(
             color = textColor,
