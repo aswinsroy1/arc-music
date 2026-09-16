@@ -414,7 +414,7 @@ fun ArcNowPlayingScreen(
     )
     
     val backgroundDimAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.5f else 0.0f,
+        targetValue = if (showLyrics) 0.45f else 0.0f,
         animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
         label = "backgroundDimAlpha"
     )
@@ -1803,9 +1803,11 @@ fun ArcLyricsContent(
 
     val currentPosition = viewModel.currentPlaybackPosition.collectAsState().value
     val isPlaying by viewModel.isPlaying.collectAsState()
-    
-    val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
-    val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
+    val controlsFadeHeight by animateDpAsState(
+        targetValue = if (lyricsControlsVisible) 260.dp else 0.dp,
+        animationSpec = tween(durationMillis = 220),
+        label = "controlsFadeHeight"
+    )
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -1822,32 +1824,24 @@ fun ArcLyricsContent(
             controlsOpen = lyricsControlsVisible,
             onRevealControls = onRevealControls,
             onHideControls = onHideControls,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Scrim behind controls when they are visible
-        androidx.compose.animation.AnimatedVisibility(
-            visible = lyricsControlsVisible,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            enter = fadeIn(tween(220)),
-            exit = fadeOut(tween(160)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                bgColor.copy(alpha = 0.65f),
-                                bgColor.copy(alpha = 0.96f),
-                                bgColor
-                            )
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    val fadePx = controlsFadeHeight.toPx()
+                    if (fadePx > 0f) {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Black, Color.Transparent),
+                                startY = size.height - fadePx,
+                                endY = size.height
+                            ),
+                            blendMode = BlendMode.DstIn
                         )
-                    )
-            )
-        }
+                    }
+                }
+        )
     }
 }
 
