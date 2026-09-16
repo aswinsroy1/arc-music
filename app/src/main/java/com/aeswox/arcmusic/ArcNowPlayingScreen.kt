@@ -408,9 +408,15 @@ fun ArcNowPlayingScreen(
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics || showQueue) 0.88f else 0.7f,
+        targetValue = if (showLyrics || showQueue) 0.88f else 0.4f,
         animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
+    )
+    
+    val backgroundDimAlpha by animateFloatAsState(
+        targetValue = if (showLyrics) 0.5f else 0.0f,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "backgroundDimAlpha"
     )
     
     val textAlpha = if (isDarkTheme) 0.7f else 0.6f
@@ -667,6 +673,13 @@ fun ArcNowPlayingScreen(
                             startY = 0f
                         )
                     )
+            )
+
+            // Dim layer for Lyrics view
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = backgroundDimAlpha))
             )
 
         }
