@@ -415,7 +415,7 @@ fun ArcNowPlayingScreen(
     )
     
     val backgroundDimAlpha by animateFloatAsState(
-        targetValue = if (showLyrics) 0.45f else 0.0f,
+        targetValue = if (showLyrics) 0.38f else 0.0f,
         animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
         label = "backgroundDimAlpha"
     )
