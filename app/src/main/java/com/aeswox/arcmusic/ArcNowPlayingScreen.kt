@@ -1887,16 +1887,8 @@ fun ArcLyricsContent(
     val currentPosition = viewModel.currentPlaybackPosition.collectAsState().value
     val isPlaying by viewModel.isPlaying.collectAsState()
     val fadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
-    val controlsFadeTop by animateFloatAsState(
-        targetValue = if (lyricsControlsVisible) controlsHeightPx.toFloat() + fadeHeightPx else fadeHeightPx,
-        animationSpec = tween(durationMillis = 220),
-        label = "controlsFadeTop"
-    )
-    val controlsFadeBottom by animateFloatAsState(
-        targetValue = if (lyricsControlsVisible) controlsHeightPx.toFloat() else 0f,
-        animationSpec = tween(durationMillis = 220),
-        label = "controlsFadeBottom"
-    )
+    val controlsFadeTop = controlsHeightPx.toFloat() + fadeHeightPx
+    val controlsFadeBottom = controlsHeightPx.toFloat()
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -2136,16 +2128,8 @@ fun ArcQueueContent(
     val listState = rememberLazyListState()
 
     val fadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
-    val controlsFadeTop by animateFloatAsState(
-        targetValue = if (queueControlsVisible) controlsHeightPx.toFloat() + fadeHeightPx else fadeHeightPx,
-        animationSpec = tween(durationMillis = 220),
-        label = "controlsFadeTop"
-    )
-    val controlsFadeBottom by animateFloatAsState(
-        targetValue = if (queueControlsVisible) controlsHeightPx.toFloat() else 0f,
-        animationSpec = tween(durationMillis = 220),
-        label = "controlsFadeBottom"
-    )
+    val controlsFadeTop = controlsHeightPx.toFloat() + fadeHeightPx
+    val controlsFadeBottom = controlsHeightPx.toFloat()
 
     val controlsSlopPx = with(androidx.compose.ui.platform.LocalDensity.current) { 20.dp.toPx() }
     val controlsOnScroll = remember(listState, controlsSlopPx) {
