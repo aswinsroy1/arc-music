@@ -30,7 +30,7 @@ fun PlayPauseMorphIcon(
     val progress by animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0f,
         animationSpec = androidx.compose.animation.core.tween(
-            durationMillis = 300,
+            durationMillis = 360,
             easing = androidx.compose.animation.core.CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
         ),
         label = "PlayPauseMorph"

@@ -838,7 +838,7 @@ fun ArcNowPlayingScreen(
             val p by animateFloatAsState(
                 targetValue = if (isExpanded) 1f else 0f,
                 animationSpec = tween(
-                    durationMillis = 460,
+                    durationMillis = 552,
                     easing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
                 ),
                 label = "ControlsCardProgress"
