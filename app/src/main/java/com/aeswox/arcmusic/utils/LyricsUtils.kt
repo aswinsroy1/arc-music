@@ -8,10 +8,10 @@ import java.util.regex.Pattern
 object LyricsUtils {
 
     private val LRC_METADATA_PATTERN = Pattern.compile("^\\[[a-zA-Z]+:.*]$")
-    private val LRC_LINE_REGEX = Pattern.compile("^\\[(\\d{2,}):(\\d{2})(?:[.:](\\d{2,3}))?](.*)$")
-    private val LRC_WORD_TAG_REGEX = Regex("<\\d{2,}:\\d{2}[.:]\\d{2,3}>")
-    private val LRC_WORD_SPLIT_REGEX = Regex("(?=<\\d{2,}:\\d{2}[.:]\\d{2,3}>)")
-    private val LRC_WORD_REGEX = Pattern.compile("^<(\\d{2,}):(\\d{2})(?:[.:](\\d{2,3}))?>(.*)$")
+    private val LRC_LINE_REGEX = Pattern.compile("^\\[(\\d{1,}):(\\d{2})(?:[.:](\\d{2,3}))?](.*)$")
+    private val LRC_WORD_TAG_REGEX = Regex("[<\\[]\\d{1,}:\\d{2}[.:]\\d{2,3}[>\\]]")
+    private val LRC_WORD_SPLIT_REGEX = Regex("(?=[<\\[]\\d{1,}:\\d{2}[.:]\\d{2,3}[>\\]])")
+    private val LRC_WORD_REGEX = Pattern.compile("^[<\\[](\\d{1,}):(\\d{2})(?:[.:](\\d{2,3}))?[>\\]](.*)$")
 
     fun parseLyrics(lyricsText: String?): Lyrics? {
         if (lyricsText.isNullOrEmpty()) {
