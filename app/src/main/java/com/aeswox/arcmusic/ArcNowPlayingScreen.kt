@@ -308,6 +308,7 @@ fun ArcNowPlayingScreen(
 
     var showLyrics by remember { mutableStateOf(false) }
     var lyricsControlsVisible by remember { mutableStateOf(true) }
+    var controlsHeightPx by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(showLyrics) {
         if (!showLyrics) {
@@ -744,6 +745,7 @@ fun ArcNowPlayingScreen(
                                 isWhiteArtwork = isWhiteArtwork,
                                 imageUrl = imageUrl,
                                 lyricsControlsVisible = lyricsControlsVisible,
+                                controlsHeightPx = controlsHeightPx,
                                 onRevealControls = { lyricsControlsVisible = true },
                                 onHideControls = { lyricsControlsVisible = false },
                                 onDismiss = { showLyrics = false }
@@ -815,6 +817,7 @@ fun ArcNowPlayingScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 32.dp)
+                    .onSizeChanged { controlsHeightPx = it.height }
             ) {
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val repeatMode by viewModel.repeatMode.collectAsState()
@@ -1767,6 +1770,7 @@ fun ArcLyricsContent(
     isWhiteArtwork: Boolean = false,
     imageUrl: String = "",
     lyricsControlsVisible: Boolean = true,
+    controlsHeightPx: Int = 0,
     onRevealControls: () -> Unit = {},
     onHideControls: () -> Unit = {},
     onDismiss: () -> Unit = {}
@@ -1803,10 +1807,16 @@ fun ArcLyricsContent(
 
     val currentPosition = viewModel.currentPlaybackPosition.collectAsState().value
     val isPlaying by viewModel.isPlaying.collectAsState()
-    val controlsFadeHeight by animateDpAsState(
-        targetValue = if (lyricsControlsVisible) 260.dp else 0.dp,
+    val fadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
+    val controlsFadeTop by animateFloatAsState(
+        targetValue = if (lyricsControlsVisible) controlsHeightPx.toFloat() + fadeHeightPx else fadeHeightPx,
         animationSpec = tween(durationMillis = 220),
-        label = "controlsFadeHeight"
+        label = "controlsFadeTop"
+    )
+    val controlsFadeBottom by animateFloatAsState(
+        targetValue = if (lyricsControlsVisible) controlsHeightPx.toFloat() else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "controlsFadeBottom"
     )
 
     Box(modifier = Modifier
@@ -1829,13 +1839,12 @@ fun ArcLyricsContent(
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
-                    val fadePx = controlsFadeHeight.toPx()
-                    if (fadePx > 0f) {
+                    if (controlsFadeTop > 0f) {
                         drawRect(
                             brush = Brush.verticalGradient(
                                 colors = listOf(Color.Black, Color.Transparent),
-                                startY = size.height - fadePx,
-                                endY = size.height
+                                startY = size.height - controlsFadeTop,
+                                endY = size.height - controlsFadeBottom
                             ),
                             blendMode = BlendMode.DstIn
                         )
