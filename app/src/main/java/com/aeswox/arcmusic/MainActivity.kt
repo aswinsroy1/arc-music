@@ -241,7 +241,8 @@ class MainActivity : ComponentActivity() {
                                 scaleY = homeScale
                                 alpha = homeAlpha
                             },
-                            containerColor = Color.Transparent
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onBackground
                         ) { innerPadding ->
                         val navController = rememberNavController()
                         val density = LocalDensity.current
