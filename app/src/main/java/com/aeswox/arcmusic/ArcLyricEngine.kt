@@ -936,7 +936,7 @@ internal fun ArcLyricsPanel(
                 )
             }
 
-            val alignEnd = line.voice % 2 == 0
+            val alignEnd = if (isHeroMode) false else line.voice % 2 == 0
 
             val shape = Modifier
                 .fillMaxWidth()

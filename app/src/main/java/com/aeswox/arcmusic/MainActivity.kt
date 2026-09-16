@@ -1755,7 +1755,7 @@ fun HeroSection(
                     exit = androidx.compose.animation.fadeOut(),
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .padding(bottom = 80.dp)
+                        .padding(bottom = 32.dp)
                 ) {
                     WordSyncedLyrics(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
