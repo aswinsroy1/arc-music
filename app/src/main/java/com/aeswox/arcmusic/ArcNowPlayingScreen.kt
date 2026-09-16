@@ -381,6 +381,7 @@ fun ArcNowPlayingScreen(
     val targetIsArtworkDark by remember(targetAccentColor) { derivedStateOf { targetAccentColor.luminance() < 0.4f } }
     
     val targetLightThemeBgColor = if (targetIsArtworkDark) targetAccentColor else androidx.compose.ui.graphics.lerp(targetAccentColor, Color.White, 0.7f)
+    val targetDarkThemeBgColor = androidx.compose.ui.graphics.lerp(targetAccentColor, Color.Black, 0.85f)
     val targetTextColor = if (isDarkTheme) Color.White else if (isWhiteArtwork) Color.White else if (targetIsArtworkDark) Color.White else Color.Black
 
     val accentColor by animateColorAsState(
@@ -393,6 +394,11 @@ fun ArcNowPlayingScreen(
         animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
         label = "lightThemeBgColor"
     )
+    val darkThemeBgColor by animateColorAsState(
+        targetValue = targetDarkThemeBgColor,
+        animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+        label = "darkThemeBgColor"
+    )
     val textColor by animateColorAsState(
         targetValue = targetTextColor,
         animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
@@ -402,7 +408,7 @@ fun ArcNowPlayingScreen(
     val isArtworkDark by remember(accentColor) { derivedStateOf { accentColor.luminance() < 0.4f } }
     
     val gradientTopAlpha by animateFloatAsState(
-        targetValue = if (showLyrics || showQueue) 0.88f else 0.0f,
+        targetValue = if (showLyrics || showQueue) 0.88f else 0.4f,
         animationSpec = spring(dampingRatio = 0.99f, stiffness = 300f),
         label = "gradientTopAlpha"
     )
@@ -524,15 +530,10 @@ fun ArcNowPlayingScreen(
             
 
             // Dark scrim over the blurred background to darken it
-
             Box(
-
                 modifier = Modifier
-
                     .fillMaxSize()
-
-                    .background(if (isDarkTheme) Color.Black.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f) else lightThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f))
-
+                    .background(if (isDarkTheme) darkThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f) else lightThemeBgColor.copy(alpha = if (isWhiteArtwork) 0.92f else 0.5f))
             )
 
 
@@ -643,7 +644,7 @@ fun ArcNowPlayingScreen(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = gradientTopAlpha),
+                                (if (isDarkTheme) darkThemeBgColor else lightThemeBgColor).copy(alpha = gradientTopAlpha),
                                 Color.Transparent
                             )
                         )
@@ -660,8 +661,8 @@ fun ArcNowPlayingScreen(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent, 
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = if (isWhiteArtwork) 0.85f else 0.4f), 
-                                (if (isDarkTheme) Color.Black else lightThemeBgColor).copy(alpha = if (isWhiteArtwork) 1.0f else 0.8f)
+                                (if (isDarkTheme) darkThemeBgColor else lightThemeBgColor).copy(alpha = if (isWhiteArtwork) 0.85f else 0.4f), 
+                                (if (isDarkTheme) darkThemeBgColor else lightThemeBgColor).copy(alpha = if (isWhiteArtwork) 1.0f else 0.8f)
                             ),
                             startY = 0f
                         )
