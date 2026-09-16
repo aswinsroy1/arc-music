@@ -838,16 +838,19 @@ fun ArcNowPlayingScreen(
             val p by animateFloatAsState(
                 targetValue = if (isExpanded) 1f else 0f,
                 animationSpec = tween(
-                    durationMillis = if (isExpanded) 400 else 350,
-                    easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+                    durationMillis = 460,
+                    easing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
                 ),
                 label = "ControlsCardProgress"
             )
             val late = ((p - 0.6f) / 0.4f).coerceIn(0f, 1f)
+            val swell = kotlin.math.sin(kotlin.math.PI * java.lang.Math.pow(p.toDouble(), 1.5)).toFloat()
+            val dipScale = 1f - 0.035f * swell
 
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .scale(dipScale)
                     .fillMaxWidth()
                     .onSizeChanged { controlsHeightPx = it.height }
                     .padding(horizontal = 24.dp)

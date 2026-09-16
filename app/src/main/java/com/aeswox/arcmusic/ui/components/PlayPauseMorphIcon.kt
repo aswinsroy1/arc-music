@@ -29,9 +29,9 @@ fun PlayPauseMorphIcon(
     // Progress: 0f = Play, 1f = Pause
     val progress by animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 300,
+            easing = androidx.compose.animation.core.CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
         ),
         label = "PlayPauseMorph"
     )
