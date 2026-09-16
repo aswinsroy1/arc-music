@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 import androidx.compose.ui.text.font.FontWeight
 
@@ -2086,6 +2087,22 @@ fun ArcQueueContent(
         label = "controlsFadeBottom"
     )
 
+    val controlsSlopPx = with(androidx.compose.ui.platform.LocalDensity.current) { 20.dp.toPx() }
+    val controlsOnScroll = remember(listState, controlsSlopPx) {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            private var travel = 0f
+            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput && available.y != 0f) {
+                    if (travel != 0f && (travel > 0f) != (available.y > 0f)) travel = 0f
+                    travel += available.y
+                    if (travel <= -controlsSlopPx) { travel = 0f; onHideControls() }
+                    else if (travel >= controlsSlopPx) { travel = 0f; onRevealControls() }
+                }
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -2107,6 +2124,7 @@ fun ArcQueueContent(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
+                .nestedScroll(controlsOnScroll)
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
