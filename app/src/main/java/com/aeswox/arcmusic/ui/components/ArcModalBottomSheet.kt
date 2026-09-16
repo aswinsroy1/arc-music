@@ -2,13 +2,18 @@ package com.aeswox.arcmusic.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,9 +35,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,23 +86,43 @@ fun <T> ArcModalBottomSheet(
             modifier = modifier
         ) {
             val config = LocalConfiguration.current
+            val density = LocalDensity.current
+            val panelEase = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+            val openDur = 400
+            val closeDur = 350
+            val translateYPx = with(density) { 93.5.dp.roundToPx() }
             
-            // Jelly entrance animation inside the sliding sheet
+            // Panel reveal animation matching the React transition
             AnimatedVisibility(
                 visible = isContentVisible,
-                enter = scaleIn(
-                    initialScale = 0.95f,
-                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 400f)
-                ) + fadeIn(tween(200)),
-                exit = scaleOut(
-                    targetScale = 0.95f,
-                    animationSpec = tween(200)
-                ) + fadeOut(tween(200))
+                enter = slideInVertically(
+                    initialOffsetY = { translateYPx },
+                    animationSpec = tween(openDur, easing = panelEase)
+                ) + fadeIn(
+                    animationSpec = tween(openDur, easing = panelEase)
+                ),
+                exit = slideOutVertically(
+                    targetOffsetY = { translateYPx },
+                    animationSpec = tween(closeDur, easing = panelEase)
+                ) + fadeOut(
+                    animationSpec = tween(closeDur, easing = panelEase)
+                )
             ) {
+                val blur by transition.animateDp(
+                    transitionSpec = {
+                        if (targetState == EnterExitState.Visible) tween(openDur, easing = panelEase)
+                        else tween(closeDur, easing = panelEase)
+                    },
+                    label = "blur"
+                ) { state ->
+                    if (state == EnterExitState.Visible) 0.dp else 2.dp
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = config.screenHeightDp.dp * 0.75f)
+                        .blur(blur)
                 ) {
                     AnimatedContent(
                         targetState = activeSheet,
