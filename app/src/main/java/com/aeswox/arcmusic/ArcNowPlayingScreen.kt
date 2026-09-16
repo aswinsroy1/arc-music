@@ -6,6 +6,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.isActive
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -13,6 +16,9 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import kotlin.math.roundToInt
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -45,6 +51,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clipToBounds
 
 import androidx.compose.ui.unit.dp
 
@@ -77,7 +85,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 
 import androidx.compose.ui.input.pointer.pointerInput
 
-import androidx.compose.ui.layout.onSizeChanged
+
 
 import kotlin.math.abs
 
@@ -825,18 +833,25 @@ fun ArcNowPlayingScreen(
             }
 
             // â”€â”€ Persistent Glassmorphic Controls Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            AnimatedVisibility(
-                visible = (!showLyrics && !showQueue) || (showLyrics && lyricsControlsVisible) || (showQueue && queueControlsVisible),
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = fadeIn(tween(220)),
-                exit = fadeOut(tween(160)),
-            ) {
+            // â”€â”€ Persistent Glassmorphic Controls Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            val isExpanded = (!showLyrics && !showQueue) || (showLyrics && lyricsControlsVisible) || (showQueue && queueControlsVisible)
+            val p by animateFloatAsState(
+                targetValue = if (isExpanded) 1f else 0f,
+                animationSpec = tween(
+                    durationMillis = if (isExpanded) 400 else 350,
+                    easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+                ),
+                label = "ControlsCardProgress"
+            )
+            val late = ((p - 0.6f) / 0.4f).coerceIn(0f, 1f)
+
             Box(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .onSizeChanged { controlsHeightPx = it.height }
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp)
+                    .padding(bottom = (32 * p + 16 * (1f - p)).dp)
             ) {
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val repeatMode by viewModel.repeatMode.collectAsState()
@@ -845,21 +860,42 @@ fun ArcNowPlayingScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(32.dp))
+                        .clip(RoundedCornerShape((32 * p + 100 * (1f - p)).dp))
                         .background(textColor.copy(alpha = 0.08f))
                         .border(
                             width = 1.dp,
                             color = textColor.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(32.dp)
+                            shape = RoundedCornerShape((32 * p + 100 * (1f - p)).dp)
                         )
-                        .padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 26.dp)
+                        .padding(
+                            start = 20.dp, 
+                            end = 20.dp, 
+                            top = (32 * p + 12 * (1f - p)).dp, 
+                            bottom = (26 * p + 12 * (1f - p)).dp
+                        )
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    alpha = late
+                                }
+                                .layout { measurable, constraints ->
+                                    val placeable = measurable.measure(constraints)
+                                    val h = (placeable.height * p).roundToInt()
+                                    layout(placeable.width, h) {
+                                        placeable.placeRelative(0, h - placeable.height)
+                                    }
+                                }
+                                .clipToBounds()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                         ) {
                             // Favorite
                             Box(
@@ -919,8 +955,10 @@ fun ArcNowPlayingScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(16.dp))
+                            }
+                        }
 
-                                    Row(
+                        Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
@@ -1001,7 +1039,6 @@ fun ArcNowPlayingScreen(
                         }
             }
         }
-            }
 
 
 

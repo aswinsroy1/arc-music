@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposePath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.CornerRounding
@@ -80,7 +81,17 @@ fun PlayPauseMorphIcon(
         Morph(playPolygon, pausePolygon)
     }
 
-    Canvas(modifier = modifier.size(24.dp)) {
+    val goo = kotlin.math.sin(progress * kotlin.math.PI).toFloat()
+
+    Canvas(
+        modifier = modifier
+            .size(24.dp)
+            .graphicsLayer {
+                rotationZ = 9f * goo
+                scaleX = 1f - 0.13f * goo
+                scaleY = 1f + 0.11f * goo
+            }
+    ) {
         // The original shapes are defined in a 24x24 coordinate space (Lucide default).
         // We need to scale them to fit the actual size of the Canvas.
         val scaleX = size.width / 24f
