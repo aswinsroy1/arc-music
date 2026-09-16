@@ -464,10 +464,14 @@ private fun ContentDrawScope.sweepTo(layout: TextLayoutResult, revealedChars: Fl
         if (revealedChars <= start) return
         val end = layout.getLineEnd(visualLine, visibleEnd = true)
         val cut = revealedChars < end
-        val right = if (cut) horizontalAt(layout, revealedChars, visualLine) else layout.getLineRight(visualLine)
-        val top = layout.getLineTop(visualLine)
-        val bottom = layout.getLineBottom(visualLine)
-        clipRect(left = layout.getLineLeft(visualLine), top = top, right = right, bottom = bottom) {
+        
+        val overhang = 20f // 20px overhang to prevent tight clipping of glyphs like 'e' or 'g'
+        val right = if (cut) horizontalAt(layout, revealedChars, visualLine) else layout.getLineRight(visualLine) + overhang
+        val top = if (visualLine == 0) layout.getLineTop(visualLine) - overhang else layout.getLineTop(visualLine)
+        val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + overhang else layout.getLineBottom(visualLine)
+        val left = if (visualLine == 0) layout.getLineLeft(visualLine) - overhang else layout.getLineLeft(visualLine)
+
+        clipRect(left = left, top = top, right = right, bottom = bottom) {
             this@sweepTo.drawContent()
         }
         if (!feather || !cut) continue
@@ -491,14 +495,15 @@ private fun ContentDrawScope.riseWith(
 ) {
     if (!line.isLifted(positionMs)) { drawContent(); return }
     val em = layout.layoutInput.style.fontSize.toPx()
+    val overhang = 20f
     val spans = line.wordSpans
     for (visualLine in 0 until layout.lineCount) {
         val lineStart = layout.getLineStart(visualLine)
         val lineEnd = layout.getLineEnd(visualLine, visibleEnd = true)
-        val top = layout.getLineTop(visualLine) + inset
-        val bottom = layout.getLineBottom(visualLine) + inset
+        val top = if (visualLine == 0) layout.getLineTop(visualLine) + inset - overhang else layout.getLineTop(visualLine) + inset
+        val bottom = if (visualLine == layout.lineCount - 1) layout.getLineBottom(visualLine) + inset + overhang else layout.getLineBottom(visualLine) + inset
         var at = lineStart
-        var edge = layout.getLineLeft(visualLine) + inset
+        var edge = if (visualLine == 0) layout.getLineLeft(visualLine) + inset - overhang else layout.getLineLeft(visualLine) + inset
         val ws = line.words ?: continue
         for (index in ws.indices) {
             val span = spans.getOrNull(index) ?: continue
@@ -519,7 +524,7 @@ private fun ContentDrawScope.riseWith(
             }
             at = end; edge = to
         }
-        if (at < lineEnd) sliceRisen(edge, top, layout.getLineRight(visualLine) + inset, bottom, 0f)
+        if (at < lineEnd) sliceRisen(edge, top, layout.getLineRight(visualLine) + inset + overhang, bottom, 0f)
     }
 }
 
@@ -573,7 +578,7 @@ private fun ContentDrawScope.glowGrown(
             val dx = growth.shift * em
             val dy = -growth.rise * peak * fall
             val rowTop = layout.getLineTop(visualLine) + inset
-            val bottom = layout.getLineBottom(visualLine) + inset
+            val bottom = layout.getLineBottom(visualLine) + inset + 20f
             val overhang = (to - from) * (growth.scale - 1f) / 2f
             clipRect(
                 left = from - overhang + dx, top = rowTop - peak * GROW_HEADROOM,
