@@ -307,6 +307,20 @@ fun ArcNowPlayingScreen(
     var showDetailsDialog by remember { mutableStateOf(false) }
 
     var showLyrics by remember { mutableStateOf(false) }
+    var lyricsControlsVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(showLyrics) {
+        if (!showLyrics) {
+            lyricsControlsVisible = true
+        }
+    }
+
+    LaunchedEffect(showLyrics, lyricsControlsVisible) {
+        if (showLyrics && lyricsControlsVisible) {
+            delay(LYRICS_CONTROLS_IDLE_MS)
+            lyricsControlsVisible = false
+        }
+    }
 
     var showQueue by remember { mutableStateOf(false) }
 
@@ -715,6 +729,9 @@ fun ArcNowPlayingScreen(
                                 accentColor = accentColor,
                                 isWhiteArtwork = isWhiteArtwork,
                                 imageUrl = imageUrl,
+                                lyricsControlsVisible = lyricsControlsVisible,
+                                onRevealControls = { lyricsControlsVisible = true },
+                                onHideControls = { lyricsControlsVisible = false },
                                 onDismiss = { showLyrics = false }
                             )
                         }
@@ -773,9 +790,14 @@ fun ArcNowPlayingScreen(
             }
 
             // â”€â”€ Persistent Glassmorphic Controls Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            AnimatedVisibility(
+                visible = !showLyrics || lyricsControlsVisible,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(tween(220)),
+                exit = fadeOut(tween(160)),
+            ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 32.dp)
@@ -943,6 +965,7 @@ fun ArcNowPlayingScreen(
                         }
             }
         }
+            }
 
 
 
@@ -1729,160 +1752,74 @@ fun ArcLyricsContent(
     accentColor: Color = Color(0xFFB28D84),
     isWhiteArtwork: Boolean = false,
     imageUrl: String = "",
+    lyricsControlsVisible: Boolean = true,
+    onRevealControls: () -> Unit = {},
+    onHideControls: () -> Unit = {},
     onDismiss: () -> Unit = {}
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
-    val currentlyPlayingEntity by viewModel.currentlyPlaying.collectAsState()
-    val randomPicks       by viewModel.randomPicks.collectAsState()
-    val libraryTracks     by viewModel.libraryTracks.collectAsState()
+    val lyricsData by viewModel.lyricsUiState.collectAsState()
+    val rawSyncedLines = lyricsData?.synced
+    val plainLines = lyricsData?.plain
+    val duration by viewModel.duration.collectAsState()
 
-    val rawSongToPlay = currentlyPlayingEntity ?: randomPicks.firstOrNull()
-    val songToPlay    = libraryTracks.find { it.id == rawSongToPlay?.id } ?: rawSongToPlay
-
-    // imageUrl is passed in from the parent â€” no need to re-derive it here
-
-    // â”€â”€ Lyrics data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    val lyricsData             by viewModel.lyricsUiState.collectAsState()
-val rawSyncedLines = lyricsData?.synced
-    val plainLines     = lyricsData?.plain
-    val duration       by viewModel.duration.collectAsState()
-
-    // Enrich synced lines: insert "â— â— â—" placeholders for long gaps (same as Fruit screen)
+    // Enrich synced lines: insert "● ● ●" placeholders for long gaps
     val syncedLines = remember(rawSyncedLines, duration) {
         if (rawSyncedLines.isNullOrEmpty()) return@remember null
-        val enriched     = mutableListOf<SyncedLine>()
+        val enriched = mutableListOf<SyncedLine>()
         val gapThreshold = 10_000
         if (rawSyncedLines.first().time > gapThreshold)
-            enriched.add(SyncedLine(time = 2000, line = "\u25CF \u25CF \u25CF"))
+            enriched.add(SyncedLine(time = 2000, line = "● ● ●"))
         for (i in 0 until rawSyncedLines.size - 1) {
             enriched.add(rawSyncedLines[i])
             if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
-                enriched.add(SyncedLine(time = rawSyncedLines[i].time + 5000, line = "\u25CF \u25CF \u25CF"))
+                enriched.add(SyncedLine(time = rawSyncedLines[i].time + 5000, line = "● ● ●"))
         }
         if (rawSyncedLines.isNotEmpty()) {
             enriched.add(rawSyncedLines.last())
             if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
-                enriched.add(SyncedLine(time = rawSyncedLines.last().time + 5000, line = "\u25CF \u25CF \u25CF"))
+                enriched.add(SyncedLine(time = rawSyncedLines.last().time + 5000, line = "● ● ●"))
         }
         enriched.toList()
     }
 
-    val currentPositionState = viewModel.currentPlaybackPosition.collectAsState()
     val linesToRender = remember(syncedLines, plainLines) {
-        syncedLines?.map { it.line } ?: plainLines ?: listOf("No lyrics available")
+        syncedLines ?: plainLines?.map { SyncedLine(0, it) } ?: emptyList()
     }
 
-    // â”€â”€ Active-line tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    val currentPosition = viewModel.currentPlaybackPosition.value
-    val initialActiveIndex = remember(syncedLines) {
-        if (!syncedLines.isNullOrEmpty()) {
-            syncedLines.indexOfLast { it.time <= currentPosition }.coerceAtLeast(0)
-        } else 0
-    }
-
-    var activeLineIndex by remember(syncedLines) { mutableIntStateOf(initialActiveIndex) }
-    var activeWordIndex by remember(syncedLines) {
-        val line = syncedLines?.getOrNull(initialActiveIndex)
-        val wordIdx = if (line != null && !line.words.isNullOrEmpty()) {
-            line.words.indexOfLast { it.time <= currentPosition }.coerceAtLeast(0)
-        } else 0
-        mutableIntStateOf(wordIdx)
-    }
-
-    LaunchedEffect(syncedLines) {
-        viewModel.currentPlaybackPosition.collect { pos ->
-            if (!syncedLines.isNullOrEmpty()) {
-                val lastMatchIndex = syncedLines.indexOfLast { it.time <= pos }
-                val newLineIndex = lastMatchIndex.coerceAtLeast(0)
-                if (activeLineIndex != newLineIndex) activeLineIndex = newLineIndex
-                if (newLineIndex in syncedLines.indices) {
-                    val line = syncedLines[newLineIndex]
-                    if (!line.words.isNullOrEmpty()) {
-                        val newWordIndex = line.words.indexOfLast { it.time <= pos }.coerceAtLeast(0)
-                        if (activeWordIndex != newWordIndex) activeWordIndex = newWordIndex
-                    } else {
-                        if (activeWordIndex != -1) activeWordIndex = -1
-                    }
-                }
-            } else {
-                if (activeLineIndex != -1) activeLineIndex = -1
-                if (activeWordIndex != -1) activeWordIndex = -1
-            }
-        }
-    }
-
-    val activeLineIndexProvider = remember { { activeLineIndex } }
-    val activeWordIndexProvider = remember { { activeWordIndex } }
-
-    // â”€â”€ Scroll state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = initialActiveIndex
-    )
-
-    LaunchedEffect(activeLineIndex) {
-        if (activeLineIndex in 0 until linesToRender.size) {
-            val visibleItem = listState.layoutInfo.visibleItemsInfo.find { it.index == activeLineIndex }
-            if (visibleItem != null && visibleItem.offset != 0) {
-                listState.animateScrollBy(
-                    value = visibleItem.offset.toFloat(),
-                    animationSpec = spring(dampingRatio = 0.88f, stiffness = 70f)
-                )
-            } else {
-                listState.animateScrollToItem(activeLineIndex)
-            }
-        }
-    }
-
-    val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor
-                            else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
+    val currentPosition = viewModel.currentPlaybackPosition.collectAsState().value
+    val isPlaying by viewModel.isPlaying.collectAsState()
+    
+    val lightThemeBgColor = if (accentColor.luminance() < 0.4f) accentColor else androidx.compose.ui.graphics.lerp(accentColor, Color.White, 0.7f)
     val bgColor = if (isDarkTheme) Color.Black else lightThemeBgColor
-    val listSpacing = 42.dp
-    val bottomPadding = 300.dp
-    // The entire lyrics layer uses lyricsFraction for alpha â€” this is what makes
-    // the transition feel like elements morphing in place, not a new screen fading in.
+
     Box(modifier = Modifier
         .fillMaxSize()
         .graphicsLayer { alpha = lyricsFraction }
     ) {
+        ArcLyricsPanel(
+            lines = linesToRender,
+            positionMs = currentPosition,
+            isPlaying = isPlaying,
+            textColor = textColor,
+            onSeekToLine = { posMs -> 
+                if (duration > 0) viewModel.seekTo(posMs.toFloat() / duration) 
+            },
+            controlsOpen = lyricsControlsVisible,
+            onRevealControls = onRevealControls,
+            onHideControls = onHideControls,
+            modifier = Modifier.fillMaxSize()
+        )
 
-
-        // â”€â”€ Lyrics list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top   = 140.dp,
-                bottom = bottomPadding,
-                start = 28.dp,
-                end   = 28.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(listSpacing)
+        // Scrim behind controls when they are visible
+        androidx.compose.animation.AnimatedVisibility(
+            visible = lyricsControlsVisible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn(tween(220)),
+            exit = fadeOut(tween(160)),
         ) {
-            itemsIndexed(linesToRender) { lineIndex, line ->
-                val words = remember(lineIndex, syncedLines, line) {
-                    if (!syncedLines.isNullOrEmpty() && !syncedLines[lineIndex].words.isNullOrEmpty())
-                        syncedLines[lineIndex].words!!.map { it.word }
-                    else
-                        line.split(" ")
-                }
-                FadeLyricLine(
-                    lineIndex               = lineIndex,
-                    syncedLine              = syncedLines?.getOrNull(lineIndex),
-                    plainWords              = words,
-                    activeLineIndexProvider = activeLineIndexProvider,
-                    currentPositionProvider = { currentPositionState.value },
-                    listState               = listState,
-                    textColor               = textColor
-                )
-            }
-        }
-
-
-
-        // â”€â”€ Docked bottom controls background (for fading out lyrics) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        Box(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(260.dp)
                     .background(
@@ -1898,6 +1835,8 @@ val rawSyncedLines = lyricsData?.synced
             )
         }
     }
+}
+
 
 @Composable
 fun CustomLyricsIcon(color: Color, modifier: Modifier = Modifier) {
