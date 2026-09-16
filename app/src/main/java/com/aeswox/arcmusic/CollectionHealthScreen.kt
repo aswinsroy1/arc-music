@@ -408,26 +408,26 @@ fun CollectionHealthDuplicatesCard(groupCount: Int, onReviewClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(MaterialTheme.colorScheme.primary)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(32.dp)
     ) {
         Icon(
             imageVector = Icons.Default.CloudDownload,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimary,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(40.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Refine your library",
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onPrimary
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "We found $groupCount duplicate groups. Review them to free up space.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(280.dp)
         )
@@ -435,8 +435,8 @@ fun CollectionHealthDuplicatesCard(groupCount: Int, onReviewClick: () -> Unit) {
         JellyButton(
             onClick = onReviewClick,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.onPrimary,
-                contentColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ),
             shape = CircleShape,
             modifier = Modifier.fillMaxWidth().height(48.dp)
