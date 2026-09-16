@@ -815,9 +815,9 @@ fun ArcNowPlayingScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { controlsHeightPx = it.height }
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 32.dp)
-                    .onSizeChanged { controlsHeightPx = it.height }
             ) {
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val repeatMode by viewModel.repeatMode.collectAsState()
