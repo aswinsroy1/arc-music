@@ -221,7 +221,7 @@ fun AlbumDetailsInfo(
                 text = album?.title ?: "Unknown Album",
                 style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Row(
@@ -233,7 +233,9 @@ fun AlbumDetailsInfo(
                 Text(
                     text = album?.artist ?: "Unknown Artist",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
