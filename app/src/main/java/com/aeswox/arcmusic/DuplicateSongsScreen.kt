@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Delete
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
@@ -153,7 +153,7 @@ fun DuplicateSongsScreen(
                                 .jellyClick { isMenuExpanded = true },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
+                            Icon(imageVector = HugeIcons.MoreVert, contentDescription = "More")
                             ArcDropdownMenu(
                                 expanded = isMenuExpanded,
                                 onDismissRequest = { isMenuExpanded = false }
@@ -364,7 +364,7 @@ fun DuplicateSongsScreen(
                                     horizontalArrangement = Arrangement.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE57373))
+                                    Icon(imageVector = HugeIcons.Delete, contentDescription = null, tint = Color(0xFFE57373))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Delete $totalDuplicatesCount Duplicates", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.background)
                                 }
@@ -622,7 +622,7 @@ fun DuplicateGroupCard(
 
                 if (isSelectedForDeletion) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = HugeIcons.Delete,
                         contentDescription = "Delete",
                         tint = Color(0xFFE57373),
                         modifier = Modifier

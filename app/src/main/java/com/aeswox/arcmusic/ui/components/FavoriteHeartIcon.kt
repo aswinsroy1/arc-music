@@ -10,8 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -38,7 +38,8 @@ fun FavoriteHeartIcon(
     modifier: Modifier = Modifier,
     activeColor: Color = Color(0xFFE53935),
     inactiveColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    iconSize: Dp = 24.dp
+    iconSize: Dp = 24.dp,
+    activeIcon: androidx.compose.ui.graphics.vector.ImageVector = HugeIcons.HeartFilled
 ) {
     val scale = remember { Animatable(1f) }
     var isFirstComposition by remember { mutableStateOf(true) }
@@ -104,7 +105,7 @@ fun FavoriteHeartIcon(
             label = "heartCrossfade"
         ) { favorited ->
             Icon(
-                imageVector = if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                imageVector = if (favorited) activeIcon else HugeIcons.Heart,
                 contentDescription = if (favorited) "Remove from favorites" else "Add to favorites",
                 tint = heartColor,
                 modifier = Modifier.size(iconSize)

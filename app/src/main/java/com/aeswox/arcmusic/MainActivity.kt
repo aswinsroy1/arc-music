@@ -2021,7 +2021,7 @@ fun RecentlyPlayedItem(song: Track, onSongClick: (Track) -> Unit = {}) {
         }
         JellyIconButton(onClick = {}) {
             Icon(
-                imageVector = Icons.Default.MoreVert, 
+                imageVector = HugeIcons.MoreVert, 
                 contentDescription = "More",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -2506,7 +2506,7 @@ fun SearchHeader(
                 items = listOf(
                     MorphingMenuItem(
                         text = "Clear search history",
-                        icon = Icons.Default.Delete,
+                        icon = HugeIcons.Delete,
                         isDestructive = true,
                         onClick = onClearHistory
                     )

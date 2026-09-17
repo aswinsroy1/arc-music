@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import com.aeswox.arcmusic.ui.components.FavoriteHeartIcon
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -159,7 +160,7 @@ fun ArtistDetailsScreen(
                     ),
                     MorphingMenuItem(
                         text = "Share",
-                        icon = Icons.Outlined.Share,
+                        icon = HugeIcons.Share,
                         onClick = { 
                             onNavigateToShare("artist", artistId)
                         }
@@ -180,7 +181,7 @@ fun ArtistDetailsScreen(
                     ),
                     MorphingMenuItem(
                         text = "Delete",
-                        icon = Icons.Outlined.Delete,
+                        icon = HugeIcons.Delete,
                         isDestructive = true,
                         onClick = { }
                     )
@@ -299,7 +300,7 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f), contentColor = MaterialTheme.colorScheme.onSurface),
                     shape = RoundedCornerShape(28.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Shuffle, contentDescription = null)
+                    Icon(imageVector = HugeIcons.Shuffle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Shuffle", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
@@ -405,7 +406,7 @@ fun ArtistTrackItem(number: Int, title: String, subtitle: String, imageUrl: Stri
         }
         JellyIconButton(onClick = { }) {
             Icon(
-                imageVector = Icons.Default.MoreVert,
+                imageVector = HugeIcons.MoreVert,
                 contentDescription = "More",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

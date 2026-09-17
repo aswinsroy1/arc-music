@@ -924,7 +924,8 @@ fun ArcNowPlayingScreen(
                                     isFavorite = songToPlay?.isFavorite == true,
                                     activeColor = Color(0xFFE53935),
                                     inactiveColor = textColor.copy(alpha = 0.7f),
-                                    iconSize = 20.dp
+                                    iconSize = 20.dp,
+                                    activeIcon = HugeIcons.HeartCheck
                                 )
                             }
 
@@ -1276,7 +1277,7 @@ fun ArcNowPlayingScreen(
 
                     Triple(Icons.Default.PlaylistAdd, "Add to playlist", false),
 
-                    Triple(if (songToPlay?.isFavorite == true) Icons.Default.Favorite else Icons.Default.FavoriteBorder, if (songToPlay?.isFavorite == true) "Remove from favorites" else "Add to favorites", false),
+                    Triple(if (songToPlay?.isFavorite == true) HugeIcons.HeartCheck else HugeIcons.Heart, if (songToPlay?.isFavorite == true) "Remove from favorites" else "Add to favorites", false),
 
                     Triple(Icons.Outlined.Bedtime, "Sleep timer", false),
 
@@ -1284,7 +1285,7 @@ fun ArcNowPlayingScreen(
 
                     Triple(Icons.Default.Person, "Go to artist", false),
 
-                    Triple(Icons.Default.Share, "Share", false),
+                    Triple(HugeIcons.Share, "Share", false),
 
                     Triple(Icons.Default.Info, "Details", false)
 
@@ -2372,7 +2373,7 @@ fun ArcQueueContent(
                             ) {
                                 Icon(
                                     imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
-                                        Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                                        HugeIcons.RepeatOne else HugeIcons.Repeat,
                                     contentDescription = "Repeat",
                                     tint = if (repeatActive) accentColor else textColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(16.dp)
@@ -2408,7 +2409,7 @@ fun ArcQueueContent(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Shuffle,
+                                    imageVector = HugeIcons.Shuffle,
                                     contentDescription = "Shuffle",
                                     tint = if (shuffleEnabled) accentColor else textColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(16.dp)
@@ -2444,7 +2445,7 @@ fun ArcQueueContent(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.AllInclusive,
+                                    imageVector = HugeIcons.Autoplay,
                                     contentDescription = "Autoplay",
                                     tint = if (autoplayEnabled) accentColor else textColor.copy(alpha = 0.6f),
                                     modifier = Modifier.size(16.dp)
@@ -2527,7 +2528,7 @@ fun ArcQueueContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AllInclusive,
+                            imageVector = HugeIcons.Autoplay,
                             contentDescription = null,
                             tint = accentColor,
                             modifier = Modifier.size(16.dp)

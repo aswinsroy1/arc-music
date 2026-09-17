@@ -30,6 +30,7 @@ import com.aeswox.arcmusic.ui.animations.jelly
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.aeswox.arcmusic.ui.components.ArcModalBottomSheet
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import com.aeswox.arcmusic.ui.components.JellyButton
 import com.aeswox.arcmusic.ui.components.JellyIconButton
 import com.aeswox.arcmusic.ui.components.JellyFilledIconButton
@@ -117,7 +118,7 @@ fun PlaylistDetailsScreen(
                                 ),
                                 MorphingMenuItem(
                                     text = "Delete playlist",
-                                    icon = Icons.Default.DeleteOutline,
+                                    icon = HugeIcons.Delete,
                                     isDestructive = true,
                                     onClick = { showDeleteConfirmDialog = true }
                                 )
@@ -252,14 +253,14 @@ fun PlaylistDetailsScreen(
                                 viewModel.setCurrentlyPlaying(shuffled.first(), shuffled)
                             }
                         },
-                        icon = Icons.Default.Shuffle,
+                        icon = HugeIcons.Shuffle,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.width(140.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     AppIconButton(
-                        icon = Icons.Default.MoreHoriz,
+                        icon = HugeIcons.MoreHoriz,
                         contentDescription = "More",
                         onClick = { },
                         modifier = Modifier
@@ -633,7 +634,7 @@ fun PlaylistTrackItem(
         )
         
         Icon(
-            imageVector = Icons.Default.MoreVert,
+            imageVector = HugeIcons.MoreVert,
             contentDescription = "More",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
@@ -664,7 +665,7 @@ fun PlaylistDetailsSkeleton(onNavigateBack: () -> Unit) {
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AppIconButton(
-                            icon = Icons.Default.MoreVert,
+                            icon = HugeIcons.MoreVert,
                             contentDescription = "More",
                             onClick = { },
                             tint = MaterialTheme.colorScheme.onSurface

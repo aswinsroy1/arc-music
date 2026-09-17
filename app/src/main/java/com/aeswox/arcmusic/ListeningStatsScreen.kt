@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -494,7 +495,7 @@ fun NightOwlPersonalityCard(
 
     val personality = when {
         isSpread -> Personality(
-            icon          = Icons.Default.Shuffle,
+            icon          = HugeIcons.Shuffle,
             label         = "The Free Spirit",
             blurb         = "Your listening has no rules — you play music whenever the mood strikes, day or night. Music just fits into every corner of your life.",
             gradientStart = Color(0xFF06B6D4),   // electric cyan

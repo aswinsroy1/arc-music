@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.DeleteOutline
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Storage
@@ -119,7 +119,7 @@ fun CanvasSettingsScreen(
                     }
 
                     SettingsItem(
-                        icon = Icons.Outlined.DeleteOutline,
+                        icon = HugeIcons.Delete,
                         text = "Clear Cache",
                         onClick = onClearCache,
                         showArrow = false

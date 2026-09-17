@@ -10,7 +10,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import com.aeswox.arcmusic.ui.components.HugeIcons
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -103,7 +104,7 @@ fun MorphingMenu(
         // The 3-dot button in the top bar (covered by the opaque card when open,
         // seamlessly revealed as the card dissolves when shrinking below 50%)
         AppIconButton(
-            icon = Icons.Default.MoreVert,
+            icon = HugeIcons.MoreVert,
             contentDescription = contentDescription,
             onClick = { open() },
             tint = tint,

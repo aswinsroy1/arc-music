@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Share
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Nfc
 import androidx.compose.material3.*
@@ -220,7 +220,7 @@ fun ShareScreen(
             item {
                 SettingsGroup(title = "OTHER OPTIONS") {
                     SettingsItem(
-                        icon = Icons.Outlined.Share,
+                        icon = HugeIcons.Share,
                         text = "Share to external app",
                         onClick = { viewModel.prepareExternalShare(context) },
                         showArrow = false

@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.*
@@ -221,7 +221,7 @@ fun ExcludedFoldersScreen(
                         }
                         JellyIconButton(onClick = { viewModel.addExcludedFolder(folderPath) }) {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                imageVector = HugeIcons.Add,
                                 contentDescription = "Exclude",
                                 tint = MaterialTheme.colorScheme.primary
                             )

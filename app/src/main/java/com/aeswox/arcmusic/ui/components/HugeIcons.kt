@@ -526,4 +526,631 @@ object HugeIcons {
             }.build()
             return _Library!!
         }
+
+    private var _Add: ImageVector? = null
+
+    val Add: ImageVector
+        get() {
+            if (_Add != null) {
+                return _Add!!
+            }
+            _Add = ImageVector.Builder(
+                name = "Add",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(12.001f, 5.00003f)
+                    lineTo(12.001f, 19.002f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(19.002f, 12.002f)
+                    lineTo(4.99998f, 12.002f)
+                }
+            }.build()
+            return _Add!!
+        }
+
+    private var _Share: ImageVector? = null
+
+    val Share: ImageVector
+        get() {
+            if (_Share != null) {
+                return _Share!!
+            }
+            _Share = ImageVector.Builder(
+                name = "Share",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(9.39584f, 4.5f)
+                    lineTo(8.35417f, 4.5f)
+                    curveTo(5.40789f, 4.5f, 3.93475f, 4.5f, 3.01946f, 5.37868f)
+                    curveTo(2.10417f, 6.25736f, 2.10417f, 7.67157f, 2.10417f, 10.5f)
+                    lineTo(2.10417f, 14.5f)
+                    curveTo(2.10417f, 17.3284f, 2.10417f, 18.7426f, 3.01946f, 19.6213f)
+                    curveTo(3.93475f, 20.5f, 5.40789f, 20.5f, 8.35417f, 20.5f)
+                    lineTo(12.5608f, 20.5f)
+                    curveTo(15.5071f, 20.5f, 16.9802f, 20.5f, 17.8955f, 19.6213f)
+                    curveTo(18.4885f, 19.052f, 18.6973f, 18.2579f, 18.7708f, 17f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(16.1667f, 7f)
+                    lineTo(16.1667f, 3.85355f)
+                    curveTo(16.1667f, 3.65829f, 16.3316f, 3.5f, 16.535f, 3.5f)
+                    curveTo(16.6326f, 3.5f, 16.7263f, 3.53725f, 16.7954f, 3.60355f)
+                    lineTo(21.5275f, 8.14645f)
+                    curveTo(21.7634f, 8.37282f, 21.8958f, 8.67986f, 21.8958f, 9f)
+                    curveTo(21.8958f, 9.32014f, 21.7634f, 9.62718f, 21.5275f, 9.85355f)
+                    lineTo(16.7954f, 14.3964f)
+                    curveTo(16.7263f, 14.4628f, 16.6326f, 14.5f, 16.535f, 14.5f)
+                    curveTo(16.3316f, 14.5f, 16.1667f, 14.3417f, 16.1667f, 14.1464f)
+                    lineTo(16.1667f, 11f)
+                    lineTo(13.1157f, 11f)
+                    curveTo(8.875f, 11f, 7.3125f, 14.5f, 7.3125f, 14.5f)
+                    lineTo(7.3125f, 12f)
+                    curveTo(7.3125f, 9.23858f, 9.64435f, 7f, 12.5208f, 7f)
+                    lineTo(16.1667f, 7f)
+                    close()
+                }
+            }.build()
+            return _Share!!
+        }
+
+    private var _Delete: ImageVector? = null
+
+    val Delete: ImageVector
+        get() {
+            if (_Delete != null) {
+                return _Delete!!
+            }
+            _Delete = ImageVector.Builder(
+                name = "Delete",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    fill = null
+                ) {
+                    moveTo(19.5f, 5.5f)
+                    lineTo(18.8803f, 15.5251f)
+                    curveTo(18.7219f, 18.0864f, 18.6428f, 19.3671f, 18.0008f, 20.2879f)
+                    curveTo(17.6833f, 20.7431f, 17.2747f, 21.1273f, 16.8007f, 21.416f)
+                    curveTo(15.8421f, 22f, 14.559f, 22f, 11.9927f, 22f)
+                    curveTo(9.42312f, 22f, 8.1383f, 22f, 7.17905f, 21.4149f)
+                    curveTo(6.7048f, 21.1257f, 6.296f, 20.7408f, 5.97868f, 20.2848f)
+                    curveTo(5.33688f, 19.3626f, 5.25945f, 18.0801f, 5.10461f, 15.5152f)
+                    lineTo(4.5f, 5.5f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    fill = null
+                ) {
+                    moveTo(3f, 5.5f)
+                    lineTo(21f, 5.5f)
+                    moveTo(16.0557f, 5.5f)
+                    lineTo(15.3731f, 4.09173f)
+                    curveTo(14.9196f, 3.15626f, 14.6928f, 2.68852f, 14.3017f, 2.39681f)
+                    curveTo(14.215f, 2.3321f, 14.1231f, 2.27454f, 14.027f, 2.2247f)
+                    curveTo(13.5939f, 2f, 13.0741f, 2f, 12.0345f, 2f)
+                    curveTo(10.9688f, 2f, 10.436f, 2f, 9.99568f, 2.23412f)
+                    curveTo(9.8981f, 2.28601f, 9.80498f, 2.3459f, 9.71729f, 2.41317f)
+                    curveTo(9.32164f, 2.7167f, 9.10063f, 3.20155f, 8.65861f, 4.17126f)
+                    lineTo(8.05292f, 5.5f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    fill = null
+                ) {
+                    moveTo(9.5f, 16.5f)
+                    lineTo(9.5f, 10.5f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    fill = null
+                ) {
+                    moveTo(14.5f, 16.5f)
+                    lineTo(14.5f, 10.5f)
+                }
+            }.build()
+            return _Delete!!
+        }
+
+    private var _Repeat: ImageVector? = null
+
+    val Repeat: ImageVector
+        get() {
+            if (_Repeat != null) {
+                return _Repeat!!
+            }
+            _Repeat = ImageVector.Builder(
+                name = "Repeat",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(16.3884f, 3f)
+                    lineTo(17.3913f, 3.97574f)
+                    curveTo(17.8393f, 4.41165f, 18.0633f, 4.62961f, 17.9844f, 4.81481f)
+                    curveTo(17.9056f, 5f, 17.5888f, 5f, 16.9552f, 5f)
+                    lineTo(9.19422f, 5f)
+                    curveTo(5.22096f, 5f, 2f, 8.13401f, 2f, 12f)
+                    curveTo(2f, 13.4872f, 2.47668f, 14.8662f, 3.2895f, 16f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(7.61156f, 21f)
+                    lineTo(6.60875f, 20.0243f)
+                    curveTo(6.16074f, 19.5883f, 5.93673f, 19.3704f, 6.01557f, 19.1852f)
+                    curveTo(6.09441f, 19f, 6.4112f, 19f, 7.04478f, 19f)
+                    lineTo(14.8058f, 19f)
+                    curveTo(18.779f, 19f, 22f, 15.866f, 22f, 12f)
+                    curveTo(22f, 10.5128f, 21.5233f, 9.13383f, 20.7105f, 8f)
+                }
+            }.build()
+            return _Repeat!!
+        }
+
+    private var _RepeatOne: ImageVector? = null
+
+    val RepeatOne: ImageVector
+        get() {
+            if (_RepeatOne != null) {
+                return _RepeatOne!!
+            }
+            _RepeatOne = ImageVector.Builder(
+                name = "RepeatOne",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(16.3884f, 3f)
+                    lineTo(17.3913f, 3.97574f)
+                    curveTo(17.8393f, 4.41165f, 18.0633f, 4.62961f, 17.9844f, 4.81481f)
+                    curveTo(17.9056f, 5f, 17.5888f, 5f, 16.9552f, 5f)
+                    lineTo(9.19422f, 5f)
+                    curveTo(5.22096f, 5f, 2f, 8.13401f, 2f, 12f)
+                    curveTo(2f, 13.4872f, 2.47668f, 14.8662f, 3.2895f, 16f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(7.61156f, 21f)
+                    lineTo(6.60875f, 20.0243f)
+                    curveTo(6.16074f, 19.5883f, 5.93673f, 19.3704f, 6.01557f, 19.1852f)
+                    curveTo(6.09441f, 19f, 6.4112f, 19f, 7.04478f, 19f)
+                    lineTo(14.8058f, 19f)
+                    curveTo(18.779f, 19f, 22f, 15.866f, 22f, 12f)
+                    curveTo(22f, 10.5128f, 21.5233f, 9.13383f, 20.7105f, 8f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(13f, 15f)
+                    lineTo(13f, 9.31633f)
+                    curveTo(13f, 9.05613f, 12.7178f, 8.90761f, 12.52f, 9.06373f)
+                    lineTo(11f, 10.2636f)
+                }
+            }.build()
+            return _RepeatOne!!
+        }
+
+    private var _Autoplay: ImageVector? = null
+
+    val Autoplay: ImageVector
+        get() {
+            if (_Autoplay != null) {
+                return _Autoplay!!
+            }
+            _Autoplay = ImageVector.Builder(
+                name = "Autoplay",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    fill = null
+                ) {
+                    moveTo(12f, 12f)
+                    curveTo(12f, 12f, 9.26142f, 17f, 6.5f, 17f)
+                    curveTo(3.73858f, 17f, 2f, 14.7614f, 2f, 12f)
+                    curveTo(2f, 9.23858f, 3.73858f, 7f, 6.5f, 7f)
+                    curveTo(9.26142f, 7f, 12f, 12f, 12f, 12f)
+                    close()
+                    moveTo(12f, 12f)
+                    curveTo(12f, 12f, 14.7386f, 17f, 17.5f, 17f)
+                    curveTo(20.2614f, 17f, 22f, 14.7614f, 22f, 12f)
+                    curveTo(22f, 9.23858f, 20.2614f, 7f, 17.5f, 7f)
+                    curveTo(14.7386f, 7f, 12f, 12f, 12f, 12f)
+                    close()
+                }
+            }.build()
+            return _Autoplay!!
+        }
+
+    private var _Shuffle: ImageVector? = null
+
+    val Shuffle: ImageVector
+        get() {
+            if (_Shuffle != null) {
+                return _Shuffle!!
+            }
+            _Shuffle = ImageVector.Builder(
+                name = "Shuffle",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(19.5576f, 4f)
+                    lineTo(20.4551f, 4.97574f)
+                    curveTo(20.8561f, 5.41165f, 21.0566f, 5.62961f, 20.9861f, 5.81481f)
+                    curveTo(20.9155f, 6f, 20.632f, 6f, 20.0649f, 6f)
+                    curveTo(18.7956f, 6f, 17.2771f, 5.79493f, 16.1111f, 6.4733f)
+                    curveTo(15.3903f, 6.89272f, 14.8883f, 7.62517f, 14.0392f, 9f)
+                    moveTo(3f, 18f)
+                    lineTo(4.58082f, 18f)
+                    curveTo(6.50873f, 18f, 7.47269f, 18f, 8.2862f, 17.5267f)
+                    curveTo(9.00708f, 17.1073f, 9.50904f, 16.3748f, 10.3582f, 15f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(19.5576f, 20f)
+                    lineTo(20.4551f, 19.0243f)
+                    curveTo(20.8561f, 18.5883f, 21.0566f, 18.3704f, 20.9861f, 18.1852f)
+                    curveTo(20.9155f, 18f, 20.632f, 18f, 20.0649f, 18f)
+                    curveTo(18.7956f, 18f, 17.2771f, 18.2051f, 16.1111f, 17.5267f)
+                    curveTo(15.2976f, 17.0534f, 14.7629f, 16.1815f, 13.6935f, 14.4376f)
+                    lineTo(10.7038f, 9.5624f)
+                    curveTo(9.63441f, 7.81853f, 9.0997f, 6.9466f, 8.2862f, 6.4733f)
+                    curveTo(7.47269f, 6f, 6.50873f, 6f, 4.58082f, 6f)
+                    lineTo(3f, 6f)
+                }
+            }.build()
+            return _Shuffle!!
+        }
+
+    private var _Heart: ImageVector? = null
+
+    val Heart: ImageVector
+        get() {
+            if (_Heart != null) {
+                return _Heart!!
+            }
+            _Heart = ImageVector.Builder(
+                name = "Heart",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(10.4107f, 19.9677f)
+                    curveTo(7.58942f, 17.858f, 2f, 13.0348f, 2f, 8.69444f)
+                    curveTo(2f, 5.82563f, 4.10526f, 3.5f, 7f, 3.5f)
+                    curveTo(8.5f, 3.5f, 10f, 4f, 12f, 6f)
+                    curveTo(14f, 4f, 15.5f, 3.5f, 17f, 3.5f)
+                    curveTo(19.8947f, 3.5f, 22f, 5.82563f, 22f, 8.69444f)
+                    curveTo(22f, 13.0348f, 16.4106f, 17.858f, 13.5893f, 19.9677f)
+                    curveTo(12.6399f, 20.6776f, 11.3601f, 20.6776f, 10.4107f, 19.9677f)
+                    close()
+                }
+            }.build()
+            return _Heart!!
+        }
+
+    private var _HeartFilled: ImageVector? = null
+
+    val HeartFilled: ImageVector
+        get() {
+            if (_HeartFilled != null) {
+                return _HeartFilled!!
+            }
+            _HeartFilled = ImageVector.Builder(
+                name = "HeartFilled",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = null,
+                    fill = SolidColor(Color(0xFF000000))
+                ) {
+                    moveTo(10.4107f, 19.9677f)
+                    curveTo(7.58942f, 17.858f, 2f, 13.0348f, 2f, 8.69444f)
+                    curveTo(2f, 5.82563f, 4.10526f, 3.5f, 7f, 3.5f)
+                    curveTo(8.5f, 3.5f, 10f, 4f, 12f, 6f)
+                    curveTo(14f, 4f, 15.5f, 3.5f, 17f, 3.5f)
+                    curveTo(19.8947f, 3.5f, 22f, 5.82563f, 22f, 8.69444f)
+                    curveTo(22f, 13.0348f, 16.4106f, 17.858f, 13.5893f, 19.9677f)
+                    curveTo(12.6399f, 20.6776f, 11.3601f, 20.6776f, 10.4107f, 19.9677f)
+                    close()
+                }
+            }.build()
+            return _HeartFilled!!
+        }
+
+    private var _HeartCheck: ImageVector? = null
+
+    val HeartCheck: ImageVector
+        get() {
+            if (_HeartCheck != null) {
+                return _HeartCheck!!
+            }
+            _HeartCheck = ImageVector.Builder(
+                name = "HeartCheck",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(13f, 20.3025f)
+                    curveTo(12.1525f, 20.6505f, 11.1746f, 20.5389f, 10.4107f, 19.9677f)
+                    curveTo(7.58942f, 17.858f, 2f, 13.0348f, 2f, 8.69444f)
+                    curveTo(2f, 5.82563f, 4.10526f, 3.5f, 7f, 3.5f)
+                    curveTo(8.5f, 3.5f, 10f, 4f, 12f, 6f)
+                    curveTo(14f, 4f, 15.5f, 3.5f, 17f, 3.5f)
+                    curveTo(19.8947f, 3.5f, 22f, 5.82563f, 22f, 8.69444f)
+                    curveTo(22f, 9.12591f, 21.9448f, 9.56214f, 21.8425f, 10f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(14f, 17f)
+                    curveTo(14f, 17f, 15f, 17f, 16f, 19f)
+                    curveTo(16f, 19f, 19.1765f, 14f, 22f, 13f)
+                }
+            }.build()
+            return _HeartCheck!!
+        }
+
+    private var _MoreVert: ImageVector? = null
+
+    val MoreVert: ImageVector
+        get() {
+            if (_MoreVert != null) {
+                return _MoreVert!!
+            }
+            _MoreVert = ImageVector.Builder(
+                name = "MoreVert",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(11.9967f, 12.5f)
+                    lineTo(11.9967f, 12f)
+                    moveTo(11.9967f, 6.5f)
+                    lineTo(11.9967f, 6f)
+                    moveTo(11.9967f, 18.5f)
+                    lineTo(11.9967f, 18f)
+                    moveTo(12.9967f, 12.5f)
+                    curveTo(12.9967f, 11.9477f, 12.549f, 11.5f, 11.9967f, 11.5f)
+                    curveTo(11.4444f, 11.5f, 10.9967f, 11.9477f, 10.9967f, 12.5f)
+                    curveTo(10.9967f, 13.0523f, 11.4444f, 13.5f, 11.9967f, 13.5f)
+                    curveTo(12.549f, 13.5f, 12.9967f, 13.0523f, 12.9967f, 12.5f)
+                    close()
+                    moveTo(12.9967f, 6.5f)
+                    curveTo(12.9967f, 5.94772f, 12.549f, 5.5f, 11.9967f, 5.5f)
+                    curveTo(11.4444f, 5.5f, 10.9967f, 5.94772f, 10.9967f, 6.5f)
+                    curveTo(10.9967f, 7.05228f, 11.4444f, 7.5f, 11.9967f, 7.5f)
+                    curveTo(12.549f, 7.5f, 12.9967f, 7.05228f, 12.9967f, 6.5f)
+                    close()
+                    moveTo(12.9967f, 18.5f)
+                    curveTo(12.9967f, 17.9477f, 12.549f, 17.5f, 11.9967f, 17.5f)
+                    curveTo(11.4444f, 17.5f, 10.9967f, 17.9477f, 10.9967f, 18.5f)
+                    curveTo(10.9967f, 19.0523f, 11.4444f, 19.5f, 11.9967f, 19.5f)
+                    curveTo(12.549f, 19.5f, 12.9967f, 19.0523f, 12.9967f, 18.5f)
+                    close()
+                }
+            }.build()
+            return _MoreVert!!
+        }
+
+    private var _MoreHoriz: ImageVector? = null
+
+    val MoreHoriz: ImageVector
+        get() {
+            if (_MoreHoriz != null) {
+                return _MoreHoriz!!
+            }
+            _MoreHoriz = ImageVector.Builder(
+                name = "MoreHoriz",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(6.00449f, 12.5f)
+                    lineTo(6.00449f, 12f)
+                    moveTo(18.0045f, 12.5f)
+                    lineTo(18.0045f, 12f)
+                    moveTo(12.0045f, 12.5f)
+                    lineTo(12.0045f, 12f)
+                    moveTo(7.00449f, 12.5f)
+                    curveTo(7.00449f, 11.9477f, 6.55677f, 11.5f, 6.00449f, 11.5f)
+                    curveTo(5.4522f, 11.5f, 5.00449f, 11.9477f, 5.00449f, 12.5f)
+                    curveTo(5.00449f, 13.0523f, 5.4522f, 13.5f, 6.00449f, 13.5f)
+                    curveTo(6.55677f, 13.5f, 7.00449f, 13.0523f, 7.00449f, 12.5f)
+                    close()
+                    moveTo(19.0045f, 12.5f)
+                    curveTo(19.0045f, 11.9477f, 18.5568f, 11.5f, 18.0045f, 11.5f)
+                    curveTo(17.4522f, 11.5f, 17.0045f, 11.9477f, 17.0045f, 12.5f)
+                    curveTo(17.0045f, 13.0523f, 17.4522f, 13.5f, 18.0045f, 13.5f)
+                    curveTo(18.5568f, 13.5f, 19.0045f, 13.0523f, 19.0045f, 12.5f)
+                    close()
+                    moveTo(13.0045f, 12.5f)
+                    curveTo(13.0045f, 11.9477f, 12.5568f, 11.5f, 12.0045f, 11.5f)
+                    curveTo(11.4522f, 11.5f, 11.0045f, 11.9477f, 11.0045f, 12.5f)
+                    curveTo(11.0045f, 13.0523f, 11.4522f, 13.5f, 12.0045f, 13.5f)
+                    curveTo(12.5568f, 13.5f, 13.0045f, 13.0523f, 13.0045f, 12.5f)
+                    close()
+                }
+            }.build()
+            return _MoreHoriz!!
+        }
+
+    private var _Filter: ImageVector? = null
+
+    val Filter: ImageVector
+        get() {
+            if (_Filter != null) {
+                return _Filter!!
+            }
+            _Filter = ImageVector.Builder(
+                name = "Filter",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(3f, 6f)
+                    lineTo(21f, 6f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(6f, 12f)
+                    lineTo(18f, 12f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(9f, 18f)
+                    lineTo(15f, 18f)
+                }
+            }.build()
+            return _Filter!!
+        }
 }

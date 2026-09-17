@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -188,7 +189,7 @@ fun GenreHeroSection(
             AppPrimaryButton(
                 text = "Shuffle Genre",
                 onClick = onShuffleClick,
-                icon = Icons.Default.Shuffle
+                icon = HugeIcons.Shuffle
             )
         }
     }

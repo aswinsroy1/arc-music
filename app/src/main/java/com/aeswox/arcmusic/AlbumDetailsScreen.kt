@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -172,7 +173,7 @@ fun AlbumDetailsHeader(
                 )
             } else {
                 AppIconButton(
-                    icon = Icons.Default.MoreVert,
+                    icon = HugeIcons.MoreVert,
                     contentDescription = "More",
                     onClick = { },
                     tint = MaterialTheme.colorScheme.onSurface
@@ -322,7 +323,7 @@ fun AlbumDetailsInfo(
                     shape = RoundedCornerShape(28.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Shuffle,
+                        imageVector = HugeIcons.Shuffle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface
                     )

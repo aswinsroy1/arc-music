@@ -39,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import com.aeswox.arcmusic.ui.components.ArcModalBottomSheet
 import com.aeswox.arcmusic.ui.components.MorphingMenu
 import com.aeswox.arcmusic.ui.components.MorphingMenuItem
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -950,7 +951,7 @@ fun LibraryMainSection(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { sortExpanded = true }) {
                                 Icon(
-                                    imageVector = Icons.Default.Sort,
+                                    imageVector = HugeIcons.Filter,
                                     contentDescription = "Sort by",
                                     tint = MaterialTheme.colorScheme.onSurface
                                 )
@@ -966,7 +967,7 @@ fun LibraryMainSection(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Add,
+                                    imageVector = HugeIcons.Add,
                                     contentDescription = "Create Playlist",
                                     tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(24.dp)
@@ -983,7 +984,7 @@ fun LibraryMainSection(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Shuffle,
+                                        imageVector = HugeIcons.Shuffle,
                                         contentDescription = "Shuffle",
                                         tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(20.dp)
@@ -1590,26 +1591,26 @@ fun SelectionBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val favoriteIcon = if (currentTab == "Favorites" || isAllFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder
+        val favoriteIcon = if (currentTab == "Favorites" || isAllFavorited) HugeIcons.HeartFilled else HugeIcons.Heart
         val favoriteLabel = if (currentTab == "Favorites") "REMOVE" else if (isAllFavorited) "UNFAVORITE" else "FAVORITE"
         
         if (currentTab == "Playlists") {
             BottomBarActionItem(icon = Icons.Default.Edit, label = "RENAME", onClick = onRename)
-            BottomBarActionItem(icon = Icons.Default.Share, label = "SHARE", onClick = onShare)
-            BottomBarActionItem(icon = Icons.Default.DeleteOutline, label = "DELETE", isDestructive = true, onClick = onDelete)
+            BottomBarActionItem(icon = HugeIcons.Share, label = "SHARE", onClick = onShare)
+            BottomBarActionItem(icon = HugeIcons.Delete, label = "DELETE", isDestructive = true, onClick = onDelete)
         } else if (currentTab == "Artists" || currentTab == "Albums") {
             BottomBarActionItem(icon = Icons.Default.PlayArrow, label = "PLAY NEXT", onClick = onPlayNext)
-            BottomBarActionItem(icon = Icons.Default.Add, label = "PLAY LATER", onClick = onPlayLater)
+            BottomBarActionItem(icon = HugeIcons.Add, label = "PLAY LATER", onClick = onPlayLater)
             BottomBarActionItem(icon = favoriteIcon, label = favoriteLabel, onClick = onAddToFavorites)
-            BottomBarActionItem(icon = Icons.Default.Share, label = "SHARE", onClick = onShare)
+            BottomBarActionItem(icon = HugeIcons.Share, label = "SHARE", onClick = onShare)
         } else {
             BottomBarActionItem(icon = Icons.Default.PlaylistAdd, label = "PLAYLIST", onClick = onAddToPlaylist)
             if (currentTab != "Folders") {
                 BottomBarActionItem(icon = favoriteIcon, label = favoriteLabel, onClick = onAddToFavorites)
             }
-            BottomBarActionItem(icon = Icons.Default.Share, label = "SHARE", onClick = onShare)
+            BottomBarActionItem(icon = HugeIcons.Share, label = "SHARE", onClick = onShare)
             if (currentTab != "Favorites") {
-                BottomBarActionItem(icon = Icons.Default.DeleteOutline, label = "DELETE", isDestructive = true, onClick = onDelete)
+                BottomBarActionItem(icon = HugeIcons.Delete, label = "DELETE", isDestructive = true, onClick = onDelete)
             }
         }
     }
@@ -1654,7 +1655,7 @@ fun FavoritesEmptyState(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.FavoriteBorder,
+                imageVector = HugeIcons.Heart,
                 contentDescription = "No favorites",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(64.dp)
@@ -1735,7 +1736,7 @@ fun PlaylistsEmptyState(modifier: Modifier = Modifier, onCreatePlaylistClick: ()
         
         AppPrimaryButton(
             text = "Create Playlist",
-            icon = Icons.Default.Add,
+            icon = HugeIcons.Add,
             onClick = onCreatePlaylistClick,
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
             modifier = Modifier.width(220.dp)
