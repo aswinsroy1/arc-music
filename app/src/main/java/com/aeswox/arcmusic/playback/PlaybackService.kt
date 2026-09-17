@@ -15,6 +15,14 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
 
+    companion object {
+        /**
+         * Set to true while the player is actively playing.
+         * Used by MediaScannerService to defer scanning during playback.
+         */
+        @Volatile var isCurrentlyPlaying: Boolean = false
+    }
+
     @Inject
     lateinit var equalizerManager: EqualizerManager
 

@@ -12,9 +12,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import com.aeswox.arcmusic.utils.ArtistUtils
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -146,85 +150,143 @@ class MusicRepository(
         minTracksPerAlbum: Int = 1,
         excludedFolders: List<String> = emptyList(),
         targetFolder: String? = null,
+        sinceTimestampSec: Long = 0L,
+        minBitrateKbps: Int = 0,
+        augmentMetadata: Boolean = true,
         onProgress: (ScanPhase, Int, Int) -> Unit = { _, _, _ -> }
     ): ScanResult = withContext(Dispatchers.IO) {
-        // PHASE 1: Fetch from MediaStore
-        onProgress(ScanPhase.FETCHING_MEDIASTORE, 0, 0)
-        val allScanned = mediaStoreScanner.scanAudioFiles(targetFolder)
+        val processingSemaphore = kotlinx.coroutines.sync.Semaphore(4)
 
-        // Apply exclusion and duration filters before anything else
+        // ── PHASE 0: Deletion diff ─────────────────────────────────────────────
+        // Only run deletion diff on FULL scans (sinceTimestampSec == 0) or when
+        // no target folder is set — incremental scans only add/update, not delete.
+        if (sinceTimestampSec == 0L && targetFolder == null) {
+            onProgress(ScanPhase.FETCHING_MEDIASTORE, 0, 0)
+            val mediaStoreIds = mediaStoreScanner.getAllMediaStoreIds().map { it.toString() }.toSet()
+            val dbIds = trackDao.getAllTracks().first()
+                .filter { it.source == TrackSource.LOCAL }
+                .map { it.id }
+                .toSet()
+
+            val staleIds = dbIds - mediaStoreIds
+            if (staleIds.isNotEmpty()) {
+                staleIds.chunked(500).forEach { batch ->
+                    batch.forEach { id -> trackDao.deleteTrackById(id) }
+                }
+            }
+        }
+
+        // ── PHASE 1: Fetch from MediaStore ─────────────────────────────────────
+        onProgress(ScanPhase.FETCHING_MEDIASTORE, 0, 0)
+        val allScanned = mediaStoreScanner.scanAudioFiles(
+            targetFolder       = targetFolder,
+            sinceTimestampSec  = sinceTimestampSec,
+            minDurationMs      = minDurationMs,
+            minBitrateKbps     = minBitrateKbps
+        )
+
+        // Apply exclusion filter
         val scannedTracks = allScanned.filter { scanned ->
-            // Duration filter (0 means no minimum). If duration is 0, it might be an un-parsed Atmos track, so let it pass.
-            val durationOk = minDurationMs <= 0L || scanned.durationMs >= minDurationMs || scanned.durationMs == 0L
-            // Excluded folders filter
-            val notExcluded = excludedFolders.none { excluded ->
+            excludedFolders.none { excluded ->
                 scanned.filePath.contains(excluded, ignoreCase = true)
             }
-            durationOk && notExcluded
         }
-        val total = scannedTracks.size
 
-        // Build album->trackCount map from the filtered set for the minTracksPerAlbum check
+        // Build album → trackCount map for minTracksPerAlbum check
         val albumTrackCounts = scannedTracks.groupingBy { it.album }.eachCount()
-        val allowedAlbums = albumTrackCounts.filter { it.value >= minTracksPerAlbum.coerceAtLeast(1) }.keys
+        val allowedAlbums = albumTrackCounts
+            .filter { it.value >= minTracksPerAlbum.coerceAtLeast(1) }.keys
 
-        // Further filter tracks to only include those whose album has enough tracks
         val filteredTracks = if (minTracksPerAlbum > 1) {
             scannedTracks.filter { it.album in allowedAlbums }
         } else scannedTracks
 
-        val existingTracks = trackDao.getAllTracks().first().associateBy { it.id }
-        val existingAlbums = albumDao.getAllAlbums().first().associateBy { it.title }
+        // Fetch existing DB state for merging user data and unchanged detection
+        val existingTracks  = trackDao.getAllTracks().first().associateBy { it.id }
+        val existingAlbums  = albumDao.getAllAlbums().first().associateBy { it.title }
         val existingArtists = artistDao.getAllArtists().first().associateBy { it.id }
 
-        // PHASE 2: Process and write to DB
+        // ── PHASE 2: Process tracks in parallel ────────────────────────────────
         val filteredTotal = filteredTracks.size
         onProgress(ScanPhase.PROCESSING_FILES, 0, filteredTotal)
-        val tracks = filteredTracks.mapIndexed { i, it ->
-            if (i % 20 == 0) onProgress(ScanPhase.PROCESSING_FILES, i, filteredTotal)
-            val existing = existingTracks[it.id]
-            Track(
-                id = it.id,
-                title = it.title,
-                artist = it.artist,
-                albumArtist = it.albumArtist,
-                albumId = it.albumId,
-                album = it.album,
-                genre = it.genre,
-                composer = "",
-                year = it.year,
-                trackNumber = it.trackNumber,
-                discNumber = it.discNumber,
-                durationMs = it.durationMs,
-                filePath = it.filePath,
-                fileSizeBytes = it.fileSizeBytes,
-                bitrate = it.bitrate,
-                codec = it.mimeType,
-                sampleRate = it.sampleRate,
-                bitDepth = it.bitDepth,
-                dateAdded = it.dateAdded,
-                dateModified = it.dateModified,
-                isFavorite = existing?.isFavorite ?: false,
-                playCount = existing?.playCount ?: 0,
-                lastPlayedAt = existing?.lastPlayedAt,
-                source = TrackSource.LOCAL,
-                remoteId = existing?.remoteId,
-                artworkUri = existing?.artworkUri ?: it.artworkUri,
-                hasLyrics = existing?.hasLyrics ?: false,
-                lyricsSyncedAt = existing?.lyricsSyncedAt ?: 0L,
-                isExplicit = if (it.isExplicit == true) true else existing?.isExplicit
-            )
+
+        val processedCounter = java.util.concurrent.atomic.AtomicInteger(0)
+        val tracks = kotlinx.coroutines.coroutineScope {
+            filteredTracks.chunked(200).flatMap { chunk ->
+                chunk.map { scanned ->
+                    async {
+                        processingSemaphore.withPermit {
+                            val cnt = processedCounter.incrementAndGet()
+                            if (cnt % 50 == 0) onProgress(ScanPhase.PROCESSING_FILES, cnt, filteredTotal)
+
+                            val existing = existingTracks[scanned.id]
+
+                            // Unchanged detection: if the file hasn't been modified and we
+                            // already have it in the DB, skip expensive re-processing and
+                            // just return the existing entity (preserving all user data).
+                            if (existing != null &&
+                                scanned.dateModified > 0L &&
+                                existing.dateModified == scanned.dateModified) {
+                                return@withPermit existing
+                            }
+
+                            // If the track is new or modified, and augmentMetadata is enabled, deep scan it
+                            val deepScan = if (augmentMetadata) {
+                                com.aeswox.arcmusic.data.DeepTagScanner.scanFile(scanned.filePath)
+                            } else null
+
+                            Track(
+                                id            = scanned.id,
+                                title         = scanned.title,
+                                artist        = scanned.artist,
+                                albumArtist   = scanned.albumArtist,
+                                albumId       = scanned.albumId,
+                                album         = scanned.album,
+                                genre         = scanned.genre.ifBlank { existing?.genre ?: "" },
+                                composer      = deepScan?.composer ?: existing?.composer ?: "",
+                                year          = deepScan?.year ?: scanned.year ?: existing?.year,
+                                trackNumber   = deepScan?.trackNumber?.takeIf { it > 0 } ?: scanned.trackNumber.takeIf { it > 0 } ?: existing?.trackNumber,
+                                discNumber    = deepScan?.discNumber?.takeIf { it > 0 } ?: scanned.discNumber.takeIf { it > 0 } ?: existing?.discNumber,
+                                durationMs    = scanned.durationMs,
+                                filePath      = scanned.filePath,
+                                fileSizeBytes = scanned.fileSizeBytes,
+                                bitrate       = deepScan?.bitrate?.takeIf { it > 0 } ?: scanned.bitrate.takeIf { it > 0 } ?: existing?.bitrate,
+                                codec         = deepScan?.codec ?: scanned.mimeType.ifBlank { existing?.codec },
+                                sampleRate    = deepScan?.sampleRate ?: scanned.sampleRate ?: existing?.sampleRate,
+                                bitDepth      = deepScan?.bitDepth ?: scanned.bitDepth ?: existing?.bitDepth,
+                                dateAdded     = scanned.dateAdded,
+                                dateModified  = scanned.dateModified,
+                                // ── Preserve user data ─────────────────────────
+                                isFavorite    = existing?.isFavorite ?: false,
+                                playCount     = existing?.playCount ?: 0,
+                                lastPlayedAt  = existing?.lastPlayedAt,
+                                source        = TrackSource.LOCAL,
+                                remoteId      = existing?.remoteId,
+                                artworkUri    = existing?.artworkUri ?: scanned.artworkUri,
+                                hasLyrics     = existing?.hasLyrics ?: deepScan?.hasLyrics ?: false,
+                                lyricsSyncedAt = existing?.lyricsSyncedAt ?: 0L,
+                                canvasUrl     = existing?.canvasUrl,
+                                canvasSyncedAt = existing?.canvasSyncedAt ?: 0L,
+                                // ── Explicit: Deep scan first, then existing DB, then MediaStore hint ──
+                                isExplicit    = deepScan?.isExplicit?.takeIf { it } 
+                                    ?: existing?.isExplicit
+                                    ?: if (scanned.isExplicit == true) true else null
+                            )
+                        }
+                    }
+                }.awaitAll()
+            }
         }
 
-        val albums = filteredTracks.distinctBy { it.album }.map {
+        val albums = filteredTracks.distinctBy { it.album }.map { it ->
             val existing = existingAlbums[it.album]
             Album(
-                id = it.album,
-                title = it.album,
-                artist = it.albumArtist,
-                year = 0,
+                id         = it.album,
+                title      = it.album,
+                artist     = it.albumArtist,
+                year       = 0,
                 artworkUri = existing?.artworkUri ?: it.artworkUri,
-                trackCount = filteredTracks.count { track -> track.album == it.album },
+                trackCount = filteredTracks.count { t -> t.album == it.album },
                 isFavorite = existing?.isFavorite ?: false
             )
         }
@@ -237,14 +299,14 @@ class MusicRepository(
             .map {
                 val existing = existingArtists[it]
                 Artist(
-                    id = it,
-                    name = it,
-                    photoUri = existing?.photoUri,
-                    bioText = existing?.bioText,
-                    isFavorite = existing?.isFavorite ?: false,
-                    missingTracksCount = existing?.missingTracksCount,
-                    missingAlbumsCount = existing?.missingAlbumsCount,
-                    hasScannedMissingContent = existing?.hasScannedMissingContent ?: false
+                    id                        = it,
+                    name                      = it,
+                    photoUri                  = existing?.photoUri,
+                    bioText                   = existing?.bioText,
+                    isFavorite                = existing?.isFavorite ?: false,
+                    missingTracksCount        = existing?.missingTracksCount,
+                    missingAlbumsCount        = existing?.missingAlbumsCount,
+                    hasScannedMissingContent  = existing?.hasScannedMissingContent ?: false
                 )
             }
 
@@ -253,7 +315,7 @@ class MusicRepository(
         albumDao.insertAlbums(albums)
         artistDao.insertArtists(artists)
 
-        // PHASE 3: Scan for local/embedded lyrics
+        // ── PHASE 3: Embedded lyrics scan ─────────────────────────────────────
         onProgress(ScanPhase.SCANNING_LYRICS, 0, tracks.size)
         val missingLyricsTracks = trackDao.getTracksMissingLyrics().first()
         missingLyricsTracks.forEachIndexed { i, track ->
@@ -264,11 +326,9 @@ class MusicRepository(
             }
         }
 
-        // PHASE 4: Fetch missing artwork in the background
+        // ── PHASE 4: Missing artwork (background) ─────────────────────────────
         backgroundScope.launch {
-            try {
-                fetchMissingArtwork()
-            } catch (e: Exception) { /* non-fatal */ }
+            try { fetchMissingArtwork() } catch (e: Exception) { /* non-fatal */ }
         }
 
         onProgress(ScanPhase.COMPLETING, filteredTotal, filteredTotal)
@@ -283,19 +343,27 @@ class MusicRepository(
         minDurationMs: Long = 0L,
         minTracksPerAlbum: Int = 1,
         excludedFolders: List<String> = emptyList(),
+        minBitrateKbps: Int = 0,
         onProgress: (ScanPhase, Int, Int) -> Unit = { _, _, _ -> }
     ): ScanResult = withContext(Dispatchers.IO) {
         onProgress(ScanPhase.CLEARING_DATABASE, 0, 0)
-        
+
         // Backup playlist tracks before wiping to preserve them
         val playlistTracksBackup = playlistDao.getAllPlaylistTracks()
-        
+
         trackDao.deleteAllTracks()
         albumDao.deleteAllAlbums()
         artistDao.deleteAllArtists()
-        
-        val result = scanMediaStore(minDurationMs, minTracksPerAlbum, excludedFolders, null, onProgress)
-        
+
+        val result = scanMediaStore(
+            minDurationMs      = minDurationMs,
+            minTracksPerAlbum  = minTracksPerAlbum,
+            excludedFolders    = excludedFolders,
+            minBitrateKbps     = minBitrateKbps,
+            sinceTimestampSec  = 0L, // Always full scan on rebuild
+            onProgress         = onProgress
+        )
+
         // Restore playlist tracks for tracks that still exist
         if (playlistTracksBackup.isNotEmpty()) {
             val currentTracks = trackDao.getAllTracks().first().map { it.id }.toSet()
@@ -304,7 +372,7 @@ class MusicRepository(
                 playlistDao.insertPlaylistTracks(validPlaylistTracks)
             }
         }
-        
+
         result
     }
     

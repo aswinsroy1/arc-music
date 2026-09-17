@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
@@ -45,13 +44,19 @@ fun MediaManagementScreen(
 ) {
     val hazeState = remember { HazeState() }
 
-    val minDurationSec by viewModel.minSongDurationSec.collectAsState()
-    val minTracksPerAlbum by viewModel.minTracksPerAlbum.collectAsState()
-    val excludedFolders by viewModel.excludedFolders.collectAsState()
+    val minDurationSec        by viewModel.minSongDurationSec.collectAsState()
+    val minTracksPerAlbum     by viewModel.minTracksPerAlbum.collectAsState()
+    val excludedFolders       by viewModel.excludedFolders.collectAsState()
+    val scanProgress          by viewModel.scanProgress.collectAsState()
 
-    val scanProgress by viewModel.scanProgress.collectAsState()
+    // Scan behavior
+    val autoScanOnStartup     by viewModel.autoScanOnStartup.collectAsState()
+    val deferScanDuringPlay   by viewModel.deferScanDuringPlayback.collectAsState()
+    val autoScanLrcFiles      by viewModel.autoScanLrcFiles.collectAsState()
+    val augmentFromTags       by viewModel.augmentMetadataFromTags.collectAsState()
+    val extractArtists        by viewModel.extractArtistsFromTitle.collectAsState()
+    val minBitrateKbps        by viewModel.minBitrateKbps.collectAsState()
 
-    // Rebuild confirmation dialog state
     var showRebuildConfirm by remember { mutableStateOf(false) }
 
     if (showRebuildConfirm) {
@@ -79,19 +84,13 @@ fun MediaManagementScreen(
         )
     }
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-
-        ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 contentPadding = PaddingValues(top = 24.dp, bottom = 180.dp, start = 24.dp, end = 24.dp),
                 modifier = Modifier.physicsBounceOverscroll().fillMaxSize()
             ) {
-                // Header
+                // ── Header ─────────────────────────────────────────────────────────
                 item {
                     Row(
                         modifier = Modifier
@@ -111,7 +110,7 @@ fun MediaManagementScreen(
                     }
                 }
 
-                // Progress bar (shown while scanning)
+                // ── Scan progress card ──────────────────────────────────────────────
                 item {
                     AnimatedVisibility(
                         visible = scanProgress.isRunning || scanProgress.isCompleted,
@@ -146,10 +145,7 @@ fun MediaManagementScreen(
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = if (scanProgress.isCompleted)
-                                            "Scan complete"
-                                        else
-                                            scanProgress.phase.label,
+                                        text = if (scanProgress.isCompleted) "Scan complete" else scanProgress.phase.label,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                                     )
                                     if (scanProgress.hasProgress && !scanProgress.isCompleted) {
@@ -193,7 +189,6 @@ fun MediaManagementScreen(
                                     strokeCap = StrokeCap.Round
                                 )
                             } else {
-                                // Indeterminate for phases without countable progress
                                 LinearProgressIndicator(
                                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                                     color = MaterialTheme.colorScheme.primary,
@@ -206,7 +201,7 @@ fun MediaManagementScreen(
                     }
                 }
 
-                // LIBRARY ACTIONS
+                // ── LIBRARY ACTIONS ────────────────────────────────────────────────
                 item {
                     Text(
                         text = "LIBRARY ACTIONS",
@@ -215,7 +210,7 @@ fun MediaManagementScreen(
                         modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)
                     )
 
-                    // Scan Media Card
+                    // Scan Media
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -249,21 +244,54 @@ fun MediaManagementScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Scan Media", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                text = "Scan Media",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                text = "Look for new files in folders",
+                                text = "Full scan – look for all files in selected folders",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Deep Scan Card
+                    // Quick / Incremental Scan
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f))
+                            .jellyClick(enabled = !scanProgress.isRunning) { viewModel.incrementalScan() }
+                            .padding(horizontal = 16.dp, vertical = 16.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Quick Sync", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = "Only picks up new or changed files since last scan",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Force Refresh Metadata (deep scan)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -289,7 +317,7 @@ fun MediaManagementScreen(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Outlined.Troubleshoot,
+                                    imageVector = Icons.Outlined.Troubleshoot,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
@@ -297,10 +325,7 @@ fun MediaManagementScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Force Refresh Metadata",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Text(text = "Force Refresh Metadata", style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 text = "Extract explicit tags, precise year, lyrics, and Atmos data",
                                 style = MaterialTheme.typography.bodySmall,
@@ -309,9 +334,9 @@ fun MediaManagementScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Rebuild Database Card
+                    // Rebuild Database
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -345,10 +370,7 @@ fun MediaManagementScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Rebuild Database",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Text(text = "Rebuild Database", style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 text = "Cleans cache and restores library from scratch.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -360,7 +382,130 @@ fun MediaManagementScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                // REFINEMENT RULES
+                // ── SCAN BEHAVIOR ──────────────────────────────────────────────────
+                item {
+                    Text(
+                        text = "SCAN BEHAVIOR",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f))
+                            .padding(16.dp)
+                    ) {
+                        // Auto Scan on Startup
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Scan on App Start", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "Automatically scan when you open the app.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = autoScanOnStartup,
+                                onCheckedChange = { viewModel.setAutoScanOnStartup(it) }
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+
+                        // Defer scan during playback
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Defer Scan During Playback", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "Wait 30s before scanning when music is playing.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = deferScanDuringPlay,
+                                onCheckedChange = { viewModel.setDeferScanDuringPlayback(it) }
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+
+                        // Auto Scan LRC files
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Auto-Detect .lrc Files", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "Automatically find and link .lrc lyric files.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = autoScanLrcFiles,
+                                onCheckedChange = { viewModel.setAutoScanLrcFiles(it) }
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+
+                        // Augment metadata from embedded tags
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Read Embedded Tags", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "Extract Dolby Atmos, explicit flags, lyrics & more from file tags.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = augmentFromTags,
+                                onCheckedChange = { viewModel.setAugmentMetadataFromTags(it) }
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+
+                        // Extract artists from title (e.g. "Song (ft. Artist)" → split)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Split Artists from Title", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "Detect \"ft.\" / \"feat.\" in track titles and add as artists.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = extractArtists,
+                                onCheckedChange = { viewModel.setExtractArtistsFromTitle(it) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+
+                // ── REFINEMENT RULES ────────────────────────────────────────────────
                 item {
                     Text(
                         text = "REFINEMENT RULES",
@@ -376,16 +521,13 @@ fun MediaManagementScreen(
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f))
                             .padding(16.dp)
                     ) {
-                        // Min Song Duration
+                        // Minimum Song Duration
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Minimum Song Duration",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+                                Text(text = "Minimum Song Duration", style = MaterialTheme.typography.bodyLarge)
                                 Text(
                                     text = "Ignore files shorter than this.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -422,16 +564,13 @@ fun MediaManagementScreen(
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.surfaceVariant)
 
-                        // Min Tracks per Album
+                        // Minimum Tracks per Album
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Minimum Tracks per Album",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+                                Text(text = "Minimum Tracks per Album", style = MaterialTheme.typography.bodyLarge)
                                 Text(
                                     text = "Only show albums with at least this many tracks.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -465,12 +604,55 @@ fun MediaManagementScreen(
                             )
                             Text(text = "10", style = MaterialTheme.typography.labelSmall)
                         }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+
+                        // Minimum Bitrate
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Minimum Bitrate", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "Skip files below this quality threshold.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = if (minBitrateKbps == 0) "Off" else "${minBitrateKbps} kbps",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = "Off", style = MaterialTheme.typography.labelSmall)
+                            CustomHorizontalSlider(
+                                value = minBitrateKbps.toFloat(),
+                                onValueChange = { viewModel.setMinBitrateKbps(Math.round(it)) },
+                                valueRange = 0f..320f,
+                                steps = 7,
+                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                            )
+                            Text(text = "320", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                // FOLDER MANAGEMENT
+                // ── FOLDER MANAGEMENT ───────────────────────────────────────────────
                 item {
                     Text(
                         text = "FOLDER MANAGEMENT",
@@ -489,10 +671,7 @@ fun MediaManagementScreen(
                             .padding(horizontal = 16.dp, vertical = 16.dp)
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Folders to Exclude",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Text(text = "Folders to Exclude", style = MaterialTheme.typography.bodyLarge)
                             val folderText = if (excludedFolders.isEmpty()) "None" else "${excludedFolders.size} folder(s) excluded"
                             Text(
                                 text = folderText,

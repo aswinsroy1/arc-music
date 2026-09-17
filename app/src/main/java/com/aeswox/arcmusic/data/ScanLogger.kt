@@ -1,4 +1,4 @@
-﻿package com.aeswox.arcmusic.data
+package com.aeswox.arcmusic.data
 
 import android.content.Context
 import android.util.Log
@@ -42,6 +42,7 @@ class ScanLogger @Inject constructor(
     fun i(message: String) { Log.i(TAG, message); write("I", message) }
     fun w(message: String) { Log.w(TAG, message); write("W", message) }
     fun d(message: String) { Log.d(TAG, message); write("D", message) }
+    fun e(message: String) { Log.e(TAG, message); write("E", message) }
 
     /** Deletes the log file entirely and writes a marker entry. */
     fun clear() {

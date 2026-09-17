@@ -11,6 +11,7 @@ import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import com.aeswox.arcmusic.data.model.NowPlayingStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import javax.inject.Inject
@@ -43,6 +44,16 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val EXCLUDED_FOLDERS_KEY = stringPreferencesKey("excluded_folders")
     private val LIGHT_THEME_NOW_PLAYING_KEY = stringPreferencesKey("light_theme_now_playing")
     private val COIL_DISK_CACHE_LIMIT_MB_KEY = intPreferencesKey("coil_disk_cache_limit_mb")
+
+    // ------- Scan Behavior Prefs -------
+    private val AUTO_SCAN_ON_STARTUP_KEY = booleanPreferencesKey("auto_scan_on_startup")
+    private val DEFER_SCAN_DURING_PLAYBACK_KEY = booleanPreferencesKey("defer_scan_during_playback")
+    private val AUTO_SCAN_LRC_FILES_KEY = booleanPreferencesKey("auto_scan_lrc_files")
+    private val AUGMENT_METADATA_FROM_TAGS_KEY = booleanPreferencesKey("augment_metadata_from_tags")
+    private val EXTRACT_ARTISTS_FROM_TITLE_KEY = booleanPreferencesKey("extract_artists_from_title")
+    private val ARTIST_DELIMITERS_KEY = stringPreferencesKey("artist_delimiters")
+    private val MIN_BITRATE_KBPS_KEY = intPreferencesKey("min_bitrate_kbps")
+    private val LAST_SYNC_TIMESTAMP_KEY = androidx.datastore.preferences.core.longPreferencesKey("last_sync_timestamp")
     private val NOW_PLAYING_STYLE_KEY = stringPreferencesKey("now_playing_style")
 
     private val CANVAS_ENABLED_KEY = booleanPreferencesKey("canvas_enabled")
@@ -271,10 +282,82 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit { it[LIGHT_THEME_NOW_PLAYING_KEY] = value.toString() }
     }
 
-
     
     suspend fun setCoilDiskCacheLimitMb(value: Int) {
         context.dataStore.edit { it[COIL_DISK_CACHE_LIMIT_MB_KEY] = value }
+    }
+
+    // ------- Scan Behavior Flows -------
+
+    val autoScanOnStartup: Flow<Boolean> = context.dataStore.data.map {
+        it[AUTO_SCAN_ON_STARTUP_KEY] ?: true
+    }
+
+    val deferScanDuringPlayback: Flow<Boolean> = context.dataStore.data.map {
+        it[DEFER_SCAN_DURING_PLAYBACK_KEY] ?: true
+    }
+
+    val autoScanLrcFiles: Flow<Boolean> = context.dataStore.data.map {
+        it[AUTO_SCAN_LRC_FILES_KEY] ?: true
+    }
+
+    val augmentMetadataFromTags: Flow<Boolean> = context.dataStore.data.map {
+        it[AUGMENT_METADATA_FROM_TAGS_KEY] ?: true
+    }
+
+    val extractArtistsFromTitle: Flow<Boolean> = context.dataStore.data.map {
+        it[EXTRACT_ARTISTS_FROM_TITLE_KEY] ?: false
+    }
+
+    /** Comma-separated list of delimiters used to split multi-artist strings. */
+    val artistDelimiters: Flow<String> = context.dataStore.data.map {
+        it[ARTIST_DELIMITERS_KEY] ?: ", / & ; ft. feat."
+    }
+
+    /** Minimum bitrate in kbps. 0 = disabled (no filter). */
+    val minBitrateKbps: Flow<Int> = context.dataStore.data.map {
+        it[MIN_BITRATE_KBPS_KEY] ?: 0
+    }
+
+    /** Epoch-ms timestamp of the last successful scan. 0 = never synced (full scan). */
+    val lastSyncTimestamp: Flow<Long> = context.dataStore.data.map {
+        it[LAST_SYNC_TIMESTAMP_KEY] ?: 0L
+    }
+
+    suspend fun setAutoScanOnStartup(value: Boolean) {
+        context.dataStore.edit { it[AUTO_SCAN_ON_STARTUP_KEY] = value }
+    }
+
+    suspend fun setDeferScanDuringPlayback(value: Boolean) {
+        context.dataStore.edit { it[DEFER_SCAN_DURING_PLAYBACK_KEY] = value }
+    }
+
+    suspend fun setAutoScanLrcFiles(value: Boolean) {
+        context.dataStore.edit { it[AUTO_SCAN_LRC_FILES_KEY] = value }
+    }
+
+    suspend fun setAugmentMetadataFromTags(value: Boolean) {
+        context.dataStore.edit { it[AUGMENT_METADATA_FROM_TAGS_KEY] = value }
+    }
+
+    suspend fun setExtractArtistsFromTitle(value: Boolean) {
+        context.dataStore.edit { it[EXTRACT_ARTISTS_FROM_TITLE_KEY] = value }
+    }
+
+    suspend fun setArtistDelimiters(value: String) {
+        context.dataStore.edit { it[ARTIST_DELIMITERS_KEY] = value }
+    }
+
+    suspend fun setMinBitrateKbps(value: Int) {
+        context.dataStore.edit { it[MIN_BITRATE_KBPS_KEY] = value }
+    }
+
+    suspend fun setLastSyncTimestamp(timestampMs: Long) {
+        context.dataStore.edit { it[LAST_SYNC_TIMESTAMP_KEY] = timestampMs }
+    }
+
+    suspend fun getLastSyncTimestamp(): Long {
+        return context.dataStore.data.map { it[LAST_SYNC_TIMESTAMP_KEY] ?: 0L }.first()
     }
 
 

@@ -1857,6 +1857,77 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setMinTracksPerAlbum(value) }
     }
 
+    // ── Scan Behavior Settings ──────────────────────────────────────────────────
+
+    val autoScanOnStartup: StateFlow<Boolean> = settingsRepository.autoScanOnStartup.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+
+    val deferScanDuringPlayback: StateFlow<Boolean> = settingsRepository.deferScanDuringPlayback.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+
+    val autoScanLrcFiles: StateFlow<Boolean> = settingsRepository.autoScanLrcFiles.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+
+    val augmentMetadataFromTags: StateFlow<Boolean> = settingsRepository.augmentMetadataFromTags.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), true
+    )
+
+    val extractArtistsFromTitle: StateFlow<Boolean> = settingsRepository.extractArtistsFromTitle.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), false
+    )
+
+    val artistDelimiters: StateFlow<String> = settingsRepository.artistDelimiters.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), ", / & ; ft. feat."
+    )
+
+    val minBitrateKbps: StateFlow<Int> = settingsRepository.minBitrateKbps.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), 0
+    )
+
+    fun setAutoScanOnStartup(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoScanOnStartup(value) }
+    }
+
+    fun setDeferScanDuringPlayback(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setDeferScanDuringPlayback(value) }
+    }
+
+    fun setAutoScanLrcFiles(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoScanLrcFiles(value) }
+    }
+
+    fun setAugmentMetadataFromTags(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setAugmentMetadataFromTags(value) }
+    }
+
+    fun setExtractArtistsFromTitle(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setExtractArtistsFromTitle(value) }
+    }
+
+    fun setArtistDelimiters(value: String) {
+        viewModelScope.launch { settingsRepository.setArtistDelimiters(value) }
+    }
+
+    fun setMinBitrateKbps(value: Int) {
+        viewModelScope.launch { settingsRepository.setMinBitrateKbps(value) }
+    }
+
+    /** Runs an INCREMENTAL scan (only files changed since last scan timestamp). */
+    fun incrementalScan() {
+        if (mediaScannerManager.scanProgress.value.isRunning) return
+        val intent = android.content.Intent(context, com.aeswox.arcmusic.playback.MediaScannerService::class.java).apply {
+            action = com.aeswox.arcmusic.playback.MediaScannerService.ACTION_INCREMENTAL_SCAN
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
+
     fun setCoilDiskCacheLimitMb(value: Int) {
         viewModelScope.launch { settingsRepository.setCoilDiskCacheLimitMb(value) }
     }

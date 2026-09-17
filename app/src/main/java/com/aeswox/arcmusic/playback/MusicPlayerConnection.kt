@@ -184,6 +184,8 @@ class MusicPlayerConnection @Inject constructor(
                 }
             }
             _isPlaying.value = isPlaying
+            // Mirror to companion so MediaScannerService can check without binding
+            PlaybackService.isCurrentlyPlaying = isPlaying
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {

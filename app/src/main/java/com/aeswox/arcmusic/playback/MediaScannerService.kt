@@ -47,6 +47,7 @@ class MediaScannerService : Service() {
     companion object {
         const val ACTION_SCAN = "com.aeswox.arcmusic.action.SCAN"
         const val ACTION_SCAN_TARGET = "com.aeswox.arcmusic.action.SCAN_TARGET"
+        const val ACTION_INCREMENTAL_SCAN = "com.aeswox.arcmusic.action.INCREMENTAL_SCAN"
         const val ACTION_REBUILD = "com.aeswox.arcmusic.action.REBUILD"
         const val EXTRA_TARGET_FOLDER = "com.aeswox.arcmusic.extra.TARGET_FOLDER"
         
@@ -73,37 +74,54 @@ class MediaScannerService : Service() {
         }
 
         when (action) {
-            ACTION_SCAN -> performScan(null)
-            ACTION_SCAN_TARGET -> performScan(intent.getStringExtra(EXTRA_TARGET_FOLDER))
+            ACTION_SCAN -> performScan(null, incrementalOnly = false)
+            ACTION_INCREMENTAL_SCAN -> performScan(null, incrementalOnly = true)
+            ACTION_SCAN_TARGET -> performScan(intent.getStringExtra(EXTRA_TARGET_FOLDER), incrementalOnly = false)
             ACTION_REBUILD -> performRebuild()
         }
 
         return START_NOT_STICKY
     }
 
-    private fun performScan(targetFolder: String? = null) {
+    private fun performScan(targetFolder: String? = null, incrementalOnly: Boolean = false) {
         if (mediaScannerManager.scanProgress.value.isRunning) {
-            // ── DIAG ─────────────────────────────────────────────────────────
             scanLogger.w("performScan() SKIPPED: isRunning=true (scan already in progress or stuck).")
             scanLogger.w("  If you just pressed Scan and see this, the previous scan is still running")
             scanLogger.w("  OR the isRunning flag got stuck. Force-stop the app to reset.")
-            // ─────────────────────────────────────────────────────────────────
             return
         }
-        scanLogger.i("performScan() STARTED targetFolder=$targetFolder")
+        scanLogger.i("performScan() STARTED targetFolder=$targetFolder incrementalOnly=$incrementalOnly")
         
         serviceScope.launch {
+            // Defer scan if playback is active (user preference)
+            val shouldDefer = settingsRepository.deferScanDuringPlayback.first()
+            if (shouldDefer && PlaybackService.isCurrentlyPlaying) {
+                scanLogger.i("performScan() DEFERRED: playback is active, waiting 30s...")
+                kotlinx.coroutines.delay(30_000L)
+            }
+
             mediaScannerManager.updateProgress(isRunning = true, phase = ScanPhase.FETCHING_MEDIASTORE)
             try {
-                val minDurMs = settingsRepository.minSongDurationSec.first() * 1000L
-                val minTracks = settingsRepository.minTracksPerAlbum.first()
-                val excluded = settingsRepository.excludedFolders.first()
-                
+                val minDurMs       = settingsRepository.minSongDurationSec.first() * 1000L
+                val minTracks      = settingsRepository.minTracksPerAlbum.first()
+                val excluded       = settingsRepository.excludedFolders.first()
+                val minBitrateKbps = settingsRepository.minBitrateKbps.first()
+                val augmentMeta    = settingsRepository.augmentMetadataFromTags.first()
+                val sinceTimestamp = if (incrementalOnly) {
+                    // Convert epoch-ms to epoch-seconds for MediaStore DATE_MODIFIED comparison
+                    settingsRepository.lastSyncTimestamp.first() / 1000L
+                } else 0L
+
+                scanLogger.i("performScan() sinceTimestampSec=$sinceTimestamp minBitrateKbps=$minBitrateKbps augment=$augmentMeta")
+
                 val result = repository.scanMediaStore(
-                    minDurationMs = minDurMs,
-                    minTracksPerAlbum = minTracks,
-                    excludedFolders = excluded,
-                    targetFolder = targetFolder
+                    minDurationMs      = minDurMs,
+                    minTracksPerAlbum  = minTracks,
+                    excludedFolders    = excluded,
+                    targetFolder       = targetFolder,
+                    sinceTimestampSec  = sinceTimestamp,
+                    minBitrateKbps     = minBitrateKbps,
+                    augmentMetadata    = augmentMeta
                 ) { phase, current, total ->
                     mediaScannerManager.updateProgress(
                         isRunning = true,
@@ -113,7 +131,10 @@ class MediaScannerService : Service() {
                     )
                     updateNotificationProgress(phase, current, total)
                 }
-                
+
+                // Save the scan timestamp so future INCREMENTAL scans skip unchanged files
+                settingsRepository.setLastSyncTimestamp(System.currentTimeMillis())
+
                 mediaScannerManager.updateResult(result)
                 mediaScannerManager.updateProgress(
                     isRunning = false,
@@ -122,17 +143,14 @@ class MediaScannerService : Service() {
                     total = result.trackCount,
                     isCompleted = true
                 )
-                // ── DIAG ─────────────────────────────────────────────────────
                 scanLogger.i("performScan() COMPLETED: tracks=${result.trackCount} albums=${result.albumCount} artists=${result.artistCount}")
-                scanLogger.i("  If the new file is NOT reflected, check DROPPED [file-not-found] lines above.")
-                // ──────────────────────────────────────────────────────────────
+                scanLogger.i("  If the new file is NOT reflected, check DROPPED lines in scanner log above.")
             } catch (e: Exception) {
                 mediaScannerManager.updateResult(null)
                 mediaScannerManager.updateProgress(isRunning = false, isCompleted = false)
+                scanLogger.e("performScan() FAILED: ${e.message}")
             } finally {
-                // Trigger deep scan in the background
                 startService(Intent(this@MediaScannerService, MetadataEnrichmentService::class.java))
-                
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -141,18 +159,20 @@ class MediaScannerService : Service() {
 
     private fun performRebuild() {
         if (mediaScannerManager.scanProgress.value.isRunning) return
-        
+
         serviceScope.launch {
             mediaScannerManager.updateProgress(isRunning = true, phase = ScanPhase.CLEARING_DATABASE)
             try {
-                val minDurMs = settingsRepository.minSongDurationSec.first() * 1000L
-                val minTracks = settingsRepository.minTracksPerAlbum.first()
-                val excluded = settingsRepository.excludedFolders.first()
-                
+                val minDurMs       = settingsRepository.minSongDurationSec.first() * 1000L
+                val minTracks      = settingsRepository.minTracksPerAlbum.first()
+                val excluded       = settingsRepository.excludedFolders.first()
+                val minBitrateKbps = settingsRepository.minBitrateKbps.first()
+
                 val result = repository.rebuildDatabase(
-                    minDurationMs = minDurMs,
-                    minTracksPerAlbum = minTracks,
-                    excludedFolders = excluded
+                    minDurationMs      = minDurMs,
+                    minTracksPerAlbum  = minTracks,
+                    excludedFolders    = excluded,
+                    minBitrateKbps     = minBitrateKbps
                 ) { phase, current, total ->
                     mediaScannerManager.updateProgress(
                         isRunning = true,
@@ -162,7 +182,10 @@ class MediaScannerService : Service() {
                     )
                     updateNotificationProgress(phase, current, total)
                 }
-                
+
+                // Reset the sync timestamp so the next scan starts fully fresh
+                settingsRepository.setLastSyncTimestamp(System.currentTimeMillis())
+
                 mediaScannerManager.updateResult(result)
                 mediaScannerManager.updateProgress(
                     isRunning = false,
@@ -175,9 +198,7 @@ class MediaScannerService : Service() {
                 mediaScannerManager.updateResult(null)
                 mediaScannerManager.updateProgress(isRunning = false, isCompleted = false)
             } finally {
-                // Trigger deep scan in the background
                 startService(Intent(this@MediaScannerService, MetadataEnrichmentService::class.java))
-                
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
