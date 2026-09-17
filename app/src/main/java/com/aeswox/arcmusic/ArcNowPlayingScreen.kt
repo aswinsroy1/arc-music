@@ -268,7 +268,7 @@ fun FormatBadges(songToPlay: Track?, textColor: Color, modifier: Modifier = Modi
     }
 }
 
-enum class NowPlayingSheet { OPTIONS, ADD_TO_PLAYLIST, DEVICE, SLEEP_TIMER }
+enum class NowPlayingSheet { OPTIONS, ADD_TO_PLAYLIST, DEVICE, SLEEP_TIMER, METADATA }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -798,7 +798,11 @@ fun ArcNowPlayingScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Column(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .jellyClick { currentSheet = NowPlayingSheet.METADATA }
+                                            .padding(vertical = 4.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Row(
@@ -1058,6 +1062,94 @@ fun ArcNowPlayingScreen(
         onDismissRequest = { currentSheet = null }
     ) { sheet ->
         when (sheet) {
+            NowPlayingSheet.METADATA -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp, top = 8.dp)
+                ) {
+                    // Go to Artist
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .jellyClick { 
+                                currentSheet = null
+                                songToPlay?.let { onNavigateToArtist(it.artist) }
+                            }
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Artist",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Go to Artist",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = songToPlay?.artist ?: "Unknown",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Go to Album
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .jellyClick { 
+                                currentSheet = null
+                                songToPlay?.let { onNavigateToAlbum(it.album) }
+                            }
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = "Album",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Go to Album",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = songToPlay?.album ?: "Unknown",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
             NowPlayingSheet.SLEEP_TIMER -> {
                 SleepTimerContent(
                     isActive = isTimerActive,

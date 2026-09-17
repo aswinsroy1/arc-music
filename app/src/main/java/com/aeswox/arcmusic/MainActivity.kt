@@ -2006,12 +2006,16 @@ fun RecentlyPlayedItem(song: Track, onSongClick: (Track) -> Unit = {}) {
             Text(
                 text = song.title, 
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), 
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = song.artist, 
                 style = MaterialTheme.typography.bodyMedium, 
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         JellyIconButton(onClick = {}) {
