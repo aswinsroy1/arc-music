@@ -289,7 +289,7 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(28.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
+                    Icon(imageVector = HugeIcons.Play, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Play", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }

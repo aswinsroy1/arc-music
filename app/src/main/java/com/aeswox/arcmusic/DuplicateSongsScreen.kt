@@ -642,7 +642,7 @@ fun DuplicateGroupCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = HugeIcons.Play,
                         contentDescription = "Preview Track",
                         tint = if (isSelectedForDeletion) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)

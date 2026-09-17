@@ -2710,7 +2710,7 @@ fun BrowseCategoriesSection(genreCounts: List<MusicViewModel.GenreCount>, modifi
             Color(0xFF34A853),
             Color(0xFFE91E63)
         )
-        val fallbackIcons = listOf(Icons.Default.Star, Icons.Default.PlayArrow, Icons.Default.Language, Icons.Outlined.MusicNote, Icons.Default.Home, Icons.Default.Favorite)
+        val fallbackIcons = listOf(Icons.Default.Star, HugeIcons.Play, Icons.Default.Language, Icons.Outlined.MusicNote, Icons.Default.Home, HugeIcons.Heart)
         
         val categories = genreCounts.take(12).mapIndexed { index, genreCount ->
             val color = fallbackColors[index % fallbackColors.size]
@@ -2869,7 +2869,7 @@ fun TopResultSection(track: com.aeswox.arcmusic.db.entities.Track, modifier: Mod
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = HugeIcons.Play,
                             contentDescription = "Play",
                             tint = Color.Black,
                             modifier = Modifier.size(32.dp)

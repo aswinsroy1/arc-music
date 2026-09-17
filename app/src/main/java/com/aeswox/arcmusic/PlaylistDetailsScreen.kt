@@ -241,7 +241,7 @@ fun PlaylistDetailsScreen(
                                 viewModel.setCurrentlyPlaying(tracks.first(), tracks)
                             }
                         },
-                        icon = Icons.Default.PlayArrow,
+                        icon = HugeIcons.Play,
                         modifier = Modifier.width(140.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))

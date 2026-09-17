@@ -305,7 +305,7 @@ fun AlbumDetailsInfo(
                     shape = RoundedCornerShape(28.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = HugeIcons.Play,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary
                     )

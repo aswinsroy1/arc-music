@@ -999,7 +999,7 @@ fun LibraryMainSection(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.PlayArrow,
+                                        imageVector = HugeIcons.Play,
                                         contentDescription = "Play",
                                         tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(20.dp)
@@ -1599,7 +1599,7 @@ fun SelectionBottomBar(
             BottomBarActionItem(icon = HugeIcons.Share, label = "SHARE", onClick = onShare)
             BottomBarActionItem(icon = HugeIcons.Delete, label = "DELETE", isDestructive = true, onClick = onDelete)
         } else if (currentTab == "Artists" || currentTab == "Albums") {
-            BottomBarActionItem(icon = Icons.Default.PlayArrow, label = "PLAY NEXT", onClick = onPlayNext)
+            BottomBarActionItem(icon = HugeIcons.Play, label = "PLAY NEXT", onClick = onPlayNext)
             BottomBarActionItem(icon = HugeIcons.Add, label = "PLAY LATER", onClick = onPlayLater)
             BottomBarActionItem(icon = favoriteIcon, label = favoriteLabel, onClick = onAddToFavorites)
             BottomBarActionItem(icon = HugeIcons.Share, label = "SHARE", onClick = onShare)
