@@ -168,4 +168,68 @@ object HugeIcons {
             }.build()
             return _Play!!
         }
+
+    private var _Queue: ImageVector? = null
+
+    val Queue: ImageVector
+        get() {
+            if (_Queue != null) {
+                return _Queue!!
+            }
+            _Queue = ImageVector.Builder(
+                name = "Queue",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(21f, 14f)
+                    curveTo(21f, 15.4001f, 21f, 16.1002f, 20.7275f, 16.635f)
+                    curveTo(20.4878f, 17.1054f, 20.1054f, 17.4878f, 19.635f, 17.7275f)
+                    curveTo(19.1002f, 18f, 18.4001f, 18f, 17f, 18f)
+                    lineTo(7f, 18f)
+                    curveTo(5.59987f, 18f, 4.8998f, 18f, 4.36502f, 17.7275f)
+                    curveTo(3.89462f, 17.4878f, 3.51217f, 17.1054f, 3.27248f, 16.635f)
+                    curveTo(3f, 16.1002f, 3f, 15.4001f, 3f, 14f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(6f, 14f)
+                    lineTo(18f, 14f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(6f, 10f)
+                    lineTo(18f, 10f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(6f, 6f)
+                    lineTo(18f, 6f)
+                }
+            }.build()
+            return _Queue!!
+        }
 }

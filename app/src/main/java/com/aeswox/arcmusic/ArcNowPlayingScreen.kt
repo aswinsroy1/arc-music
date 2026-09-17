@@ -1042,7 +1042,7 @@ fun ArcNowPlayingScreen(
                                         modifier = Modifier.size(48.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.QueueMusic,
+                                            imageVector = HugeIcons.Queue,
                                             contentDescription = "Up Next",
                                             tint = if (showQueue)
                                                 MaterialTheme.colorScheme.primary
