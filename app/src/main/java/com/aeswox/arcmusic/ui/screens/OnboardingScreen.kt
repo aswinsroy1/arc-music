@@ -305,7 +305,7 @@ fun ThemeOptionCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (isDarkOption) Icons.Filled.DarkMode else Icons.Filled.LightMode,
+                    imageVector = if (isDarkOption) com.aeswox.arcmusic.ui.components.HugeIcons.Moon else com.aeswox.arcmusic.ui.components.HugeIcons.Sun,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                     tint = textColor

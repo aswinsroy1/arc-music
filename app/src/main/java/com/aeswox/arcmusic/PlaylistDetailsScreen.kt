@@ -108,7 +108,7 @@ fun PlaylistDetailsScreen(
                             items = listOf(
                                 MorphingMenuItem(
                                     text = "Edit playlist",
-                                    icon = Icons.Default.Edit,
+                                    icon = com.aeswox.arcmusic.ui.components.HugeIcons.Edit,
                                     onClick = { showEditDialog = true }
                                 ),
                                 MorphingMenuItem(

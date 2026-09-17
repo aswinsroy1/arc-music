@@ -1153,4 +1153,338 @@ object HugeIcons {
             }.build()
             return _Filter!!
         }
+    private var _Settings: ImageVector? = null
+
+    val Settings: ImageVector
+        get() {
+            if (_Settings != null) {
+                return _Settings!!
+            }
+            _Settings = ImageVector.Builder(
+                name = "Settings",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    fill = null
+                ) {
+                    moveTo(15.5f, 12f)
+                    curveTo(15.5f, 13.933f, 13.933f, 15.5f, 12f, 15.5f)
+                    curveTo(10.067f, 15.5f, 8.5f, 13.933f, 8.5f, 12f)
+                    curveTo(8.5f, 10.067f, 10.067f, 8.5f, 12f, 8.5f)
+                    curveTo(13.933f, 8.5f, 15.5f, 10.067f, 15.5f, 12f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    fill = null
+                ) {
+                    moveTo(21.011f, 14.0965f)
+                    curveTo(21.5329f, 13.9558f, 21.7939f, 13.8854f, 21.8969f, 13.7508f)
+                    curveTo(22f, 13.6163f, 22f, 13.3998f, 22f, 12.9669f)
+                    lineTo(22f, 11.0332f)
+                    curveTo(22f, 10.6003f, 22f, 10.3838f, 21.8969f, 10.2493f)
+                    curveTo(21.7938f, 10.1147f, 21.5329f, 10.0443f, 21.011f, 9.90358f)
+                    curveTo(19.0606f, 9.37759f, 17.8399f, 7.33851f, 18.3433f, 5.40087f)
+                    curveTo(18.4817f, 4.86799f, 18.5509f, 4.60156f, 18.4848f, 4.44529f)
+                    curveTo(18.4187f, 4.28902f, 18.2291f, 4.18134f, 17.8497f, 3.96596f)
+                    lineTo(16.125f, 2.98673f)
+                    curveTo(15.7528f, 2.77539f, 15.5667f, 2.66972f, 15.3997f, 2.69222f)
+                    curveTo(15.2326f, 2.71472f, 15.0442f, 2.90273f, 14.6672f, 3.27873f)
+                    curveTo(13.208f, 4.73448f, 10.7936f, 4.73442f, 9.33434f, 3.27864f)
+                    curveTo(8.95743f, 2.90263f, 8.76898f, 2.71463f, 8.60193f, 2.69212f)
+                    curveTo(8.43489f, 2.66962f, 8.24877f, 2.77529f, 7.87653f, 2.98663f)
+                    lineTo(6.15184f, 3.96587f)
+                    curveTo(5.77253f, 4.18123f, 5.58287f, 4.28891f, 5.51678f, 4.44515f)
+                    curveTo(5.45068f, 4.6014f, 5.51987f, 4.86787f, 5.65825f, 5.4008f)
+                    curveTo(6.16137f, 7.3385f, 4.93972f, 9.37763f, 2.98902f, 9.9036f)
+                    curveTo(2.46712f, 10.0443f, 2.20617f, 10.1147f, 2.10308f, 10.2492f)
+                    curveTo(2f, 10.3838f, 2f, 10.6003f, 2f, 11.0332f)
+                    lineTo(2f, 12.9669f)
+                    curveTo(2f, 13.3998f, 2f, 13.6163f, 2.10308f, 13.7508f)
+                    curveTo(2.20615f, 13.8854f, 2.46711f, 13.9558f, 2.98902f, 14.0965f)
+                    curveTo(4.9394f, 14.6225f, 6.16008f, 16.6616f, 5.65672f, 18.5992f)
+                    curveTo(5.51829f, 19.1321f, 5.44907f, 19.3985f, 5.51516f, 19.5548f)
+                    curveTo(5.58126f, 19.7111f, 5.77092f, 19.8188f, 6.15025f, 20.0341f)
+                    lineTo(7.87495f, 21.0134f)
+                    curveTo(8.24721f, 21.2247f, 8.43334f, 21.3304f, 8.6004f, 21.3079f)
+                    curveTo(8.76746f, 21.2854f, 8.95588f, 21.0973f, 9.33271f, 20.7213f)
+                    curveTo(10.7927f, 19.2644f, 13.2088f, 19.2643f, 14.6689f, 20.7212f)
+                    curveTo(15.0457f, 21.0973f, 15.2341f, 21.2853f, 15.4012f, 21.3078f)
+                    curveTo(15.5682f, 21.3303f, 15.7544f, 21.2246f, 16.1266f, 21.0133f)
+                    lineTo(17.8513f, 20.034f)
+                    curveTo(18.2307f, 19.8187f, 18.4204f, 19.711f, 18.4864f, 19.5547f)
+                    curveTo(18.5525f, 19.3984f, 18.4833f, 19.132f, 18.3448f, 18.5991f)
+                    curveTo(17.8412f, 16.6616f, 19.0609f, 14.6226f, 21.011f, 14.0965f)
+                    close()
+                }
+            }.build()
+            return _Settings!!
+        }
+    private var _SleepTimer: ImageVector? = null
+
+    val SleepTimer: ImageVector
+        get() {
+            if (_SleepTimer != null) {
+                return _SleepTimer!!
+            }
+            _SleepTimer = ImageVector.Builder(
+                name = "SleepTimer",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(15f, 2f)
+                    lineTo(10f, 2f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(4f, 13.5f)
+                    curveTo(4f, 8.80558f, 7.80558f, 5f, 12.5f, 5f)
+                    curveTo(14.8472f, 5f, 16.9722f, 5.95139f, 18.5104f, 7.48959f)
+                    moveTo(18.5104f, 7.48959f)
+                    curveTo(20.0486f, 9.02779f, 21f, 11.1528f, 21f, 13.5f)
+                    curveTo(21f, 18.1944f, 17.1944f, 22f, 12.5f, 22f)
+                    lineTo(3f, 22f)
+                    moveTo(18.5104f, 7.48959f)
+                    lineTo(20f, 6f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(8f, 19f)
+                    lineTo(3f, 19f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(6f, 16f)
+                    lineTo(3f, 16f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(12.5f, 13.5f)
+                    lineTo(16f, 10f)
+                }
+            }.build()
+            return _SleepTimer!!
+        }
+    private var _Moon: ImageVector? = null
+
+    val Moon: ImageVector
+        get() {
+            if (_Moon != null) {
+                return _Moon!!
+            }
+            _Moon = ImageVector.Builder(
+                name = "Moon",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(21.5f, 14.0784f)
+                    curveTo(20.3003f, 14.7189f, 18.9301f, 15.0821f, 17.4751f, 15.0821f)
+                    curveTo(12.7491f, 15.0821f, 8.91792f, 11.2509f, 8.91792f, 6.52485f)
+                    curveTo(8.91792f, 5.06986f, 9.28105f, 3.69968f, 9.92163f, 2.5f)
+                    curveTo(5.66765f, 3.49698f, 2.5f, 7.31513f, 2.5f, 11.8731f)
+                    curveTo(2.5f, 17.1899f, 6.8101f, 21.5f, 12.1269f, 21.5f)
+                    curveTo(16.6849f, 21.5f, 20.503f, 18.3324f, 21.5f, 14.0784f)
+                    close()
+                }
+            }.build()
+            return _Moon!!
+        }
+    private var _Sun: ImageVector? = null
+
+    val Sun: ImageVector
+        get() {
+            if (_Sun != null) {
+                return _Sun!!
+            }
+            _Sun = ImageVector.Builder(
+                name = "Sun",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    fill = null
+                ) {
+                    moveTo(17f, 12f)
+                    curveTo(17f, 14.7614f, 14.7614f, 17f, 12f, 17f)
+                    curveTo(9.23858f, 17f, 7f, 14.7614f, 7f, 12f)
+                    curveTo(7f, 9.23858f, 9.23858f, 7f, 12f, 7f)
+                    curveTo(14.7614f, 7f, 17f, 9.23858f, 17f, 12f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    fill = null
+                ) {
+                    moveTo(12f, 2f)
+                    curveTo(11.6227f, 2.33333f, 11.0945f, 3.2f, 12f, 4f)
+                    moveTo(12f, 20f)
+                    curveTo(12.3773f, 20.3333f, 12.9055f, 21.2f, 12f, 22f)
+                    moveTo(19.5f, 4.50271f)
+                    curveTo(18.9685f, 4.46982f, 17.9253f, 4.72293f, 18.0042f, 5.99847f)
+                    moveTo(5.49576f, 17.5f)
+                    curveTo(5.52865f, 18.0315f, 5.27555f, 19.0747f, 4f, 18.9958f)
+                    moveTo(5.00271f, 4.5f)
+                    curveTo(4.96979f, 5.03202f, 5.22315f, 6.0763f, 6.5f, 5.99729f)
+                    moveTo(18f, 17.5026f)
+                    curveTo(18.5315f, 17.4715f, 19.5747f, 17.7108f, 19.4958f, 18.9168f)
+                    moveTo(22f, 12f)
+                    curveTo(21.6667f, 11.6227f, 20.8f, 11.0945f, 20f, 12f)
+                    moveTo(4f, 11.5f)
+                    curveTo(3.66667f, 11.8773f, 2.8f, 12.4055f, 2f, 11.5f)
+                }
+            }.build()
+            return _Sun!!
+        }
+    private var _Download: ImageVector? = null
+
+    val Download: ImageVector
+        get() {
+            if (_Download != null) {
+                return _Download!!
+            }
+            _Download = ImageVector.Builder(
+                name = "Download",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(17.4776f, 9.01106f)
+                    curveTo(17.485f, 9.01102f, 17.4925f, 9.01101f, 17.5f, 9.01101f)
+                    curveTo(19.9853f, 9.01101f, 22f, 11.0294f, 22f, 13.5193f)
+                    curveTo(22f, 15.8398f, 20.25f, 17.7508f, 18f, 18f)
+                    moveTo(17.4776f, 9.01106f)
+                    curveTo(17.4924f, 8.84606f, 17.5f, 8.67896f, 17.5f, 8.51009f)
+                    curveTo(17.5f, 5.46695f, 15.0376f, 3f, 12f, 3f)
+                    curveTo(9.12324f, 3f, 6.76233f, 5.21267f, 6.52042f, 8.03192f)
+                    moveTo(17.4776f, 9.01106f)
+                    curveTo(17.3753f, 10.1476f, 16.9286f, 11.1846f, 16.2428f, 12.0165f)
+                    moveTo(6.52042f, 8.03192f)
+                    curveTo(3.98398f, 8.27373f, 2f, 10.4139f, 2f, 13.0183f)
+                    curveTo(2f, 15.4417f, 3.71776f, 17.4632f, 6f, 17.9273f)
+                    moveTo(6.52042f, 8.03192f)
+                    curveTo(6.67826f, 8.01687f, 6.83823f, 8.00917f, 7f, 8.00917f)
+                    curveTo(8.12582f, 8.00917f, 9.16474f, 8.38194f, 10.0005f, 9.01101f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(12f, 21f)
+                    lineTo(12f, 13f)
+                    moveTo(12f, 21f)
+                    curveTo(11.2998f, 21f, 9.99153f, 19.0057f, 9.5f, 18.5f)
+                    moveTo(12f, 21f)
+                    curveTo(12.7002f, 21f, 14.0085f, 19.0057f, 14.5f, 18.5f)
+                }
+            }.build()
+            return _Download!!
+        }
+    private var _Edit: ImageVector? = null
+
+    val Edit: ImageVector
+        get() {
+            if (_Edit != null) {
+                return _Edit!!
+            }
+            _Edit = ImageVector.Builder(
+                name = "Edit",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(3.78181f, 16.3092f)
+                    lineTo(3f, 21f)
+                    lineTo(7.69086f, 20.2182f)
+                    curveTo(8.50544f, 20.0825f, 9.25725f, 19.6956f, 9.84119f, 19.1116f)
+                    lineTo(20.4198f, 8.53288f)
+                    curveTo(21.1934f, 7.75922f, 21.1934f, 6.5049f, 20.4197f, 5.73126f)
+                    lineTo(18.2687f, 3.58024f)
+                    curveTo(17.495f, 2.80658f, 16.2406f, 2.80659f, 15.4669f, 3.58027f)
+                    lineTo(4.88841f, 14.159f)
+                    curveTo(4.30447f, 14.7429f, 3.91757f, 15.4947f, 3.78181f, 16.3092f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(14f, 6f)
+                    lineTo(18f, 10f)
+                }
+            }.build()
+            return _Edit!!
+        }
 }

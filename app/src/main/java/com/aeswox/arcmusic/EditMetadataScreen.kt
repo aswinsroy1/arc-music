@@ -171,7 +171,7 @@ fun EditMetadataScreen(
                 actions = {
                     if (isReadOnly) {
                         JellyIconButton(onClick = { isReadOnly = false }) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Metadata")
+                            Icon(imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Edit, contentDescription = "Edit Metadata")
                         }
                     } else {
                         JellyTextButton(

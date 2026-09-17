@@ -1595,7 +1595,7 @@ fun SelectionBottomBar(
         val favoriteLabel = if (currentTab == "Favorites") "REMOVE" else if (isAllFavorited) "UNFAVORITE" else "FAVORITE"
         
         if (currentTab == "Playlists") {
-            BottomBarActionItem(icon = Icons.Default.Edit, label = "RENAME", onClick = onRename)
+            BottomBarActionItem(icon = com.aeswox.arcmusic.ui.components.HugeIcons.Edit, label = "RENAME", onClick = onRename)
             BottomBarActionItem(icon = HugeIcons.Share, label = "SHARE", onClick = onShare)
             BottomBarActionItem(icon = HugeIcons.Delete, label = "DELETE", isDestructive = true, onClick = onDelete)
         } else if (currentTab == "Artists" || currentTab == "Albums") {

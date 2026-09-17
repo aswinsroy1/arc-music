@@ -203,7 +203,7 @@ fun SettingsScreen(
                         SettingsItem(icon = Icons.Outlined.MusicNote, text = "Playback", enabled = false)
                         SettingsItem(icon = Icons.Outlined.GraphicEq, text = "Audio quality", enabled = false)
                         SettingsItem(icon = Icons.Outlined.Tune, text = "Equalizer", onClick = onNavigateToEqualizer)
-                        SettingsItem(icon = Icons.Outlined.Bedtime, text = "Sleep timer", enabled = false)
+                        SettingsItem(icon = com.aeswox.arcmusic.ui.components.HugeIcons.SleepTimer, text = "Sleep timer", enabled = false)
                         SettingsItem(icon = Icons.Outlined.Shuffle, text = "Crossfade", trailingText = "Off", enabled = false)
                     }
                 }
@@ -213,7 +213,7 @@ fun SettingsScreen(
                         SettingsItem(icon = Icons.Outlined.Brush, text = "Appearance", onClick = onNavigateToAppearance)
                         SettingsItem(icon = Icons.Outlined.GraphicEq, text = "Wave properties", onClick = onNavigateToWaveProperties)
                         SettingsItem(
-                            icon = Icons.Outlined.DarkMode, 
+                            icon = com.aeswox.arcmusic.ui.components.HugeIcons.Moon, 
 
                             text = "Dark mode", 
                             trailingContent = {

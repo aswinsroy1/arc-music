@@ -1279,7 +1279,7 @@ fun ArcNowPlayingScreen(
 
                     Triple(if (songToPlay?.isFavorite == true) HugeIcons.HeartCheck else HugeIcons.Heart, if (songToPlay?.isFavorite == true) "Remove from favorites" else "Add to favorites", false),
 
-                    Triple(Icons.Outlined.Bedtime, "Sleep timer", false),
+                    Triple(HugeIcons.SleepTimer, "Sleep timer", false),
 
                     Triple(Icons.Default.Album, "Go to album", false),
 

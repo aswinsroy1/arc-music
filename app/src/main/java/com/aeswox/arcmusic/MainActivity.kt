@@ -1554,7 +1554,7 @@ fun Header(modifier: Modifier = Modifier, title: String? = "Arc Music", fontSize
         }
         JellyIconButton(onClick = onSettingsClick) {
             Icon(
-                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_custom_settings), 
+                imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Settings, 
                 contentDescription = "Settings", 
                 tint = MaterialTheme.colorScheme.onSurface, 
                 modifier = Modifier.size(24.dp)
@@ -2185,7 +2185,7 @@ fun RecommendedDownloadItem(card: GrowthCard, viewModel: MusicViewModel) {
             performSpotiFlacDownload(context, scope, viewModel, query, downloadType)
         }) {
             Icon(
-                imageVector = Icons.Outlined.Download, 
+                imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Download, 
                 contentDescription = "Download",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

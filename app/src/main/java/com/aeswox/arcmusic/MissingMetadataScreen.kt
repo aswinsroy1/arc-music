@@ -267,7 +267,7 @@ fun MissingMetadataItem(track: Track, onNavigateToEditMetadata: (String) -> Unit
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         ) {
             Icon(
-                imageVector = Icons.Default.Edit,
+                imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Edit,
                 contentDescription = "Edit Metadata",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)

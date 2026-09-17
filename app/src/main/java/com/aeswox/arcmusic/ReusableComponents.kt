@@ -338,7 +338,7 @@ fun MiniPlayer(
                 imageVector = if (isPlaying) com.aeswox.arcmusic.ui.components.HugeIcons.Pause else com.aeswox.arcmusic.ui.components.HugeIcons.Play,
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
         JellyIconButton(onClick = onSkipNextClick) {
@@ -346,7 +346,7 @@ fun MiniPlayer(
                 imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Next, 
                 contentDescription = "Skip Next", 
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
     }
