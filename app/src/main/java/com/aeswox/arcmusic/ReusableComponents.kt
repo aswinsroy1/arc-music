@@ -334,17 +334,19 @@ fun MiniPlayer(
             )
         }
         JellyIconButton(onClick = onPlayPauseClick) {
-            com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
-                isPlaying = isPlaying, 
+            Icon(
+                imageVector = if (isPlaying) com.aeswox.arcmusic.ui.components.HugeIcons.Pause else com.aeswox.arcmusic.ui.components.HugeIcons.Play,
+                contentDescription = if (isPlaying) "Pause" else "Play",
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(24.dp)
             )
         }
         JellyIconButton(onClick = onSkipNextClick) {
             Icon(
-                imageVector = Icons.Filled.SkipNext, 
+                imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Next, 
                 contentDescription = "Skip Next", 
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
