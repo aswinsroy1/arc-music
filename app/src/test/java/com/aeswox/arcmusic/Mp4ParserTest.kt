@@ -102,6 +102,7 @@ class Mp4ParserTest {
         return 0L
     }
 
+    @org.junit.Ignore("Local test file not available on CI")
     @Test
     fun testMp4Parser() {
         val duration = extractMp4DurationMs("c:/Users/aswin/OneDrive/Desktop/Arc Music/stay.m4a")

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vendored from Kyant0/backdrop v2.0.0 (io.github.kyant0:backdrop)
  * https://github.com/Kyant0/backdrop â€” Copyright 2025 Kyant0, Apache License 2.0
  *
@@ -9,13 +9,17 @@
  */
 package com.aeswox.arcmusic.backdrop
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import org.intellij.lang.annotations.Language
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 sealed interface RuntimeShaderCache {
 
     fun obtainRuntimeShader(key: String, @Language("AGSL") string: String): RuntimeShader
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal class RuntimeShaderCacheImpl : RuntimeShaderCache {
 
     private val runtimeShaders = mutableMapOf<String, RuntimeShader>()
