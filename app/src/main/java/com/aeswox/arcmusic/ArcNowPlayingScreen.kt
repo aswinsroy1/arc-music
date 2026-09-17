@@ -1026,7 +1026,7 @@ fun ArcNowPlayingScreen(
                                         modifier = Modifier.size(52.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.FastForward,
+                                            imageVector = HugeIcons.Next,
                                             contentDescription = "Next",
                                             tint = textColor,
                                             modifier = Modifier.size(36.dp)
