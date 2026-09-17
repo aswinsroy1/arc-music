@@ -280,4 +280,52 @@ object HugeIcons {
             }.build()
             return _Next!!
         }
+
+    private var _Previous: ImageVector? = null
+
+    val Previous: ImageVector
+        get() {
+            if (_Previous != null) {
+                return _Previous!!
+            }
+            _Previous = ImageVector.Builder(
+                name = "Previous",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Butt,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(8.06492f, 12.6258f)
+                    curveTo(8.31931f, 13.8374f, 9.67295f, 14.7077f, 12.3802f, 16.4481f)
+                    curveTo(15.3247f, 18.3411f, 16.797f, 19.2876f, 17.9895f, 18.9229f)
+                    curveTo(18.3934f, 18.7994f, 18.7654f, 18.5823f, 19.0777f, 18.2876f)
+                    curveTo(20f, 17.4178f, 20f, 15.6118f, 20f, 12f)
+                    curveTo(20f, 8.38816f, 20f, 6.58224f, 19.0777f, 5.71235f)
+                    curveTo(18.7654f, 5.41773f, 18.3934f, 5.20057f, 17.9895f, 5.07707f)
+                    curveTo(16.797f, 4.71243f, 15.3247f, 5.6589f, 12.3802f, 7.55186f)
+                    curveTo(9.67295f, 9.29233f, 8.31931f, 10.1626f, 8.06492f, 11.3742f)
+                    curveTo(7.97836f, 11.7865f, 7.97836f, 12.2135f, 8.06492f, 12.6258f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Miter,
+                    strokeLineMiter = 4f,
+                    fill = null
+                ) {
+                    moveTo(4f, 4f)
+                    lineTo(4f, 20f)
+                }
+            }.build()
+            return _Previous!!
+        }
 }
