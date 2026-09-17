@@ -71,4 +71,101 @@ object HugeIcons {
             }.build()
             return _MicVocal!!
         }
+
+    private var _Pause: ImageVector? = null
+
+    val Pause: ImageVector
+        get() {
+            if (_Pause != null) {
+                return _Pause!!
+            }
+            _Pause = ImageVector.Builder(
+                name = "Pause",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Butt,
+                    strokeLineJoin = StrokeJoin.Miter,
+                    strokeLineMiter = 4f,
+                    fill = null
+                ) {
+                    moveTo(4f, 7f)
+                    curveTo(4f, 5.58579f, 4f, 4.87868f, 4.43934f, 4.43934f)
+                    curveTo(4.87868f, 4f, 5.58579f, 4f, 7f, 4f)
+                    curveTo(8.41421f, 4f, 9.12132f, 4f, 9.56066f, 4.43934f)
+                    curveTo(10f, 4.87868f, 10f, 5.58579f, 10f, 7f)
+                    lineTo(10f, 17f)
+                    curveTo(10f, 18.4142f, 10f, 19.1213f, 9.56066f, 19.5607f)
+                    curveTo(9.12132f, 20f, 8.41421f, 20f, 7f, 20f)
+                    curveTo(5.58579f, 20f, 4.87868f, 20f, 4.43934f, 19.5607f)
+                    curveTo(4f, 19.1213f, 4f, 18.4142f, 4f, 17f)
+                    lineTo(4f, 7f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Butt,
+                    strokeLineJoin = StrokeJoin.Miter,
+                    strokeLineMiter = 4f,
+                    fill = null
+                ) {
+                    moveTo(14f, 7f)
+                    curveTo(14f, 5.58579f, 14f, 4.87868f, 14.4393f, 4.43934f)
+                    curveTo(14.8787f, 4f, 15.5858f, 4f, 17f, 4f)
+                    curveTo(18.4142f, 4f, 19.1213f, 4f, 19.5607f, 4.43934f)
+                    curveTo(20f, 4.87868f, 20f, 5.58579f, 20f, 7f)
+                    lineTo(20f, 17f)
+                    curveTo(20f, 18.4142f, 20f, 19.1213f, 19.5607f, 19.5607f)
+                    curveTo(19.1213f, 20f, 18.4142f, 20f, 17f, 20f)
+                    curveTo(15.5858f, 20f, 14.8787f, 20f, 14.4393f, 19.5607f)
+                    curveTo(14f, 19.1213f, 14f, 18.4142f, 14f, 17f)
+                    lineTo(14f, 7f)
+                    close()
+                }
+            }.build()
+            return _Pause!!
+        }
+
+    private var _Play: ImageVector? = null
+
+    val Play: ImageVector
+        get() {
+            if (_Play != null) {
+                return _Play!!
+            }
+            _Play = ImageVector.Builder(
+                name = "Play",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Butt,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(18.8906f, 12.846f)
+                    curveTo(18.5371f, 14.189f, 16.8667f, 15.138f, 13.5257f, 17.0361f)
+                    curveTo(10.296f, 18.8709f, 8.6812f, 19.7884f, 7.37983f, 19.4196f)
+                    curveTo(6.8418f, 19.2671f, 6.35159f, 18.9776f, 5.95624f, 18.5787f)
+                    curveTo(5f, 17.6139f, 5f, 15.7426f, 5f, 12f)
+                    curveTo(5f, 8.2574f, 5f, 6.3861f, 5.95624f, 5.42132f)
+                    curveTo(6.35159f, 5.02245f, 6.8418f, 4.73288f, 7.37983f, 4.58042f)
+                    curveTo(8.6812f, 4.21165f, 10.296f, 5.12907f, 13.5257f, 6.96393f)
+                    curveTo(16.8667f, 8.86197f, 18.5371f, 9.811f, 18.8906f, 11.154f)
+                    curveTo(19.0365f, 11.7084f, 19.0365f, 12.2916f, 18.8906f, 12.846f)
+                    close()
+                }
+            }.build()
+            return _Play!!
+        }
 }

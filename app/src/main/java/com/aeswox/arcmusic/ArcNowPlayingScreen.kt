@@ -1012,8 +1012,9 @@ fun ArcNowPlayingScreen(
                                             .clickable { viewModel.togglePlayPause() },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        com.aeswox.arcmusic.ui.components.PlayPauseMorphIcon(
-                                            isPlaying = isPlaying,
+                                        Icon(
+                                            imageVector = if (isPlaying) HugeIcons.Pause else HugeIcons.Play,
+                                            contentDescription = if (isPlaying) "Pause" else "Play",
                                             tint = textColor,
                                             modifier = Modifier.size(46.dp)
                                         )
