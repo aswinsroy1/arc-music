@@ -58,6 +58,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.LibraryMusic
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import com.aeswox.arcmusic.backdrop.Backdrop
@@ -400,21 +401,21 @@ fun BottomNavigation(
     ) {
         NavBarItem(
             selected = currentTab == 0,
-            icon = Icons.Outlined.Home,
+            icon = HugeIcons.Home,
             contentDescription = "Home",
             interactionSource = tab0InteractionSource,
             onClick = { onTabSelected(0) }
         )
         NavBarItem(
             selected = currentTab == 1,
-            icon = Icons.Outlined.Search,
+            icon = HugeIcons.Search,
             contentDescription = "Search",
             interactionSource = tab1InteractionSource,
             onClick = { onTabSelected(1) }
         )
         NavBarItem(
             selected = currentTab == 2,
-            icon = Icons.Outlined.LibraryMusic,
+            icon = HugeIcons.Library,
             contentDescription = "Library",
             interactionSource = tab2InteractionSource,
             onClick = { onTabSelected(2) }

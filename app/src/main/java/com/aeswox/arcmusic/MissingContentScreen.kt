@@ -19,8 +19,8 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.MusicVideo
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -345,7 +345,7 @@ fun MissingItemRow(item: MissingContentItem) {
                             val spIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/${Uri.encode(query)}"))
                             try { context.startActivity(spIntent) } catch (e: Exception) {}
                         }) {
-                            Icon(Icons.Default.Search, contentDescription = "Spotify", tint = Color(0xFF1DB954), modifier = Modifier.size(20.dp))
+                            Icon(HugeIcons.Search, contentDescription = "Spotify", tint = Color(0xFF1DB954), modifier = Modifier.size(20.dp))
                         }
                     }
                 } else {
@@ -390,7 +390,7 @@ fun MissingItemRow(item: MissingContentItem) {
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Search,
+                                    imageVector = HugeIcons.Search,
                                     contentDescription = "Search on Spotify",
                                     tint = Color(0xFF1DB954),
                                     modifier = Modifier.size(18.dp)

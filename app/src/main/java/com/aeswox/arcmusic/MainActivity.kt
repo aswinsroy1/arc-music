@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Check
 
@@ -2540,7 +2541,7 @@ fun SearchBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.Search,
+            imageVector = HugeIcons.Search,
             contentDescription = "Search",
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2667,7 +2668,7 @@ fun RecentSearchesSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = HugeIcons.Search,
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -3380,7 +3381,7 @@ fun SearchEmptyState(modifier: Modifier = Modifier) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = HugeIcons.Search,
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(48.dp)

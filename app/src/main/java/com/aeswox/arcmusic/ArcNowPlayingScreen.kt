@@ -1001,7 +1001,7 @@ fun ArcNowPlayingScreen(
                                             imageVector = HugeIcons.Previous,
                                             contentDescription = "Previous",
                                             tint = textColor,
-                                            modifier = Modifier.size(36.dp)
+                                            modifier = Modifier.size(28.dp)
                                         )
                                     }
 
@@ -1016,7 +1016,7 @@ fun ArcNowPlayingScreen(
                                             imageVector = if (isPlaying) HugeIcons.Pause else HugeIcons.Play,
                                             contentDescription = if (isPlaying) "Pause" else "Play",
                                             tint = textColor,
-                                            modifier = Modifier.size(46.dp)
+                                            modifier = Modifier.size(32.dp)
                                         )
                                     }
 
@@ -1029,7 +1029,7 @@ fun ArcNowPlayingScreen(
                                             imageVector = HugeIcons.Next,
                                             contentDescription = "Next",
                                             tint = textColor,
-                                            modifier = Modifier.size(36.dp)
+                                            modifier = Modifier.size(28.dp)
                                         )
                                     }
 

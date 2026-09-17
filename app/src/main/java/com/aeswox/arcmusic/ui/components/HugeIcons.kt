@@ -328,4 +328,202 @@ object HugeIcons {
             }.build()
             return _Previous!!
         }
+
+    private var _Home: ImageVector? = null
+
+    val Home: ImageVector
+        get() {
+            if (_Home != null) {
+                return _Home!!
+            }
+            _Home = ImageVector.Builder(
+                name = "Home",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(3f, 11.9896f)
+                    lineTo(3f, 14.5f)
+                    curveTo(3f, 17.7998f, 3f, 19.4497f, 4.02513f, 20.4749f)
+                    curveTo(5.05025f, 21.5f, 6.70017f, 21.5f, 10f, 21.5f)
+                    lineTo(14f, 21.5f)
+                    curveTo(17.2998f, 21.5f, 18.9497f, 21.5f, 19.9749f, 20.4749f)
+                    curveTo(21f, 19.4497f, 21f, 17.7998f, 21f, 14.5f)
+                    lineTo(21f, 11.9896f)
+                    curveTo(21f, 10.3083f, 21f, 9.46773f, 20.6441f, 8.74005f)
+                    curveTo(20.2882f, 8.01237f, 19.6247f, 7.49628f, 18.2976f, 6.46411f)
+                    lineTo(16.2976f, 4.90855f)
+                    curveTo(14.2331f, 3.30285f, 13.2009f, 2.5f, 12f, 2.5f)
+                    curveTo(10.7991f, 2.5f, 9.76689f, 3.30285f, 7.70242f, 4.90855f)
+                    lineTo(5.70241f, 6.46411f)
+                    curveTo(4.37533f, 7.49628f, 3.71179f, 8.01237f, 3.3559f, 8.74005f)
+                    curveTo(3f, 9.46773f, 3f, 10.3083f, 3f, 11.9896f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(17f, 17.5f)
+                    lineTo(17f, 13.5f)
+                }
+            }.build()
+            return _Home!!
+        }
+
+    private var _Search: ImageVector? = null
+
+    val Search: ImageVector
+        get() {
+            if (_Search != null) {
+                return _Search!!
+            }
+            _Search = ImageVector.Builder(
+                name = "Search",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Butt,
+                    strokeLineJoin = StrokeJoin.Miter,
+                    strokeLineMiter = 4f,
+                    fill = null
+                ) {
+                    moveTo(17f, 10f)
+                    curveTo(17f, 13.866f, 13.866f, 17f, 10f, 17f)
+                    curveTo(6.13401f, 17f, 3f, 13.866f, 3f, 10f)
+                    curveTo(3f, 6.13401f, 6.13401f, 3f, 10f, 3f)
+                    curveTo(13.866f, 3f, 17f, 6.13401f, 17f, 10f)
+                    close()
+                }
+                path(
+                    fill = SolidColor(Color(0xFF000000)),
+                    stroke = null,
+                    strokeLineWidth = 0f,
+                    strokeLineCap = StrokeCap.Butt,
+                    strokeLineJoin = StrokeJoin.Miter,
+                    strokeLineMiter = 4f
+                ) {
+                    moveTo(20.4697f, 21.5303f)
+                    curveTo(20.7626f, 21.8232f, 21.2374f, 21.8232f, 21.5303f, 21.5303f)
+                    curveTo(21.8232f, 21.2374f, 21.8232f, 20.7626f, 21.5303f, 20.4697f)
+                    lineTo(21f, 21f)
+                    lineTo(20.4697f, 21.5303f)
+                    close()
+                    moveTo(15f, 15f)
+                    lineTo(14.4697f, 15.5303f)
+                    lineTo(20.4697f, 21.5303f)
+                    lineTo(21f, 21f)
+                    lineTo(21.5303f, 20.4697f)
+                    lineTo(15.5303f, 14.4697f)
+                    lineTo(15f, 15f)
+                    close()
+                }
+            }.build()
+            return _Search!!
+        }
+
+    private var _Library: ImageVector? = null
+
+    val Library: ImageVector
+        get() {
+            if (_Library != null) {
+                return _Library!!
+            }
+            _Library = ImageVector.Builder(
+                name = "Library",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(3f, 15f)
+                    curveTo(3f, 12.1911f, 3f, 10.7866f, 3.67412f, 9.77772f)
+                    curveTo(3.96596f, 9.34096f, 4.34096f, 8.96596f, 4.77772f, 8.67412f)
+                    curveTo(5.78661f, 8f, 7.19108f, 8f, 10f, 8f)
+                    lineTo(14f, 8f)
+                    curveTo(16.8089f, 8f, 18.2134f, 8f, 19.2223f, 8.67412f)
+                    curveTo(19.659f, 8.96596f, 20.034f, 9.34096f, 20.3259f, 9.77772f)
+                    curveTo(21f, 10.7866f, 21f, 12.1911f, 21f, 15f)
+                    curveTo(21f, 17.8089f, 21f, 19.2134f, 20.3259f, 20.2223f)
+                    curveTo(20.034f, 20.659f, 19.659f, 21.034f, 19.2223f, 21.3259f)
+                    curveTo(18.2134f, 22f, 16.8089f, 22f, 14f, 22f)
+                    lineTo(10f, 22f)
+                    curveTo(7.19108f, 22f, 5.78661f, 22f, 4.77772f, 21.3259f)
+                    curveTo(4.34096f, 21.034f, 3.96596f, 20.659f, 3.67412f, 20.2223f)
+                    curveTo(3f, 19.2134f, 3f, 17.8089f, 3f, 15f)
+                    close()
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(12.5f, 16.5f)
+                    curveTo(12.5f, 17.3284f, 11.8284f, 18f, 11f, 18f)
+                    curveTo(10.1716f, 18f, 9.5f, 17.3284f, 9.5f, 16.5f)
+                    curveTo(9.5f, 15.6716f, 10.1716f, 15f, 11f, 15f)
+                    curveTo(11.8284f, 15f, 12.5f, 15.6716f, 12.5f, 16.5f)
+                    close()
+                    moveTo(12.5f, 16.5f)
+                    lineTo(12.5f, 11.5f)
+                    curveTo(12.5f, 11.5f, 12.9f, 13.2333f, 14.5f, 13.5f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(19f, 8f)
+                    curveTo(18.9821f, 6.76022f, 18.89f, 6.05733f, 18.4182f, 5.58579f)
+                    curveTo(17.8321f, 5f, 16.8888f, 5f, 15.0022f, 5f)
+                    lineTo(8.99783f, 5f)
+                    curveTo(7.11118f, 5f, 6.16786f, 5f, 5.58176f, 5.58579f)
+                    curveTo(5.10996f, 6.05733f, 5.01794f, 6.76022f, 5f, 8f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(17f, 5f)
+                    curveTo(17f, 4.06812f, 17f, 3.60218f, 16.8478f, 3.23463f)
+                    curveTo(16.6448f, 2.74458f, 16.2554f, 2.35523f, 15.7654f, 2.15224f)
+                    curveTo(15.3978f, 2f, 14.9319f, 2f, 14f, 2f)
+                    lineTo(10f, 2f)
+                    curveTo(9.06812f, 2f, 8.60218f, 2f, 8.23463f, 2.15224f)
+                    curveTo(7.74458f, 2.35523f, 7.35523f, 2.74458f, 7.15224f, 3.23463f)
+                    curveTo(7f, 3.60218f, 7f, 4.06812f, 7f, 5f)
+                }
+            }.build()
+            return _Library!!
+        }
 }
