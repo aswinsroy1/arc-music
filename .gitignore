@@ -28,3 +28,4 @@ app/build/
 /*.ps1
 /*.py
 /*.sh
+node_modules
