@@ -222,6 +222,8 @@ fun AlbumDetailsInfo(
                 text = album?.title ?: "Unknown Album",
                 style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
                 color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 46.sp,
+                lineHeight = 52.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

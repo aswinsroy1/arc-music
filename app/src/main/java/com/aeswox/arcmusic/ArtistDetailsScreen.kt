@@ -270,8 +270,8 @@ fun ArtistHeroSection(artist: Artist?, tracks: List<Track>, viewModel: MusicView
                     text = artist?.name ?: "Unknown Artist",
                     style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 48.sp,
-                    lineHeight = 54.sp,
+                    fontSize = 46.sp,
+                    lineHeight = 52.sp,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()
                 )
