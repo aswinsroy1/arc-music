@@ -970,30 +970,9 @@ fun ArcNowPlayingScreen(
                         }
 
                         val isControlsDark = textColor.luminance() < 0.5f
-                        val highlightPlatterColor = if (isControlsDark) Color(0xFF181818) else Color.White
-                        val highlightIconColor = if (isControlsDark) Color.White else Color(0xFF181818)
-
-                        val lyricsPlatterBg by animateColorAsState(
-                            targetValue = if (showLyrics) highlightPlatterColor else Color.Transparent,
-                            animationSpec = tween(durationMillis = 220),
-                            label = "lyricsPlatterBg"
-                        )
-                        val lyricsIconTint by animateColorAsState(
-                            targetValue = if (showLyrics) highlightIconColor else textColor.copy(alpha = 0.6f),
-                            animationSpec = tween(durationMillis = 220),
-                            label = "lyricsIconTint"
-                        )
-
-                        val queuePlatterBg by animateColorAsState(
-                            targetValue = if (showQueue) highlightPlatterColor else Color.Transparent,
-                            animationSpec = tween(durationMillis = 220),
-                            label = "queuePlatterBg"
-                        )
-                        val queueIconTint by animateColorAsState(
-                            targetValue = if (showQueue) highlightIconColor else textColor.copy(alpha = 0.6f),
-                            animationSpec = tween(durationMillis = 220),
-                            label = "queueIconTint"
-                        )
+                        val highlightPlatterBaseColor = if (isControlsDark) Color(0xFF181818) else Color.White
+                        val highlightPlatterColor = highlightPlatterBaseColor.copy(alpha = 0.6f)
+                        val inactiveControlTint = textColor.copy(alpha = 0.6f)
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1012,19 +991,46 @@ fun ArcNowPlayingScreen(
                                 },
                                 modifier = Modifier.size(48.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(lyricsPlatterBg),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = HugeIcons.LyricsQuote,
-                                        contentDescription = "Lyrics",
-                                        tint = lyricsIconTint,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                Crossfade(
+                                    targetState = showLyrics,
+                                    animationSpec = tween(durationMillis = 200),
+                                    label = "lyricsHighlight"
+                                ) { active ->
+                                    if (active) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                                .drawWithContent {
+                                                    drawContent()
+                                                    drawRoundRect(
+                                                        color = highlightPlatterColor,
+                                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                                                        blendMode = BlendMode.SrcOut
+                                                    )
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = HugeIcons.LyricsQuote,
+                                                contentDescription = "Lyrics",
+                                                tint = Color.Black,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.size(40.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = HugeIcons.LyricsQuote,
+                                                contentDescription = "Lyrics",
+                                                tint = inactiveControlTint,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
@@ -1081,19 +1087,46 @@ fun ArcNowPlayingScreen(
                                 },
                                 modifier = Modifier.size(48.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(queuePlatterBg),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = HugeIcons.Queue,
-                                        contentDescription = "Up Next",
-                                        tint = queueIconTint,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                Crossfade(
+                                    targetState = showQueue,
+                                    animationSpec = tween(durationMillis = 200),
+                                    label = "queueHighlight"
+                                ) { active ->
+                                    if (active) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                                .drawWithContent {
+                                                    drawContent()
+                                                    drawRoundRect(
+                                                        color = highlightPlatterColor,
+                                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                                                        blendMode = BlendMode.SrcOut
+                                                    )
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = HugeIcons.Queue,
+                                                contentDescription = "Up Next",
+                                                tint = Color.Black,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.size(40.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = HugeIcons.Queue,
+                                                contentDescription = "Up Next",
+                                                tint = inactiveControlTint,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
