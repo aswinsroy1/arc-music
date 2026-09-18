@@ -760,6 +760,7 @@ internal fun ArcLyricsPanel(
     onHideControls: () -> Unit,
     onScrollingChange: (Boolean) -> Unit = {},
     isHeroMode: Boolean = false,
+    topPadding: androidx.compose.ui.unit.Dp = 40.dp,
     modifier: Modifier = Modifier,
 ) {
     val clock = rememberArcLyricClock(positionMs, isPlaying)
@@ -876,12 +877,12 @@ internal fun ArcLyricsPanel(
             .nestedScroll(keepScroll)
             .arcFadingEdges(if (isHeroMode) 12.dp else 28.dp),
         contentPadding = if (isHeroMode) PaddingValues(
-            top = 40.dp,
+            top = topPadding,
             bottom = 40.dp,
             start = 8.dp,
             end = 8.dp,
         ) else PaddingValues(
-            top = 40.dp - GLOW_ROOM,
+            top = topPadding - GLOW_ROOM,
             bottom = with(androidx.compose.ui.platform.LocalDensity.current) { viewportHeight.toDp() } * 0.8f,
             start = 28.dp - GLOW_ROOM,
             end = 28.dp - GLOW_ROOM,

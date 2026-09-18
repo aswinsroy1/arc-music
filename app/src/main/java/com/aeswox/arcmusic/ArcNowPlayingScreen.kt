@@ -2036,6 +2036,7 @@ fun ArcLyricsContent(
 ) {
     val viewModel: MusicViewModel = hiltViewModel()
     val lyricsData by viewModel.lyricsUiState.collectAsState()
+    val songToPlay by viewModel.currentlyPlaying.collectAsState()
     val rawSyncedLines = lyricsData?.synced
     val plainLines = lyricsData?.plain
     val duration by viewModel.duration.collectAsState()
@@ -2069,6 +2070,8 @@ fun ArcLyricsContent(
     val fadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
     val controlsFadeTop = controlsHeightPx.toFloat() + fadeHeightPx
     val controlsFadeBottom = controlsHeightPx.toFloat()
+    
+    val topFadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 160.dp.toPx() }
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -2085,11 +2088,24 @@ fun ArcLyricsContent(
             controlsOpen = lyricsControlsVisible,
             onRevealControls = onRevealControls,
             onHideControls = onHideControls,
+            topPadding = 160.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
+                    
+                    // Top fade
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black),
+                            startY = 0f,
+                            endY = topFadeHeightPx
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+
+                    // Bottom fade
                     if (controlsFadeTop > 0f) {
                         drawRect(
                             brush = Brush.verticalGradient(
@@ -2102,6 +2118,62 @@ fun ArcLyricsContent(
                     }
                 }
         )
+        
+        // Playing Now Header Overlay
+        songToPlay?.let { track ->
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp, start = 24.dp, end = 24.dp)
+            ) {
+                Text(
+                    text = "Playing Now",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    ),
+                    color = textColor.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(bottom = 12.dp, top = 8.dp)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(accentColor.copy(alpha = 0.18f))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(textColor.copy(alpha = 0.08f))
+                    ) {
+                        AsyncImage(
+                            model = track.artworkUri ?: track.albumId?.let { "content://media/external/audio/albumart/$it" },
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = track.title,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = textColor,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = track.artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor.copy(alpha = 0.6f),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
