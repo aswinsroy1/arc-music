@@ -783,6 +783,7 @@ internal fun ArcLyricsPanel(
     }
     val focusLine = if (leadLine >= 0) leadLine else scrollLine
     val listState = rememberLazyListState()
+    val topPaddingPx = with(androidx.compose.ui.platform.LocalDensity.current) { topPadding.toPx() }
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress }.collect(onScrollingChange)
@@ -854,8 +855,9 @@ internal fun ArcLyricsPanel(
                 !placed -> { listState.scrollToItem(focusLine, scrollOffset = 0); placed = true }
                 visible != null -> {
                     val span = arcScrollLead(lines, clock.longValue).toInt()
-                    run = ScrollRun(run.id + 1, visible.offset.toFloat(), span)
-                    listState.animateScrollBy(visible.offset.toFloat(), animationSpec = tween(durationMillis = span, easing = LYRIC_EASING))
+                    val targetDelta = visible.offset.toFloat() - topPaddingPx
+                    run = ScrollRun(run.id + 1, targetDelta, span)
+                    listState.animateScrollBy(targetDelta, animationSpec = tween(durationMillis = span, easing = LYRIC_EASING))
                 }
                 else -> listState.animateScrollToItem(focusLine, scrollOffset = 0)
             }
