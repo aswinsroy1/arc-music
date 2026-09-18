@@ -628,6 +628,12 @@ internal fun ArcSweptLyricLine(
     val growth = remember { ArcCharGrowth() }
     val room = Modifier.padding(GLOW_ROOM)
 
+    val activeAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (feather) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 400, easing = CubicBezierEasing(0.41f, 0f, 0.12f, 0.99f)),
+        label = "activeAlpha",
+    )
+
     val riseAgainst: (Modifier) -> Modifier = { inner ->
         if (!rise || line.words.isNullOrEmpty()) {
             inner
@@ -694,6 +700,7 @@ internal fun ArcSweptLyricLine(
             modifier = riseAgainst(
                 Modifier
                     .graphicsLayer {
+                        alpha = activeAlpha
                         compositingStrategy = if (feather) CompositingStrategy.Offscreen
                         else CompositingStrategy.Auto
                     }
@@ -966,7 +973,7 @@ internal fun ArcLyricsPanel(
             // Word-synced path
             if (!line.words.isNullOrEmpty() && isSynced) {
                 val tail by animateFloatAsState(
-                    targetValue = if (sung) 1f else UNSUNG_ALPHA,
+                    targetValue = UNSUNG_ALPHA,
                     label = "lyricTail",
                 )
                 ArcSweptLyricLine(
@@ -983,7 +990,7 @@ internal fun ArcLyricsPanel(
             } else {
                 // Line-synced or plain: whole-line highlight
                 val lit by animateFloatAsState(
-                    targetValue = if (!isSynced || sung || isActive) 1f else UNSUNG_ALPHA,
+                    targetValue = if (!isSynced || isActive) 1f else UNSUNG_ALPHA,
                     label = "lyricLit",
                 )
                 Text(
