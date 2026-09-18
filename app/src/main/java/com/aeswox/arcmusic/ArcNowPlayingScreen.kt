@@ -969,90 +969,134 @@ fun ArcNowPlayingScreen(
                             }
                         }
 
+                        val isControlsDark = textColor.luminance() < 0.5f
+                        val highlightPlatterColor = if (isControlsDark) Color(0xFF181818) else Color.White
+                        val highlightIconColor = if (isControlsDark) Color.White else Color(0xFF181818)
+
+                        val lyricsPlatterBg by animateColorAsState(
+                            targetValue = if (showLyrics) highlightPlatterColor else Color.Transparent,
+                            animationSpec = tween(durationMillis = 220),
+                            label = "lyricsPlatterBg"
+                        )
+                        val lyricsIconTint by animateColorAsState(
+                            targetValue = if (showLyrics) highlightIconColor else textColor.copy(alpha = 0.6f),
+                            animationSpec = tween(durationMillis = 220),
+                            label = "lyricsIconTint"
+                        )
+
+                        val queuePlatterBg by animateColorAsState(
+                            targetValue = if (showQueue) highlightPlatterColor else Color.Transparent,
+                            animationSpec = tween(durationMillis = 220),
+                            label = "queuePlatterBg"
+                        )
+                        val queueIconTint by animateColorAsState(
+                            targetValue = if (showQueue) highlightIconColor else textColor.copy(alpha = 0.6f),
+                            animationSpec = tween(durationMillis = 220),
+                            label = "queueIconTint"
+                        )
+
                         Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                    // Far Left — Lyrics
-                                    IconButton(
-                                        onClick = { 
-                                            showLyrics = true
-                                            showQueue = false 
-                                        },
-                                        modifier = Modifier.size(48.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = HugeIcons.MicVocal,
-                                            contentDescription = "Lyrics",
-                                            tint = if (showLyrics)
-                                                MaterialTheme.colorScheme.primary
-                                            else
-                                                textColor.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(24.dp)
-                                        )
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Far Left — Lyrics
+                            IconButton(
+                                onClick = { 
+                                    if (showLyrics) {
+                                        showLyrics = false
+                                    } else {
+                                        showLyrics = true
+                                        showQueue = false 
                                     }
-
-                                    // Previous
-                                    IconButton(
-                                        onClick = { viewModel.skipToPrevious() },
-                                        modifier = Modifier.size(52.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = HugeIcons.Previous,
-                                            contentDescription = "Previous",
-                                            tint = textColor,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-
-                                    // Play / Pause â€” larger tap target
-                                    Box(
-                                        modifier = Modifier
-                                            .size(64.dp)
-                                            .clickable { viewModel.togglePlayPause() },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isPlaying) HugeIcons.Pause else HugeIcons.Play,
-                                            contentDescription = if (isPlaying) "Pause" else "Play",
-                                            tint = textColor,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                    }
-
-                                    // Next
-                                    IconButton(
-                                        onClick = { viewModel.skipToNext() },
-                                        modifier = Modifier.size(52.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = HugeIcons.Next,
-                                            contentDescription = "Next",
-                                            tint = textColor,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-
-                                    // Far Right — Queue
-                                    IconButton(
-                                        onClick = { 
-                                            showQueue = true
-                                            showLyrics = false 
-                                        },
-                                        modifier = Modifier.size(48.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = HugeIcons.Queue,
-                                            contentDescription = "Up Next",
-                                            tint = if (showQueue)
-                                                MaterialTheme.colorScheme.primary
-                                            else
-                                                textColor.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(lyricsPlatterBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = HugeIcons.LyricsQuote,
+                                        contentDescription = "Lyrics",
+                                        tint = lyricsIconTint,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                 }
+                            }
+
+                            // Previous
+                            IconButton(
+                                onClick = { viewModel.skipToPrevious() },
+                                modifier = Modifier.size(52.dp)
+                            ) {
+                                Icon(
+                                    imageVector = HugeIcons.Previous,
+                                    contentDescription = "Previous",
+                                    tint = textColor,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            // Play / Pause — larger tap target
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clickable { viewModel.togglePlayPause() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlaying) HugeIcons.Pause else HugeIcons.Play,
+                                    contentDescription = if (isPlaying) "Pause" else "Play",
+                                    tint = textColor,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+
+                            // Next
+                            IconButton(
+                                onClick = { viewModel.skipToNext() },
+                                modifier = Modifier.size(52.dp)
+                            ) {
+                                Icon(
+                                    imageVector = HugeIcons.Next,
+                                    contentDescription = "Next",
+                                    tint = textColor,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            // Far Right — Queue
+                            IconButton(
+                                onClick = { 
+                                    if (showQueue) {
+                                        showQueue = false
+                                    } else {
+                                        showQueue = true
+                                        showLyrics = false 
+                                    }
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(queuePlatterBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = HugeIcons.Queue,
+                                        contentDescription = "Up Next",
+                                        tint = queueIconTint,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
                             }
                         }
             }
