@@ -98,7 +98,7 @@ fun PlaylistDetailsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AppIconButton(
-                        icon = Icons.Default.ArrowBackIosNew,
+                        icon = HugeIcons.ArrowLeft,
                         contentDescription = "Back",
                         onClick = onNavigateBack,
                         tint = MaterialTheme.colorScheme.onSurface
@@ -658,7 +658,7 @@ fun PlaylistDetailsSkeleton(onNavigateBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AppIconButton(
-                        icon = Icons.Default.ArrowBackIosNew,
+                        icon = HugeIcons.ArrowLeft,
                         contentDescription = "Back",
                         onClick = onNavigateBack,
                         tint = MaterialTheme.colorScheme.onSurface

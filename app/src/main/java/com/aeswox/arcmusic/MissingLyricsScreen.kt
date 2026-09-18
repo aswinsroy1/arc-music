@@ -11,13 +11,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
@@ -83,7 +81,7 @@ fun MissingLyricsScreen(
                     },
                     navigationIcon = {
                         JellyIconButton(onClick = onNavigateBack) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(imageVector = HugeIcons.ArrowLeft, contentDescription = "Back")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -230,7 +228,7 @@ fun MissingLyricsScreen(
                         if (isSyncing) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                         } else {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = HugeIcons.Download, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Fetch Lyrics", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                         }
@@ -411,7 +409,7 @@ fun MissingLyricTrackItem(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.Default.Download,
+                    imageVector = HugeIcons.Download,
                     contentDescription = "Fetch Lyrics",
                     modifier = Modifier.size(18.dp)
                 )

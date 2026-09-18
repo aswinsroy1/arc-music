@@ -96,7 +96,7 @@ fun GenreHubScreenContent(
             ) {
                 JellyIconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = HugeIcons.ArrowLeft,
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onSurface
                     )

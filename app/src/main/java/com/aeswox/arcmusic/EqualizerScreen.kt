@@ -14,7 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.*
@@ -83,7 +83,7 @@ fun EqualizerScreen(
                 title = { Text("Equalizer", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     JellyIconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(HugeIcons.ArrowLeft, contentDescription = "Back")
                     }
                 },
                 actions = {

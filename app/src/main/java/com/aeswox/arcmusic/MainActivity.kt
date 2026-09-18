@@ -67,7 +67,6 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.*
@@ -2185,7 +2184,7 @@ fun RecommendedDownloadItem(card: GrowthCard, viewModel: MusicViewModel) {
             performSpotiFlacDownload(context, scope, viewModel, query, downloadType)
         }) {
             Icon(
-                imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.Download, 
+                imageVector = com.aeswox.arcmusic.ui.components.HugeIcons.CloudDownload, 
                 contentDescription = "Download",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

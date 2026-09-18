@@ -250,14 +250,8 @@ object HugeIcons {
                     strokeLineJoin = StrokeJoin.Round,
                     fill = null
                 ) {
-                    moveTo(21f, 14f)
-                    curveTo(21f, 15.4001f, 21f, 16.1002f, 20.7275f, 16.635f)
-                    curveTo(20.4878f, 17.1054f, 20.1054f, 17.4878f, 19.635f, 17.7275f)
-                    curveTo(19.1002f, 18f, 18.4001f, 18f, 17f, 18f)
-                    lineTo(7f, 18f)
-                    curveTo(5.59987f, 18f, 4.8998f, 18f, 4.36502f, 17.7275f)
-                    curveTo(3.89462f, 17.4878f, 3.51217f, 17.1054f, 3.27248f, 16.635f)
-                    curveTo(3f, 16.1002f, 3f, 15.4001f, 3f, 14f)
+                    moveTo(2f, 3f)
+                    lineTo(20f, 3f)
                 }
                 path(
                     stroke = SolidColor(Color(0xFF000000)),
@@ -266,8 +260,8 @@ object HugeIcons {
                     strokeLineJoin = StrokeJoin.Round,
                     fill = null
                 ) {
-                    moveTo(6f, 14f)
-                    lineTo(18f, 14f)
+                    moveTo(2f, 10f)
+                    lineTo(15f, 10f)
                 }
                 path(
                     stroke = SolidColor(Color(0xFF000000)),
@@ -276,8 +270,8 @@ object HugeIcons {
                     strokeLineJoin = StrokeJoin.Round,
                     fill = null
                 ) {
-                    moveTo(6f, 10f)
-                    lineTo(18f, 10f)
+                    moveTo(2f, 17f)
+                    lineTo(9f, 17f)
                 }
                 path(
                     stroke = SolidColor(Color(0xFF000000)),
@@ -286,8 +280,15 @@ object HugeIcons {
                     strokeLineJoin = StrokeJoin.Round,
                     fill = null
                 ) {
-                    moveTo(6f, 6f)
-                    lineTo(18f, 6f)
+                    moveTo(18.25f, 19f)
+                    curveTo(18.25f, 20.6569f, 16.8509f, 22f, 15.125f, 22f)
+                    curveTo(13.3991f, 22f, 12f, 20.6569f, 12f, 19f)
+                    curveTo(12f, 17.3431f, 13.3991f, 16f, 15.125f, 16f)
+                    curveTo(16.8509f, 16f, 18.25f, 17.3431f, 18.25f, 19f)
+                    close()
+                    moveTo(18.25f, 19f)
+                    lineTo(18.25f, 10f)
+                    curveTo(18.6667f, 10.6f, 19f, 13.12f, 22f, 13.6f)
                 }
             }.build()
             return _Queue!!
@@ -1446,15 +1447,15 @@ object HugeIcons {
             }.build()
             return _Sun!!
         }
-    private var _Download: ImageVector? = null
+    private var _CloudDownload: ImageVector? = null
 
-    val Download: ImageVector
+    val CloudDownload: ImageVector
         get() {
-            if (_Download != null) {
-                return _Download!!
+            if (_CloudDownload != null) {
+                return _CloudDownload!!
             }
-            _Download = ImageVector.Builder(
-                name = "Download",
+            _CloudDownload = ImageVector.Builder(
+                name = "CloudDownload",
                 defaultWidth = 24.dp,
                 defaultHeight = 24.dp,
                 viewportWidth = 24f,
@@ -1497,6 +1498,53 @@ object HugeIcons {
                     curveTo(11.2998f, 21f, 9.99153f, 19.0057f, 9.5f, 18.5f)
                     moveTo(12f, 21f)
                     curveTo(12.7002f, 21f, 14.0085f, 19.0057f, 14.5f, 18.5f)
+                }
+            }.build()
+            return _CloudDownload!!
+        }
+
+    private var _Download: ImageVector? = null
+
+    val Download: ImageVector
+        get() {
+            if (_Download != null) {
+                return _Download!!
+            }
+            _Download = ImageVector.Builder(
+                name = "Download",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(2.99969f, 17.0002f)
+                    curveTo(2.99969f, 17.9302f, 2.99969f, 18.3952f, 3.10192f, 18.7767f)
+                    curveTo(3.37932f, 19.8119f, 4.18796f, 20.6206f, 5.22324f, 20.898f)
+                    curveTo(5.60474f, 21.0002f, 6.06972f, 21.0002f, 6.99969f, 21.0002f)
+                    lineTo(16.9997f, 21.0002f)
+                    curveTo(17.9297f, 21.0002f, 18.3947f, 21.0002f, 18.7762f, 20.898f)
+                    curveTo(19.8114f, 20.6206f, 20.6201f, 19.8119f, 20.8975f, 18.7767f)
+                    curveTo(20.9997f, 18.3952f, 20.9997f, 17.9302f, 20.9997f, 17.0002f)
+                }
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(16.4998f, 11.5002f)
+                    curveTo(16.4998f, 11.5002f, 13.1856f, 16.0002f, 11.9997f, 16.0002f)
+                    curveTo(10.8139f, 16.0002f, 7.49976f, 11.5002f, 7.49976f, 11.5002f)
+                    moveTo(11.9997f, 15.0002f)
+                    lineTo(11.9997f, 3.00016f)
                 }
             }.build()
             return _Download!!
@@ -1547,4 +1595,36 @@ object HugeIcons {
             }.build()
             return _Edit!!
         }
+
+    private var _ArrowLeft: ImageVector? = null
+
+    val ArrowLeft: ImageVector
+        get() {
+            if (_ArrowLeft != null) {
+                return _ArrowLeft!!
+            }
+            _ArrowLeft = ImageVector.Builder(
+                name = "ArrowLeft",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(15f, 6f)
+                    curveTo(15f, 6f, 9.00001f, 10.4189f, 9f, 12f)
+                    curveTo(8.99999f, 13.5812f, 15f, 18f, 15f, 18f)
+                }
+            }.build()
+            return _ArrowLeft!!
+        }
+
+    val ArrowBack: ImageVector
+        get() = ArrowLeft
 }

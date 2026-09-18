@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
@@ -116,7 +116,7 @@ fun ReceiveScreen(
                     modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = HugeIcons.ArrowLeft,
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

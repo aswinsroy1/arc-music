@@ -165,7 +165,7 @@ fun EditMetadataScreen(
                 },
                 navigationIcon = {
                     JellyIconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = HugeIcons.ArrowLeft, contentDescription = "Back")
                     }
                 },
                 actions = {

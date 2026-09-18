@@ -67,6 +67,7 @@ private const val UNSUNG_ALPHA = 0.45f
 private const val GLOW_ALPHA = 0.62f
 private val GLOW_RADIUS = 6.dp
 private val GLOW_ROOM = 10.dp
+private val LYRIC_LINE_SPACING = 10.dp
 private val WIPE_FEATHER = 30.dp
 private val WORD_RISE = 2.dp
 private val LINE_FALLOFF_ALPHA = floatArrayOf(1f, 0.8f, 0.7f, 0.58f, 0.46f)
@@ -885,7 +886,7 @@ internal fun ArcLyricsPanel(
             start = 28.dp - GLOW_ROOM,
             end = 28.dp - GLOW_ROOM,
         ),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(0.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(LYRIC_LINE_SPACING),
     ) {
         itemsIndexed(lines) { index, line ->
             val offset = if (scrollLine < 0) 0 else index - scrollLine
@@ -925,7 +926,7 @@ internal fun ArcLyricsPanel(
             val style = if (isSynced) {
                 MaterialTheme.typography.headlineLarge.copy(
                     fontSize = if (isHeroMode) 24.sp else 34.sp,
-                    lineHeight = if (isHeroMode) 34.sp else 44.sp,
+                    lineHeight = if (isHeroMode) 34.sp else 48.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
             } else {

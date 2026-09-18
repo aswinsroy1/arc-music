@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -121,7 +120,7 @@ fun SleepTimerContent(
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
                 ) {
                     Icon(
-                        imageVector = if (custom) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                        imageVector = if (custom) HugeIcons.ArrowLeft else Icons.Default.Close,
                         contentDescription = if (custom) "Back" else "Close",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(18.dp)

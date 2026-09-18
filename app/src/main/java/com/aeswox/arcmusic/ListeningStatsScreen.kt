@@ -130,7 +130,7 @@ fun StatsHeader(onBackClick: () -> Unit) {
     ) {
         JellyIconButton(onClick = onBackClick) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = HugeIcons.ArrowLeft,
                 contentDescription = "Back",
                 tint = MaterialTheme.colorScheme.onSurface
             )

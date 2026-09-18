@@ -142,7 +142,7 @@ fun ArtistDetailsScreen(
                     .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f))
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = HugeIcons.ArrowLeft,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -684,7 +684,7 @@ fun ArtistDetailsSkeleton(onNavigateBack: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f))
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = HugeIcons.ArrowLeft,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurface
                 )

@@ -114,7 +114,7 @@ fun LibraryScreenContent(modifier: Modifier = Modifier, bottomPadding: androidx.
             list.add(
                 MorphingMenuItem(
                     text = "Import M3U Playlist",
-                    icon = Icons.Outlined.Download,
+                    icon = HugeIcons.Download,
                     onClick = {
                         m3uImportLauncher.launch(arrayOf("*/*"))
                     }

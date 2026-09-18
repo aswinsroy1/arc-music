@@ -10,9 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.MoreVert
@@ -81,7 +79,7 @@ fun CorruptedTagsScreen(
                     },
                     navigationIcon = {
                         JellyIconButton(onClick = onNavigateBack) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(imageVector = HugeIcons.ArrowLeft, contentDescription = "Back")
                         }
                     },
 
@@ -353,7 +351,7 @@ fun CorruptedTrackItem(track: Track, onEdit: () -> Unit) {
             }
         ) {
             Icon(
-                imageVector = Icons.Default.Download,
+                imageVector = HugeIcons.Download,
                 contentDescription = "Download",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)

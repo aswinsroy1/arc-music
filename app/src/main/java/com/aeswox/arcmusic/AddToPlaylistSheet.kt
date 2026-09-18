@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import com.aeswox.arcmusic.ui.components.HugeIcons
 import androidx.compose.material.icons.filled.Close
@@ -95,7 +94,7 @@ fun AddToPlaylistContent(
                     if (creating) isCreatingPlaylist = false else onDismissRequest()
                 }) {
                     Icon(
-                        imageVector = if (creating) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                        imageVector = if (creating) HugeIcons.ArrowLeft else Icons.Default.Close,
                         contentDescription = if (creating) "Back" else "Close",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

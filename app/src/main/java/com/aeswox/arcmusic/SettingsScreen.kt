@@ -335,7 +335,7 @@ fun SettingsScreen(
                             showArrow = true
                         )
                         SettingsItem(
-                            icon = Icons.Outlined.Download,
+                            icon = HugeIcons.Download,
                             text = "Import M3U Playlist",
                             onClick = { importLauncher.launch(arrayOf("*/*")) },
                             showArrow = false

@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sync
@@ -99,7 +98,7 @@ fun MediaManagementScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         JellyIconButton(onClick = onNavigateBack) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(imageVector = HugeIcons.ArrowLeft, contentDescription = "Back")
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
