@@ -2071,7 +2071,8 @@ fun ArcLyricsContent(
     val controlsFadeTop = controlsHeightPx.toFloat() + fadeHeightPx
     val controlsFadeBottom = controlsHeightPx.toFloat()
     
-    val topFadeHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 160.dp.toPx() }
+    val topFadeStartPx = with(androidx.compose.ui.platform.LocalDensity.current) { 136.dp.toPx() }
+    val topFadeEndPx = with(androidx.compose.ui.platform.LocalDensity.current) { 176.dp.toPx() }
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -2088,7 +2089,7 @@ fun ArcLyricsContent(
             controlsOpen = lyricsControlsVisible,
             onRevealControls = onRevealControls,
             onHideControls = onHideControls,
-            topPadding = 160.dp,
+            topPadding = 180.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -2099,8 +2100,8 @@ fun ArcLyricsContent(
                     drawRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color.Black),
-                            startY = 0f,
-                            endY = topFadeHeightPx
+                            startY = topFadeStartPx,
+                            endY = topFadeEndPx
                         ),
                         blendMode = BlendMode.DstIn
                     )
