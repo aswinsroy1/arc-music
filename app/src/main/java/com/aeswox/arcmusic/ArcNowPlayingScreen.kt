@@ -2144,12 +2144,23 @@ fun ArcLyricsContent(
                         letterSpacing = 0.5.sp
                     ),
                     color = textColor.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(bottom = 12.dp, top = 8.dp)
+                    modifier = Modifier
+                        .padding(bottom = 12.dp, top = 8.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        )
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        )
                         .background(accentColor.copy(alpha = 0.18f))
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically

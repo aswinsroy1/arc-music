@@ -6,6 +6,7 @@ import com.aeswox.arcmusic.db.entities.getQualityBadgeResId
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import com.aeswox.arcmusic.ui.animations.jellyClick
 import androidx.compose.material3.Checkbox
@@ -1586,6 +1587,11 @@ fun SelectionBottomBar(
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
             .clip(RoundedCornerShape(36.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(vertical = 16.dp, horizontal = 16.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
