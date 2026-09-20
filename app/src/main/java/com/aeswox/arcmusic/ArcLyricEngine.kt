@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -796,9 +797,6 @@ internal fun ArcLyricsPanel(
         snapshotFlow { listState.isScrollInProgress }.collect(onScrollingChange)
     }
 
-    val viewportHeight by remember(listState) {
-        derivedStateOf { listState.layoutInfo.viewportSize.height }
-    }
     val keepScroll = remember(listState) { arcKeepScrollInList(listState) }
     var browsing by remember { mutableStateOf(false) }
 
@@ -893,26 +891,30 @@ internal fun ArcLyricsPanel(
         return
     }
 
-    LazyColumn(
-        state = listState,
-        userScrollEnabled = !isHeroMode,
-        modifier = modifier
-            .nestedScroll(controlsOnScroll)
-            .nestedScroll(keepScroll)
-            .arcFadingEdges(if (isHeroMode) 12.dp else 28.dp),
-        contentPadding = if (isHeroMode) PaddingValues(
-            top = with(androidx.compose.ui.platform.LocalDensity.current) { (viewportHeight / 2).toDp() },
-            bottom = with(androidx.compose.ui.platform.LocalDensity.current) { (viewportHeight / 2).toDp() },
-            start = 8.dp,
-            end = 8.dp,
-        ) else PaddingValues(
-            top = topPadding - GLOW_ROOM,
-            bottom = with(androidx.compose.ui.platform.LocalDensity.current) { viewportHeight.toDp() } * 0.8f,
-            start = 28.dp - GLOW_ROOM,
-            end = 28.dp - GLOW_ROOM,
-        ),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(LYRIC_LINE_SPACING),
-    ) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = modifier) {
+        val containerHeightDp = maxHeight
+        
+        LazyColumn(
+            state = listState,
+            userScrollEnabled = !isHeroMode,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(controlsOnScroll)
+                .nestedScroll(keepScroll)
+                .arcFadingEdges(if (isHeroMode) 12.dp else 28.dp),
+            contentPadding = if (isHeroMode) PaddingValues(
+                top = containerHeightDp / 2,
+                bottom = containerHeightDp / 2,
+                start = 8.dp,
+                end = 8.dp,
+            ) else PaddingValues(
+                top = topPadding - GLOW_ROOM,
+                bottom = containerHeightDp * 0.8f,
+                start = 28.dp - GLOW_ROOM,
+                end = 28.dp - GLOW_ROOM,
+            ),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(LYRIC_LINE_SPACING),
+        ) {
         itemsIndexed(lines) { index, line ->
             val offset = if (scrollLine < 0) 0 else index - scrollLine
             val distance = abs(offset)
@@ -1018,4 +1020,5 @@ internal fun ArcLyricsPanel(
             }
         }
     }
+}
 }
