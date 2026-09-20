@@ -859,14 +859,29 @@ internal fun ArcLyricsPanel(
             snapshotFlow { listState.layoutInfo.viewportSize.height }.first { it > 0 }
             val visible = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == focusLine }
             when {
-                !placed -> { listState.scrollToItem(focusLine, scrollOffset = -halfLineOffsetPx.toInt()); placed = true }
+                !placed -> { 
+                    val centerOffset = listState.layoutInfo.viewportSize.height / 2
+                    val desiredOffset = centerOffset - listState.layoutInfo.viewportStartOffset
+                    listState.scrollToItem(focusLine, scrollOffset = if (isHeroMode) -desiredOffset else -halfLineOffsetPx.toInt())
+                    placed = true 
+                }
                 visible != null -> {
                     val span = arcScrollLead(lines, clock.longValue).toInt()
-                    val targetDelta = visible.offset.toFloat() - halfLineOffsetPx
+                    val targetDelta = if (isHeroMode) {
+                        val centerOffset = listState.layoutInfo.viewportSize.height / 2
+                        val desiredOffset = centerOffset - listState.layoutInfo.viewportStartOffset - (visible.size / 2)
+                        visible.offset.toFloat() - desiredOffset
+                    } else {
+                        visible.offset.toFloat() - halfLineOffsetPx
+                    }
                     run = ScrollRun(run.id + 1, targetDelta, span)
                     listState.animateScrollBy(targetDelta, animationSpec = tween(durationMillis = span, easing = LYRIC_EASING))
                 }
-                else -> listState.animateScrollToItem(focusLine, scrollOffset = -halfLineOffsetPx.toInt())
+                else -> {
+                    val centerOffset = listState.layoutInfo.viewportSize.height / 2
+                    val desiredOffset = centerOffset - listState.layoutInfo.viewportStartOffset
+                    listState.animateScrollToItem(focusLine, scrollOffset = if (isHeroMode) -desiredOffset else -halfLineOffsetPx.toInt())
+                }
             }
         }
     }
@@ -886,8 +901,8 @@ internal fun ArcLyricsPanel(
             .nestedScroll(keepScroll)
             .arcFadingEdges(if (isHeroMode) 12.dp else 28.dp),
         contentPadding = if (isHeroMode) PaddingValues(
-            top = topPadding,
-            bottom = 40.dp,
+            top = with(androidx.compose.ui.platform.LocalDensity.current) { (viewportHeight / 2).toDp() },
+            bottom = with(androidx.compose.ui.platform.LocalDensity.current) { (viewportHeight / 2).toDp() },
             start = 8.dp,
             end = 8.dp,
         ) else PaddingValues(
