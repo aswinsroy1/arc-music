@@ -382,9 +382,7 @@ fun BottomNavigation(
         label = "navbar_jelly_scale"
     )
 
-    Row(
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(70.dp)
@@ -399,125 +397,128 @@ fun BottomNavigation(
                 indication = null,
                 onClick = {}
             )
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 20.dp)
     ) {
-        NavBarItem(
-            selected = currentTab == 0,
-            icon = HugeIcons.Home,
-            contentDescription = "Home",
-            interactionSource = tab0InteractionSource,
-            onClick = { onTabSelected(0) }
+        val tabCount = 3
+        val tabWidth = maxWidth / tabCount
+        val pillWidth = 64.dp
+        val pillHeight = 44.dp
+
+        val targetOffset = tabWidth * (currentTab.coerceIn(0, 2) + 0.5f) - (pillWidth / 2)
+        val animatedOffset by animateDpAsState(
+            targetValue = targetOffset,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "navbar_pill_offset"
         )
-        NavBarItem(
-            selected = currentTab == 1,
-            icon = HugeIcons.Search,
-            contentDescription = "Search",
-            interactionSource = tab1InteractionSource,
-            onClick = { onTabSelected(1) }
+
+        // Sliding Pill Highlight Indicator (One UI 7 capsule style)
+        Box(
+            modifier = Modifier
+                .offset(x = animatedOffset)
+                .align(Alignment.CenterStart)
+                .size(width = pillWidth, height = pillHeight)
+                .background(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f),
+                    shape = CircleShape
+                )
         )
-        NavBarItem(
-            selected = currentTab == 2,
-            icon = HugeIcons.Library,
-            contentDescription = "Library",
-            interactionSource = tab2InteractionSource,
-            onClick = { onTabSelected(2) }
-        )
+
+        // Navigation Items
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NavBarItem(
+                selected = currentTab == 0,
+                icon = HugeIcons.Home,
+                selectedIcon = HugeIcons.HomeFilled,
+                contentDescription = "Home",
+                interactionSource = tab0InteractionSource,
+                modifier = Modifier.weight(1f),
+                onClick = { onTabSelected(0) }
+            )
+            NavBarItem(
+                selected = currentTab == 1,
+                icon = HugeIcons.Search,
+                selectedIcon = HugeIcons.SearchFilled,
+                contentDescription = "Search",
+                interactionSource = tab1InteractionSource,
+                modifier = Modifier.weight(1f),
+                onClick = { onTabSelected(1) }
+            )
+            NavBarItem(
+                selected = currentTab == 2,
+                icon = HugeIcons.Library,
+                selectedIcon = HugeIcons.LibraryFilled,
+                contentDescription = "Library",
+                interactionSource = tab2InteractionSource,
+                modifier = Modifier.weight(1f),
+                onClick = { onTabSelected(2) }
+            )
+        }
     }
 }
 
 /**
- * Single animated nav bar item with a Material You Expressive pill indicator.
- *
- * Pill width animates 0dp → 56dp with a bouncy spring (DampingRatioMediumBouncy).
- * Icon tint uses a slow spring for smooth color crossfade.
- * Item scale gives bouncy press feedback then settles at 1.05f when selected.
- * All state is driven via graphicsLayer — runs on the RenderThread at 120fps,
- * animations are naturally interruptible mid-flight (non-linear).
+ * Animated nav bar item that transitions between outlined (unselected) and filled (selected),
+ * matching the One UI 7 icon design with cutout negative space and soft capsule highlight.
  */
 @Composable
 private fun NavBarItem(
     selected: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     interactionSource: MutableInteractionSource,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    // Pill scale: expands with a bouncy spring when selected (GPU accelerated)
-    val pillScaleX by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "pill_scale_$contentDescription"
-    )
-
-    // Pill alpha: hides the pill quickly when unselected to prevent seeing the bouncy overshoot
-    val pillAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "pill_alpha_$contentDescription"
-    )
-
-    // Icon tint: smooth spring-based color crossfade
+    // Icon tint: Crisp high-contrast when selected, muted onSurfaceVariant when unselected
     val iconTint by animateColorAsState(
         targetValue = if (selected)
-            MaterialTheme.colorScheme.onPrimaryContainer
+            MaterialTheme.colorScheme.onSurface
         else
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "icon_tint_$contentDescription"
     )
 
-    // Item scale: bouncy press feedback + slight grow when selected
-    val itemScale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.85f
-            selected  -> 1.05f
-            else      -> 1f
-        },
+    // Subtle scale pop when selected
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
         ),
-        label = "item_scale_$contentDescription"
+        label = "icon_scale_$contentDescription"
     )
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .height(48.dp)
-            .graphicsLayer {
-                scaleX = itemScale
-                scaleY = itemScale
-            }
-            .jellyClick(interactionSource = interactionSource, scaleDownTo = 0.85f) { onClick() }
-            .padding(horizontal = 8.dp)
+        modifier = modifier
+            .fillMaxHeight()
+            .jellyClick(interactionSource = interactionSource, scaleDownTo = 0.88f) { onClick() }
     ) {
-        // Animated pill background (GPU accelerated)
-        Box(
-            modifier = Modifier
-                .graphicsLayer {
-                    scaleX = pillScaleX
-                    alpha = pillAlpha
-                }
-                .size(width = 56.dp, height = 32.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    shape = androidx.compose.foundation.shape.CircleShape
-                )
-        )
-        // Icon rendered on top of pill
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = iconTint
-        )
+        Crossfade(
+            targetState = selected,
+            animationSpec = tween(durationMillis = 200),
+            label = "icon_crossfade_$contentDescription"
+        ) { isSelected ->
+            Icon(
+                imageVector = if (isSelected) selectedIcon else icon,
+                contentDescription = contentDescription,
+                tint = iconTint,
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+            )
+        }
     }
 }
 

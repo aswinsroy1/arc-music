@@ -1,6 +1,7 @@
 package com.aeswox.arcmusic.ui.components
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -586,6 +587,200 @@ object HugeIcons {
                 }
             }.build()
             return _Library!!
+        }
+
+    private var _HomeFilled: ImageVector? = null
+
+    val HomeFilled: ImageVector
+        get() {
+            if (_HomeFilled != null) {
+                return _HomeFilled!!
+            }
+            _HomeFilled = ImageVector.Builder(
+                name = "HomeFilled",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    fill = SolidColor(Color(0xFF000000)),
+                    stroke = null,
+                    pathFillType = PathFillType.EvenOdd
+                ) {
+                    moveTo(3f, 11.9896f)
+                    lineTo(3f, 14.5f)
+                    curveTo(3f, 17.7998f, 3f, 19.4497f, 4.02513f, 20.4749f)
+                    curveTo(5.05025f, 21.5f, 6.70017f, 21.5f, 10f, 21.5f)
+                    lineTo(14f, 21.5f)
+                    curveTo(17.2998f, 21.5f, 18.9497f, 21.5f, 19.9749f, 20.4749f)
+                    curveTo(21f, 19.4497f, 21f, 17.7998f, 21f, 14.5f)
+                    lineTo(21f, 11.9896f)
+                    curveTo(21f, 10.3083f, 21f, 9.46773f, 20.6441f, 8.74005f)
+                    curveTo(20.2882f, 8.01237f, 19.6247f, 7.49628f, 18.2976f, 6.46411f)
+                    lineTo(16.2976f, 4.90855f)
+                    curveTo(14.2331f, 3.30285f, 13.2009f, 2.5f, 12f, 2.5f)
+                    curveTo(10.7991f, 2.5f, 9.76689f, 3.30285f, 7.70242f, 4.90855f)
+                    lineTo(5.70241f, 6.46411f)
+                    curveTo(4.37533f, 7.49628f, 3.71179f, 8.01237f, 3.3559f, 8.74005f)
+                    curveTo(3f, 9.46773f, 3f, 10.3083f, 3f, 11.9896f)
+                    close()
+
+                    // Negative space cutout door
+                    moveTo(10f, 21.5f)
+                    lineTo(10f, 16f)
+                    curveTo(10f, 14.8954f, 10.8954f, 14f, 12f, 14f)
+                    curveTo(13.1046f, 14f, 14f, 14.8954f, 14f, 16f)
+                    lineTo(14f, 21.5f)
+                    close()
+                }
+            }.build()
+            return _HomeFilled!!
+        }
+
+    private var _SearchFilled: ImageVector? = null
+
+    val SearchFilled: ImageVector
+        get() {
+            if (_SearchFilled != null) {
+                return _SearchFilled!!
+            }
+            _SearchFilled = ImageVector.Builder(
+                name = "SearchFilled",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                path(
+                    fill = SolidColor(Color(0xFF000000)),
+                    stroke = null,
+                    pathFillType = PathFillType.EvenOdd
+                ) {
+                    // Solid filled lens (circle at (10, 10), radius 7.5f)
+                    moveTo(17.5f, 10f)
+                    curveTo(17.5f, 14.1421f, 14.1421f, 17.5f, 10f, 17.5f)
+                    curveTo(5.85786f, 17.5f, 2.5f, 14.1421f, 2.5f, 10f)
+                    curveTo(2.5f, 5.85786f, 5.85786f, 2.5f, 10f, 2.5f)
+                    curveTo(14.1421f, 2.5f, 17.5f, 5.85786f, 17.5f, 10f)
+                    close()
+
+                    // Negative space lens reflection glint in top-left
+                    moveTo(6.2f, 10f)
+                    curveTo(6.2f, 7.9f, 7.9f, 6.2f, 10f, 6.2f)
+                    curveTo(10.55f, 6.2f, 11f, 5.75f, 11f, 5.2f)
+                    curveTo(11f, 4.65f, 10.55f, 4.2f, 10f, 4.2f)
+                    curveTo(6.8f, 4.2f, 4.2f, 6.8f, 4.2f, 10f)
+                    curveTo(4.2f, 10.55f, 4.65f, 11f, 5.2f, 11f)
+                    curveTo(5.75f, 11f, 6.2f, 10.55f, 6.2f, 10f)
+                    close()
+                }
+                // Solid handle
+                path(
+                    fill = SolidColor(Color(0xFF000000)),
+                    stroke = null
+                ) {
+                    moveTo(15.2f, 13.8f)
+                    lineTo(13.8f, 15.2f)
+                    lineTo(19.8f, 21.2f)
+                    curveTo(20.2f, 21.6f, 20.8f, 21.6f, 21.2f, 21.2f)
+                    curveTo(21.6f, 20.8f, 21.6f, 20.2f, 21.2f, 19.8f)
+                    close()
+                }
+            }.build()
+            return _SearchFilled!!
+        }
+
+    private var _LibraryFilled: ImageVector? = null
+
+    val LibraryFilled: ImageVector
+        get() {
+            if (_LibraryFilled != null) {
+                return _LibraryFilled!!
+            }
+            _LibraryFilled = ImageVector.Builder(
+                name = "LibraryFilled",
+                defaultWidth = 24.dp,
+                defaultHeight = 24.dp,
+                viewportWidth = 24f,
+                viewportHeight = 24f
+            ).apply {
+                // Back card 1 (stroke)
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(19f, 8f)
+                    curveTo(18.9821f, 6.76022f, 18.89f, 6.05733f, 18.4182f, 5.58579f)
+                    curveTo(17.8321f, 5f, 16.8888f, 5f, 15.0022f, 5f)
+                    lineTo(8.99783f, 5f)
+                    curveTo(7.11118f, 5f, 6.16786f, 5f, 5.58176f, 5.58579f)
+                    curveTo(5.10996f, 6.05733f, 5.01794f, 6.76022f, 5f, 8f)
+                }
+                // Back card 2 (stroke)
+                path(
+                    stroke = SolidColor(Color(0xFF000000)),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                    fill = null
+                ) {
+                    moveTo(17f, 5f)
+                    curveTo(17f, 4.06812f, 17f, 3.60218f, 16.8478f, 3.23463f)
+                    curveTo(16.6448f, 2.74458f, 16.2554f, 2.35523f, 15.7654f, 2.15224f)
+                    curveTo(15.3978f, 2f, 14.9319f, 2f, 14f, 2f)
+                    lineTo(10f, 2f)
+                    curveTo(9.06812f, 2f, 8.60218f, 2f, 8.23463f, 2.15224f)
+                    curveTo(7.74458f, 2.35523f, 7.35523f, 2.74458f, 7.15224f, 3.23463f)
+                    curveTo(7f, 3.60218f, 7f, 4.06812f, 7f, 5f)
+                }
+                // Solid front card with negative space music note cutout
+                path(
+                    fill = SolidColor(Color(0xFF000000)),
+                    stroke = null,
+                    pathFillType = PathFillType.EvenOdd
+                ) {
+                    // Front card contour
+                    moveTo(3f, 15f)
+                    curveTo(3f, 12.1911f, 3f, 10.7866f, 3.67412f, 9.77772f)
+                    curveTo(3.96596f, 9.34096f, 4.34096f, 8.96596f, 4.77772f, 8.67412f)
+                    curveTo(5.78661f, 8f, 7.19108f, 8f, 10f, 8f)
+                    lineTo(14f, 8f)
+                    curveTo(16.8089f, 8f, 18.2134f, 8f, 19.2223f, 8.67412f)
+                    curveTo(19.659f, 8.96596f, 20.034f, 9.34096f, 20.3259f, 9.77772f)
+                    curveTo(21f, 10.7866f, 21f, 12.1911f, 21f, 15f)
+                    curveTo(21f, 17.8089f, 21f, 19.2134f, 20.3259f, 20.2223f)
+                    curveTo(20.034f, 20.659f, 19.659f, 21.034f, 19.2223f, 21.3259f)
+                    curveTo(18.2134f, 22f, 16.8089f, 22f, 14f, 22f)
+                    lineTo(10f, 22f)
+                    curveTo(7.19108f, 22f, 5.78661f, 22f, 4.77772f, 21.3259f)
+                    curveTo(4.34096f, 21.034f, 3.96596f, 20.659f, 3.67412f, 20.2223f)
+                    curveTo(3f, 19.2134f, 3f, 17.8089f, 3f, 15f)
+                    close()
+
+                    // Cutout Note Head
+                    moveTo(13f, 16.5f)
+                    curveTo(13f, 17.6f, 12.1f, 18.5f, 11f, 18.5f)
+                    curveTo(9.9f, 18.5f, 9f, 17.6f, 9f, 16.5f)
+                    curveTo(9f, 15.4f, 9.9f, 14.5f, 11f, 14.5f)
+                    curveTo(12.1f, 14.5f, 13f, 15.4f, 13f, 16.5f)
+                    close()
+
+                    // Cutout Note Stem & Flag
+                    moveTo(12.2f, 16.5f)
+                    lineTo(12.2f, 11.8f)
+                    curveTo(12.8f, 12.3f, 13.8f, 12.8f, 15.2f, 12.8f)
+                    lineTo(15.2f, 11.2f)
+                    curveTo(13.6f, 11.2f, 12.5f, 10.5f, 12.2f, 10f)
+                    lineTo(10.7f, 10f)
+                    lineTo(10.7f, 16.5f)
+                    close()
+                }
+            }.build()
+            return _LibraryFilled!!
         }
 
     private var _Add: ImageVector? = null
