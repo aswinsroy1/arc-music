@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.layout.layout
@@ -871,6 +872,16 @@ fun ArcNowPlayingScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape((32 * p + 100 * (1f - p)).dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (!isExpanded) {
+                                    if (showLyrics) lyricsControlsVisible = true
+                                    if (showQueue) queueControlsVisible = true
+                                }
+                            }
+                        )
                         .background(textColor.copy(alpha = 0.08f))
                         .border(
                             width = 1.dp,
