@@ -859,15 +859,14 @@ internal fun ArcLyricsPanel(
             when {
                 !placed -> { 
                     val centerOffset = listState.layoutInfo.viewportSize.height / 2
-                    val desiredOffset = centerOffset - listState.layoutInfo.viewportStartOffset
-                    listState.scrollToItem(focusLine, scrollOffset = if (isHeroMode) -desiredOffset else -halfLineOffsetPx.toInt())
+                    listState.scrollToItem(focusLine, scrollOffset = if (isHeroMode) -centerOffset else -halfLineOffsetPx.toInt())
                     placed = true 
                 }
                 visible != null -> {
                     val span = arcScrollLead(lines, clock.longValue).toInt()
                     val targetDelta = if (isHeroMode) {
                         val centerOffset = listState.layoutInfo.viewportSize.height / 2
-                        val desiredOffset = centerOffset - listState.layoutInfo.viewportStartOffset - (visible.size / 2)
+                        val desiredOffset = centerOffset - (visible.size / 2)
                         visible.offset.toFloat() - desiredOffset
                     } else {
                         visible.offset.toFloat() - halfLineOffsetPx
@@ -877,8 +876,7 @@ internal fun ArcLyricsPanel(
                 }
                 else -> {
                     val centerOffset = listState.layoutInfo.viewportSize.height / 2
-                    val desiredOffset = centerOffset - listState.layoutInfo.viewportStartOffset
-                    listState.animateScrollToItem(focusLine, scrollOffset = if (isHeroMode) -desiredOffset else -halfLineOffsetPx.toInt())
+                    listState.animateScrollToItem(focusLine, scrollOffset = if (isHeroMode) -centerOffset else -halfLineOffsetPx.toInt())
                 }
             }
         }
@@ -903,8 +901,8 @@ internal fun ArcLyricsPanel(
                 .nestedScroll(keepScroll)
                 .arcFadingEdges(if (isHeroMode) 12.dp else 28.dp),
             contentPadding = if (isHeroMode) PaddingValues(
-                top = containerHeightDp / 2,
-                bottom = containerHeightDp / 2,
+                top = containerHeightDp * 0.4f,
+                bottom = containerHeightDp * 0.4f,
                 start = 8.dp,
                 end = 8.dp,
             ) else PaddingValues(
