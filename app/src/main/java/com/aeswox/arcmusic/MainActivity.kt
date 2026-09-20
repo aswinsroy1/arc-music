@@ -1748,22 +1748,6 @@ fun HeroSection(
                         )
                 )
 
-                // Centered Lyrics
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isNowPlayingMode,
-                    enter = androidx.compose.animation.fadeIn(),
-                    exit = androidx.compose.animation.fadeOut(),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(bottom = 32.dp)
-                ) {
-                    WordSyncedLyrics(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                        textColor = MaterialTheme.colorScheme.onSurface,
-                        alignment = Alignment.CenterStart,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
-                    )
-                }
 
                 Column(
                     modifier = Modifier
@@ -1858,62 +1842,6 @@ fun HeroSection(
             }
         }
     }
-}
-
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-fun WordSyncedLyrics(
-    modifier: Modifier = Modifier.fillMaxWidth(),
-    textColor: Color = Color.White,
-    alignment: Alignment = Alignment.Center,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-) {
-    val viewModel: MusicViewModel = hiltViewModel()
-    val lyricsData by viewModel.lyricsUiState.collectAsState()
-
-    val rawSyncedLines = lyricsData?.synced
-    val plainLines     = lyricsData?.plain
-    val duration       by viewModel.duration.collectAsState()
-
-    val syncedLines = remember(rawSyncedLines, duration, plainLines) {
-        if (!rawSyncedLines.isNullOrEmpty()) {
-            val enriched     = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
-            val gapThreshold = 10_000
-            if (rawSyncedLines.first().time > gapThreshold)
-                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "\u25CF \u25CF \u25CF"))
-            for (i in 0 until rawSyncedLines.size - 1) {
-                enriched.add(rawSyncedLines[i])
-                if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
-                    enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines[i].time + 5000, line = "\u25CF \u25CF \u25CF"))
-            }
-            enriched.add(rawSyncedLines.last())
-            if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
-                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines.last().time + 5000, line = "\u25CF \u25CF \u25CF"))
-            enriched.toList()
-        } else if (!plainLines.isNullOrEmpty()) {
-            plainLines.mapIndexed { index, line ->
-                com.aeswox.arcmusic.data.model.SyncedLine(time = (index * 3000), line = line)
-            }
-        } else {
-            listOf(com.aeswox.arcmusic.data.model.SyncedLine(time = 0, line = "\u266A"))
-        }
-    }
-
-    val currentPosition by viewModel.currentPlaybackPosition.collectAsState()
-    val isPlaying by viewModel.isPlaying.collectAsState()
-
-    ArcLyricsPanel(
-        lines = syncedLines,
-        positionMs = currentPosition,
-        isPlaying = isPlaying,
-        textColor = textColor,
-        onSeekToLine = { viewModel.seekTo(it.toFloat()) },
-        controlsOpen = false,
-        onRevealControls = {},
-        onHideControls = {},
-        isHeroMode = true,
-        modifier = modifier.heightIn(max = 140.dp)
-    )
 }
 
 
