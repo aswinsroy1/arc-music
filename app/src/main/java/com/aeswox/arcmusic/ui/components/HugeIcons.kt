@@ -626,12 +626,13 @@ object HugeIcons {
                     curveTo(3f, 9.46773f, 3f, 10.3083f, 3f, 11.9896f)
                     close()
 
-                    // Negative space cutout door
-                    moveTo(10f, 21.5f)
-                    lineTo(10f, 16f)
-                    curveTo(10f, 14.8954f, 10.8954f, 14f, 12f, 14f)
-                    curveTo(13.1046f, 14f, 14f, 14.8954f, 14f, 16f)
-                    lineTo(14f, 21.5f)
+                    // Negative space cutout slit on the right, matching HugeIcons.Home's stroke (17, 13.5 to 17, 17.5 with stroke 2)
+                    moveTo(16f, 13.5f)
+                    curveTo(16f, 12.9477f, 16.4477f, 12.5f, 17f, 12.5f)
+                    curveTo(17.5523f, 12.5f, 18f, 12.9477f, 18f, 13.5f)
+                    lineTo(18f, 17.5f)
+                    curveTo(18f, 18.0523f, 17.5523f, 18.5f, 17f, 18.5f)
+                    curveTo(16.4477f, 18.5f, 16f, 18.0523f, 16f, 17.5f)
                     close()
                 }
             }.build()
@@ -761,22 +762,21 @@ object HugeIcons {
                     curveTo(3f, 19.2134f, 3f, 17.8089f, 3f, 15f)
                     close()
 
-                    // Cutout Note Head
-                    moveTo(13f, 16.5f)
-                    curveTo(13f, 17.6f, 12.1f, 18.5f, 11f, 18.5f)
+                    // Negative space cutout music note matching HugeIcons.Library
+                    moveTo(11f, 18.5f)
                     curveTo(9.9f, 18.5f, 9f, 17.6f, 9f, 16.5f)
                     curveTo(9f, 15.4f, 9.9f, 14.5f, 11f, 14.5f)
-                    curveTo(12.1f, 14.5f, 13f, 15.4f, 13f, 16.5f)
-                    close()
-
-                    // Cutout Note Stem & Flag
-                    moveTo(12.2f, 16.5f)
-                    lineTo(12.2f, 11.8f)
-                    curveTo(12.8f, 12.3f, 13.8f, 12.8f, 15.2f, 12.8f)
-                    lineTo(15.2f, 11.2f)
-                    curveTo(13.6f, 11.2f, 12.5f, 10.5f, 12.2f, 10f)
-                    lineTo(10.7f, 10f)
-                    lineTo(10.7f, 16.5f)
+                    curveTo(11.2f, 14.5f, 11.38f, 14.53f, 11.55f, 14.59f)
+                    lineTo(11.5f, 11.5f)
+                    curveTo(11.5f, 10.95f, 11.95f, 10.5f, 12.5f, 10.5f)
+                    curveTo(13.05f, 10.5f, 13.5f, 10.95f, 13.5f, 11.5f)
+                    curveTo(13.5f, 11.5f, 13.9f, 13.1f, 15.3f, 13.3f)
+                    curveTo(15.8f, 13.4f, 15.9f, 14.0f, 15.4f, 14.3f)
+                    curveTo(14.9f, 14.6f, 14.4f, 14.4f, 13.9f, 13.8f)
+                    curveTo(13.6f, 13.4f, 13.5f, 12.8f, 13.5f, 12.2f)
+                    lineTo(13.5f, 15.5f)
+                    curveTo(13.2f, 16.1f, 13.1f, 16.3f, 13.0f, 16.5f)
+                    curveTo(13.0f, 17.6f, 12.1f, 18.5f, 11f, 18.5f)
                     close()
                 }
             }.build()
