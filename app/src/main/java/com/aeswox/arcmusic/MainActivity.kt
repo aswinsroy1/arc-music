@@ -1574,6 +1574,11 @@ fun HeroSection(
     val viewModel: MusicViewModel = hiltViewModel()
     val playingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
     val includeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
+    
+    val currentPosition by viewModel.currentPosition.collectAsState()
+    val lyricsData by viewModel.lyricsUiState.collectAsState()
+    val rawSyncedLines = lyricsData?.synced ?: emptyList()
+    val isActuallyPlaying by viewModel.isPlaying.collectAsState()
 
     val showNowPlaying = playingStateEnabled && isPlaying && currentSong != null
 
@@ -1773,6 +1778,29 @@ fun HeroSection(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isNowPlayingMode && rawSyncedLines.isNotEmpty(),
+                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+                    ) {
+                        ArcLyricsPanel(
+                            lines = rawSyncedLines,
+                            positionMs = currentPosition,
+                            isPlaying = isActuallyPlaying,
+                            textColor = MaterialTheme.colorScheme.onSurface,
+                            onSeekToLine = {},
+                            controlsOpen = false,
+                            onRevealControls = {},
+                            onHideControls = {},
+                            isHeroMode = true,
+                            topPadding = 0.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .padding(top = 12.dp)
+                        )
+                    }
+
                     androidx.compose.animation.AnimatedVisibility(
                         visible = !isNowPlayingMode,
                         enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
