@@ -1579,6 +1579,7 @@ fun HeroSection(
     val lyricsData by viewModel.lyricsUiState.collectAsState()
     val rawSyncedLines = lyricsData?.synced ?: emptyList()
     val isActuallyPlaying by viewModel.isPlaying.collectAsState()
+    val clock = rememberArcLyricClock(currentPosition, isActuallyPlaying)
 
     val showNowPlaying = playingStateEnabled && isPlaying && currentSong != null
 
@@ -1753,6 +1754,35 @@ fun HeroSection(
                         )
                 )
 
+                if (isNowPlayingMode && rawSyncedLines.isNotEmpty()) {
+                    val activeRows = arcActiveLyricRows(rawSyncedLines, clock.longValue)
+                    val activeLine = activeRows.firstOrNull()?.let { rawSyncedLines[it] }
+                    
+                    if (activeLine != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = 60.dp), // offset to avoid overlapping title
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ArcSweptLyricLine(
+                                line = activeLine,
+                                clock = clock,
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontSize = 24.sp,
+                                    lineHeight = 34.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
+                                ),
+                                dimAlpha = 0f,
+                                textColor = MaterialTheme.colorScheme.onSurface,
+                                feather = true,
+                                alignEnd = false,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
 
                 Column(
                     modifier = Modifier
@@ -1778,29 +1808,6 @@ fun HeroSection(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isNowPlayingMode && rawSyncedLines.isNotEmpty(),
-                        enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
-                        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
-                    ) {
-                        ArcLyricsPanel(
-                            lines = rawSyncedLines,
-                            positionMs = currentPosition,
-                            isPlaying = isActuallyPlaying,
-                            textColor = MaterialTheme.colorScheme.onSurface,
-                            onSeekToLine = {},
-                            controlsOpen = false,
-                            onRevealControls = {},
-                            onHideControls = {},
-                            isHeroMode = true,
-                            topPadding = 0.dp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
-                                .padding(top = 12.dp)
-                        )
-                    }
-
                     androidx.compose.animation.AnimatedVisibility(
                         visible = !isNowPlayingMode,
                         enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
