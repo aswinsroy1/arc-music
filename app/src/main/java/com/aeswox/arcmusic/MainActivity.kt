@@ -1771,10 +1771,10 @@ fun HeroSection(
                                 clock = clock,
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontSize = 24.sp,
-                                    lineHeight = 34.sp,
+                                    lineHeight = 36.sp,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
                                 ),
-                                dimAlpha = 0f,
+                                dimAlpha = 0.45f,
                                 textColor = MaterialTheme.colorScheme.onSurface,
                                 feather = true,
                                 alignEnd = false,
