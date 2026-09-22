@@ -1578,6 +1578,25 @@ fun HeroSection(
     val currentPosition by viewModel.currentPosition.collectAsState()
     val lyricsData by viewModel.lyricsUiState.collectAsState()
     val rawSyncedLines = lyricsData?.synced ?: emptyList()
+    val duration by viewModel.duration.collectAsState()
+    val syncedLines = remember(rawSyncedLines, duration) {
+        if (rawSyncedLines.isEmpty()) return@remember emptyList()
+        val enriched = mutableListOf<com.aeswox.arcmusic.data.model.SyncedLine>()
+        val gapThreshold = 10_000
+        if (rawSyncedLines.first().time > gapThreshold)
+            enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = 2000, line = "● ● ●"))
+        for (i in 0 until rawSyncedLines.size - 1) {
+            enriched.add(rawSyncedLines[i])
+            if (rawSyncedLines[i + 1].time - rawSyncedLines[i].time > gapThreshold)
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines[i].time + 5000, line = "● ● ●"))
+        }
+        if (rawSyncedLines.isNotEmpty()) {
+            enriched.add(rawSyncedLines.last())
+            if (duration > 0 && duration - rawSyncedLines.last().time > gapThreshold)
+                enriched.add(com.aeswox.arcmusic.data.model.SyncedLine(time = rawSyncedLines.last().time + 5000, line = "● ● ●"))
+        }
+        enriched.toList()
+    }
     val isActuallyPlaying by viewModel.isPlaying.collectAsState()
     val clock = rememberArcLyricClock(currentPosition, isActuallyPlaying)
 
@@ -1754,9 +1773,9 @@ fun HeroSection(
                         )
                 )
 
-                if (isNowPlayingMode && rawSyncedLines.isNotEmpty()) {
-                    val activeRows = arcActiveLyricRows(rawSyncedLines, clock.longValue)
-                    val activeLine = activeRows.firstOrNull()?.let { rawSyncedLines[it] }
+                if (isNowPlayingMode && syncedLines.isNotEmpty()) {
+                    val activeRows = arcActiveLyricRows(syncedLines, clock.longValue)
+                    val activeLine = activeRows.firstOrNull()?.let { syncedLines[it] }
                     
                     if (activeLine != null) {
                         Box(
@@ -1770,11 +1789,12 @@ fun HeroSection(
                                 targetState = activeLine,
                                 transitionSpec = {
                                     val duration = 340
+                                    val outDuration = 306
                                     (androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
                                         androidx.compose.animation.slideInVertically(animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { height -> (height * 0.35f).toInt() })
                                         .togetherWith(
-                                            androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
-                                            androidx.compose.animation.slideOutVertically(animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { height -> -(height * 0.35f).toInt() }
+                                            androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(outDuration, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+                                            androidx.compose.animation.slideOutVertically(animationSpec = androidx.compose.animation.core.tween(outDuration, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { height -> -(height * 0.35f).toInt() }
                                         ).using(
                                             androidx.compose.animation.SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.FastOutSlowInEasing) })
                                         )
