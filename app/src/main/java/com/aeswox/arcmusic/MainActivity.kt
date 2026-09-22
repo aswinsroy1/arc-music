@@ -1766,20 +1766,40 @@ fun HeroSection(
                                 .padding(bottom = 60.dp), // offset to avoid overlapping title
                             contentAlignment = Alignment.Center
                         ) {
-                            ArcSweptLyricLine(
-                                line = activeLine,
-                                clock = clock,
-                                style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontSize = 24.sp,
-                                    lineHeight = 36.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
-                                ),
-                                dimAlpha = 0.45f,
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                feather = true,
-                                alignEnd = false,
+                            androidx.compose.animation.AnimatedContent(
+                                targetState = activeLine,
+                                transitionSpec = {
+                                    (androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(600, delayMillis = 90)) +
+                                        androidx.compose.animation.scaleIn(initialScale = 1.1f, animationSpec = androidx.compose.animation.core.tween(600, easing = androidx.compose.animation.core.EaseOutCubic)))
+                                        .togetherWith(
+                                            androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400)) +
+                                            androidx.compose.animation.scaleOut(targetScale = 0.9f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.EaseInCubic))
+                                        )
+                                },
+                                label = "lyric_transition",
                                 modifier = Modifier.fillMaxWidth()
-                            )
+                            ) { line ->
+                                val blurAmount by transition.animateDp(
+                                    label = "blur_amount"
+                                ) { state ->
+                                    if (state == androidx.compose.animation.EnterExitState.Visible) 0.dp else 12.dp
+                                }
+                                
+                                ArcSweptLyricLine(
+                                    line = line,
+                                    clock = clock,
+                                    style = MaterialTheme.typography.headlineLarge.copy(
+                                        fontSize = 24.sp,
+                                        lineHeight = 36.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
+                                    ),
+                                    dimAlpha = 0.45f,
+                                    textColor = MaterialTheme.colorScheme.onSurface,
+                                    feather = true,
+                                    alignEnd = false,
+                                    modifier = Modifier.fillMaxWidth().blur(blurAmount)
+                                )
+                            }
                         }
                     }
                 }
