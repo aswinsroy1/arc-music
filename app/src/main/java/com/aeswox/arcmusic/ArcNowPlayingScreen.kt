@@ -2516,7 +2516,8 @@ fun ArcQueueContent(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     val isQueueDark = textColor.luminance() < 0.5f
-                    val pillPlatterColor = if (isQueueDark) Color(0xFF181818) else Color.White
+                    // Same base color + alpha as highlightPlatterColor in the main controls
+                    val pillPlatterColor = if (isQueueDark) Color(0xFF181818).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f)
                     val pillActiveTextColor = if (isQueueDark) Color.White else Color(0xFF181818)
 
                     // ── Repeat / Shuffle / Autoplay pills ───────────────────
@@ -2535,10 +2536,12 @@ fun ArcQueueContent(
                                     if (repeatActive) pillPlatterColor
                                     else textColor.copy(alpha = 0.08f)
                                 )
-                                .border(
-                                    width = 1.dp,
-                                    color = if (repeatActive) pillPlatterColor else textColor.copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(20.dp)
+                                .then(
+                                    if (!repeatActive) Modifier.border(
+                                        width = 1.dp,
+                                        color = textColor.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(20.dp)
+                                    ) else Modifier
                                 )
                                 .clickable { viewModel.toggleRepeatMode() },
                             contentAlignment = Alignment.Center
@@ -2547,33 +2550,13 @@ fun ArcQueueContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                if (repeatActive) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(16.dp)
-                                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                                            .drawWithContent {
-                                                drawContent()
-                                                drawRect(color = pillPlatterColor, blendMode = BlendMode.SrcOut)
-                                            }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
-                                                HugeIcons.RepeatOne else HugeIcons.Repeat,
-                                            contentDescription = "Repeat",
-                                            tint = pillActiveTextColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
-                                            HugeIcons.RepeatOne else HugeIcons.Repeat,
-                                        contentDescription = "Repeat",
-                                        tint = textColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                Icon(
+                                    imageVector = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE)
+                                        HugeIcons.RepeatOne else HugeIcons.Repeat,
+                                    contentDescription = "Repeat",
+                                    tint = if (repeatActive) pillActiveTextColor else textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Text(
                                     text = "Repeat",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
@@ -2592,10 +2575,12 @@ fun ArcQueueContent(
                                     if (shuffleEnabled) pillPlatterColor
                                     else textColor.copy(alpha = 0.08f)
                                 )
-                                .border(
-                                    width = 1.dp,
-                                    color = if (shuffleEnabled) pillPlatterColor else textColor.copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(20.dp)
+                                .then(
+                                    if (!shuffleEnabled) Modifier.border(
+                                        width = 1.dp,
+                                        color = textColor.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(20.dp)
+                                    ) else Modifier
                                 )
                                 .clickable { viewModel.toggleShuffleMode() },
                             contentAlignment = Alignment.Center
@@ -2604,31 +2589,12 @@ fun ArcQueueContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                if (shuffleEnabled) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(16.dp)
-                                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                                            .drawWithContent {
-                                                drawContent()
-                                                drawRect(color = pillPlatterColor, blendMode = BlendMode.SrcOut)
-                                            }
-                                    ) {
-                                        Icon(
-                                            imageVector = HugeIcons.Shuffle,
-                                            contentDescription = "Shuffle",
-                                            tint = pillActiveTextColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        imageVector = HugeIcons.Shuffle,
-                                        contentDescription = "Shuffle",
-                                        tint = textColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                Icon(
+                                    imageVector = HugeIcons.Shuffle,
+                                    contentDescription = "Shuffle",
+                                    tint = if (shuffleEnabled) pillActiveTextColor else textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Text(
                                     text = "Shuffle",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
@@ -2647,10 +2613,12 @@ fun ArcQueueContent(
                                     if (autoplayEnabled) pillPlatterColor
                                     else textColor.copy(alpha = 0.08f)
                                 )
-                                .border(
-                                    width = 1.dp,
-                                    color = if (autoplayEnabled) pillPlatterColor else textColor.copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(20.dp)
+                                .then(
+                                    if (!autoplayEnabled) Modifier.border(
+                                        width = 1.dp,
+                                        color = textColor.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(20.dp)
+                                    ) else Modifier
                                 )
                                 .clickable { viewModel.toggleAutoplay() },
                             contentAlignment = Alignment.Center
@@ -2659,31 +2627,12 @@ fun ArcQueueContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                if (autoplayEnabled) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(16.dp)
-                                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                                            .drawWithContent {
-                                                drawContent()
-                                                drawRect(color = pillPlatterColor, blendMode = BlendMode.SrcOut)
-                                            }
-                                    ) {
-                                        Icon(
-                                            imageVector = HugeIcons.Autoplay,
-                                            contentDescription = "Autoplay",
-                                            tint = pillActiveTextColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        imageVector = HugeIcons.Autoplay,
-                                        contentDescription = "Autoplay",
-                                        tint = textColor.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                Icon(
+                                    imageVector = HugeIcons.Autoplay,
+                                    contentDescription = "Autoplay",
+                                    tint = if (autoplayEnabled) pillActiveTextColor else textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Text(
                                     text = "Autoplay",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
