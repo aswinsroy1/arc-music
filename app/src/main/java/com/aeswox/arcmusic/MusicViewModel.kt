@@ -1660,6 +1660,25 @@ class MusicViewModel @Inject constructor(
                 }
             }
         }
+
+        // ── Autoplay: continue playing when the queue finishes ────────────────
+        viewModelScope.launch {
+            musicPlayerConnection.playbackState.collect { state ->
+                if (state == com.aeswox.arcmusic.playback.PlaybackState.ENDED &&
+                    autoplayEnabled.value
+                ) {
+                    val alreadyInQueue = musicPlayerConnection.currentQueue.value
+                        .map { it.mediaId }
+                        .toSet()
+                    val candidate = randomPicks.value
+                        .filter { it.id !in alreadyInQueue && it.filePath.isNotEmpty() }
+                        .randomOrNull()
+                    if (candidate != null) {
+                        setCurrentlyPlaying(candidate)
+                    }
+                }
+            }
+        }
     }
 
     /** Persisted theme preference â€” reads from DataStore on first subscription. */
