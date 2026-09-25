@@ -1672,7 +1672,7 @@ class MusicViewModel @Inject constructor(
                         .toSet()
                     val candidate = randomPicks.value
                         .filter { it.id !in alreadyInQueue && it.filePath.isNotEmpty() }
-                        .randomOrNull()
+                        .firstOrNull()
                     if (candidate != null) {
                         setCurrentlyPlaying(candidate)
                     }
