@@ -128,6 +128,8 @@ dependencies {
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   implementation(libs.generativeai)
+  implementation(libs.ktor.client.core)
+  implementation(libs.ktor.client.okhttp)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 
