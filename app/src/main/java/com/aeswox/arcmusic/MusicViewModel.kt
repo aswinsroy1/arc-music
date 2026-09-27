@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.runBlocking
 import com.aeswox.arcmusic.data.model.LyricsDisplayStyle
 import com.aeswox.arcmusic.data.model.NowPlayingStyle
@@ -1918,10 +1920,7 @@ $catalog"""
                     })
                 }
 
-                val requestBody = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("application/json"),
-                    requestJson.toString()
-                )
+                val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
 
                 val request = okhttp3.Request.Builder()
                     .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
@@ -1936,10 +1935,10 @@ $catalog"""
                     .build()
 
                 val response = okHttpClient.newCall(request).execute()
-                val responseString = response.body()?.string() ?: ""
+                val responseString = response.body?.string() ?: ""
 
                 if (!response.isSuccessful) {
-                    throw Exception("API Error ${response.code()}: $responseString")
+                    throw Exception("API Error ${response.code}: $responseString")
                 }
 
                 val parsed = org.json.JSONObject(responseString)
