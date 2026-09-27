@@ -315,6 +315,28 @@ class MusicRepository(
         albumDao.insertAlbums(albums)
         artistDao.insertArtists(artists)
 
+        // ── Prune orphaned albums & artists ────────────────────────────────────
+        // After a full scan the only valid albums/artists are those derived from
+        // filteredTracks. Anything still in the DB that isn't in those sets is a
+        // ghost left over from deleted songs — remove them now.
+        if (sinceTimestampSec == 0L && targetFolder == null) {
+            val liveAlbumTitles = albums.map { it.title }.toSet()
+            val staleAlbums = albumDao.getAllAlbums().first()
+                .map { it.title }
+                .filter { it !in liveAlbumTitles }
+            if (staleAlbums.isNotEmpty()) {
+                staleAlbums.chunked(500).forEach { albumDao.deleteAlbums(it) }
+            }
+
+            val liveArtistIds = artists.map { it.id }.toSet()
+            val staleArtists = artistDao.getAllArtists().first()
+                .map { it.name }
+                .filter { it !in liveArtistIds }
+            if (staleArtists.isNotEmpty()) {
+                staleArtists.chunked(500).forEach { artistDao.deleteArtists(it) }
+            }
+        }
+
         // ── PHASE 3: Embedded lyrics scan ─────────────────────────────────────
         onProgress(ScanPhase.SCANNING_LYRICS, 0, tracks.size)
         val missingLyricsTracks = trackDao.getTracksMissingLyrics().first()

@@ -1972,9 +1972,28 @@ class MusicViewModel @Inject constructor(
         }
     }
 
+    // App icon variant
+    val appIconVariant: StateFlow<com.aeswox.arcmusic.data.AppIconVariant> =
+        settingsRepository.appIconVariant.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            com.aeswox.arcmusic.data.AppIconVariant.Default
+        )
+
+    fun setAppIconVariant(variant: com.aeswox.arcmusic.data.AppIconVariant) {
+        viewModelScope.launch {
+            settingsRepository.setAppIconVariant(variant)
+            // Apply the alias swap immediately
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                applyAppIconAlias(context, variant)
+            }
+        }
+    }
+
     val canvasCacheLimitMb: StateFlow<Int> = settingsRepository.canvasCacheLimitMb.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), 250
     )
+
 
     private val _canvasUrl = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val canvasUrl: StateFlow<String?> = _canvasUrl
@@ -2556,5 +2575,46 @@ class MusicViewModel @Inject constructor(
         val artists = repository.getRandomArtistsWithArtwork(artistsLimit).map { HeroCardItem.ArtistItem(it) }
 
         return (tracks + albums + artists).shuffled()
+    }
+}
+
+/**
+ * Applies a launcher icon switch by enabling one [activity-alias] and disabling the other.
+ * Android will update the launcher icon within a few seconds of this call.
+ *
+ * Component names must match the aliases declared in AndroidManifest.xml.
+ */
+fun applyAppIconAlias(context: android.content.Context, variant: com.aeswox.arcmusic.data.AppIconVariant) {
+    val pm = context.packageManager
+    val pkg = context.packageName
+
+    data class AliasConfig(val component: android.content.ComponentName, val shouldEnable: Boolean)
+
+    val aliases = listOf(
+        AliasConfig(
+            android.content.ComponentName(pkg, "$pkg.MainActivity.IconDefault"),
+            variant == com.aeswox.arcmusic.data.AppIconVariant.Default
+        ),
+        AliasConfig(
+            android.content.ComponentName(pkg, "$pkg.MainActivity.IconLight"),
+            variant == com.aeswox.arcmusic.data.AppIconVariant.Light
+        )
+    )
+
+    aliases.forEach { (component, shouldEnable) ->
+        val newState = if (shouldEnable) {
+            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        try {
+            pm.setComponentEnabledSetting(
+                component,
+                newState,
+                android.content.pm.PackageManager.DONT_KILL_APP
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("AppIcon", "Failed to set alias state for $component", e)
+        }
     }
 }

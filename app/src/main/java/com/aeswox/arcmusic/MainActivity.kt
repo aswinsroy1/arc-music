@@ -185,7 +185,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Re-apply the saved icon alias on cold start so PackageManager state
+            // always matches the persisted preference.
+            val appIconVariantForStartup by viewModel.appIconVariant.collectAsState()
+            androidx.compose.runtime.LaunchedEffect(appIconVariantForStartup) {
+                applyAppIconAlias(this@MainActivity, appIconVariantForStartup)
+            }
+
             val splashProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+
             var isSplashDismissed by remember { mutableStateOf(false) }
             
             androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -812,6 +820,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToMediaManagement = { navController.navigate("media_management") },
                                     onNavigateToNowPlayingStyleSettings = { navController.navigate("now_playing_style_settings") },
                                     onNavigateToCanvasSettings = { navController.navigate("canvas_settings") },
+                                    onNavigateToAppIcon = { navController.navigate("app_icon") },
                                     onNavigateBack = { navController.popBackStack() },
                                     onScanMediaStore = {
                                         if (settingsPermissionsState.allPermissionsGranted) {
@@ -894,6 +903,22 @@ class MainActivity : ComponentActivity() {
                                     onTintTransparencyChange = { viewModel.setTintTransparency(it) },
                                     onNoiseFactorChange = { viewModel.setNoiseFactor(it) },
                                     onGlowIntensityChange = { viewModel.setGlowIntensity(it) },
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+                        }
+                        composable(
+                            route = "app_icon",
+                            enterTransition = { NavTransitions.DetailEnter },
+                            exitTransition = { NavTransitions.DetailExit },
+                            popEnterTransition = { NavTransitions.DetailPopEnter },
+                            popExitTransition = { NavTransitions.DetailPopExit }
+                        ) {
+                            val appIconVariant by viewModel.appIconVariant.collectAsState()
+                            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                                AppIconScreen(
+                                    selectedVariant = appIconVariant,
+                                    onVariantSelect = { viewModel.setAppIconVariant(it) },
                                     onNavigateBack = { navController.popBackStack() }
                                 )
                             }

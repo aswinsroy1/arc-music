@@ -63,6 +63,7 @@ fun SettingsScreen(
     onNavigateToMediaManagement: () -> Unit,
     onNavigateToNowPlayingStyleSettings: () -> Unit,
     onNavigateToCanvasSettings: () -> Unit,
+    onNavigateToAppIcon: () -> Unit,
     onNavigateBack: () -> Unit,
     onScanMediaStore: () -> Unit = {},
     onRunDeepScan: () -> Unit = {},
@@ -292,7 +293,7 @@ fun SettingsScreen(
                             onClick = onNavigateToCanvasSettings,
                             showArrow = true
                         )
-                        SettingsItem(icon = Icons.Outlined.Apps, text = "App icon", enabled = false)
+                        SettingsItem(icon = Icons.Outlined.Apps, text = "App icon", onClick = onNavigateToAppIcon)
                     }
                 }
                 

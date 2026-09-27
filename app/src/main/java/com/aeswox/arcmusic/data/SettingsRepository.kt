@@ -17,6 +17,15 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** The two launcher icon variants available in Arc Music. */
+enum class AppIconVariant {
+    /** Black background, white foreground — the original icon. */
+    Default,
+    /** White background, black foreground — the inverted variant. */
+    Light
+}
+
+
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
 @Singleton
@@ -77,7 +86,23 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val SEEKBAR_UNPLAYED_STROKE_KEY = floatPreferencesKey("seekbar_unplayed_stroke")
     private val SEEKBAR_BLOOM_DURATION_KEY = floatPreferencesKey("seekbar_bloom_duration")
     private val AUTOPLAY_ENABLED_KEY = booleanPreferencesKey("autoplay_enabled")
+    private val APP_ICON_VARIANT_KEY = stringPreferencesKey("app_icon_variant")
 
+    val appIconVariant: Flow<AppIconVariant> = context.dataStore.data.map { preferences ->
+        when (preferences[APP_ICON_VARIANT_KEY]) {
+            "light"   -> AppIconVariant.Light
+            else      -> AppIconVariant.Default
+        }
+    }
+
+    suspend fun setAppIconVariant(variant: AppIconVariant) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_ICON_VARIANT_KEY] = when (variant) {
+                AppIconVariant.Default -> "default"
+                AppIconVariant.Light   -> "light"
+            }
+        }
+    }
 
     val hasCompletedOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[HAS_COMPLETED_ONBOARDING_KEY] ?: false
