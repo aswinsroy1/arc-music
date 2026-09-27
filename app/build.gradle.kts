@@ -177,3 +177,11 @@ dependencies {
   "ksp"(libs.moshi.kotlin.codegen)
   "ksp"("org.jetbrains.kotlin:kotlin-metadata-jvm:2.1.0")
 }
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.ktor") {
+            useVersion("2.3.12")
+        }
+    }
+}
