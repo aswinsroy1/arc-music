@@ -1631,7 +1631,11 @@ fun HeroSection(
     var displayPicks by remember { mutableStateOf<List<HeroCardItem>>(emptyList()) }
     
     LaunchedEffect(includeArtistsAndAlbums) {
-        val initial = viewModel.fetchHeroCardSnapshot(10)
+        val initial = viewModel.fetchHeroCardSnapshot(10).toMutableList()
+        viewModel.lastViewedHeroCardItem?.let { lastItem ->
+            initial.removeAll { it == lastItem }
+            initial.add(0, lastItem)
+        }
         currentCycle = initial
         displayPicks = initial
     }
@@ -1653,6 +1657,9 @@ fun HeroSection(
     }
     
     LaunchedEffect(pagerState.currentPage) {
+        if (displayPicks.isNotEmpty()) {
+            viewModel.lastViewedHeroCardItem = displayPicks.getOrNull(pagerState.currentPage)
+        }
         if (displayPicks.isNotEmpty() && currentCycle.isNotEmpty()) {
             if (displayPicks.size - pagerState.currentPage <= 3) {
                 displayPicks = displayPicks + currentCycle

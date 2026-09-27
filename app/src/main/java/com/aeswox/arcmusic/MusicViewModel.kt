@@ -210,6 +210,7 @@ class MusicViewModel @Inject constructor(
     val recentlyPlayed: StateFlow<List<Track>>
     val homescreenRecommendations: StateFlow<List<GrowthCard>>
     
+    var lastViewedHeroCardItem: HeroCardItem? = null
     val heroCardPlayingStateEnabled: StateFlow<Boolean> = settingsRepository.heroCardPlayingStateEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     
