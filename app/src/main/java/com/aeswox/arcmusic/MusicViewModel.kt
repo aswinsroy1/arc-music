@@ -1903,20 +1903,53 @@ $catalog"""
 
                 val userMessage = prompt.trim()
 
-                val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
-                    modelName = "gemini-2.0-flash",
-                    apiKey = apiKey
-                )
-                
-                val response = generativeModel.generateContent(
-                    com.google.ai.client.generativeai.type.content {
-                        text(systemPrompt + "\n\nUSER REQUEST: " + userMessage)
-                    }
+                // Construct the JSON payload using org.json
+                val requestJson = org.json.JSONObject().apply {
+                    put("contents", org.json.JSONArray().put(
+                        org.json.JSONObject().apply {
+                            put("role", "user")
+                            put("parts", org.json.JSONArray().put(
+                                org.json.JSONObject().put("text", systemPrompt + "\n\nUSER REQUEST: " + userMessage)
+                            ))
+                        }
+                    ))
+                    put("generationConfig", org.json.JSONObject().apply {
+                        put("temperature", 0.7)
+                    })
+                }
+
+                val requestBody = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("application/json"),
+                    requestJson.toString()
                 )
 
-                val responseText = response.text?.trim() ?: "[]"
-                // Extract JSON array from response (handle possible markdown wrapping)
-                val jsonStr = responseText
+                val request = okhttp3.Request.Builder()
+                    .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
+                    .addHeader("x-goog-api-key", apiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .post(requestBody)
+                    .build()
+
+                val okHttpClient = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+
+                val response = okHttpClient.newCall(request).execute()
+                val responseString = response.body()?.string() ?: ""
+
+                if (!response.isSuccessful) {
+                    throw Exception("API Error ${response.code()}: $responseString")
+                }
+
+                val parsed = org.json.JSONObject(responseString)
+                val candidates = parsed.optJSONArray("candidates")
+                val firstCandidate = candidates?.optJSONObject(0)
+                val content = firstCandidate?.optJSONObject("content")
+                val parts = content?.optJSONArray("parts")
+                val text = parts?.optJSONObject(0)?.optString("text") ?: "[]"
+
+                val jsonStr = text
                     .removePrefix("```json").removePrefix("```")
                     .removeSuffix("```").trim()
 

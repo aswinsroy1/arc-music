@@ -127,9 +127,6 @@ dependencies {
   implementation(libs.haze)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
-  implementation(libs.generativeai)
-  implementation(libs.ktor.client.core)
-  implementation(libs.ktor.client.okhttp)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 
@@ -176,12 +173,4 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
   "ksp"("org.jetbrains.kotlin:kotlin-metadata-jvm:2.1.0")
-}
-
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "io.ktor") {
-            useVersion("2.3.12")
-        }
-    }
 }
