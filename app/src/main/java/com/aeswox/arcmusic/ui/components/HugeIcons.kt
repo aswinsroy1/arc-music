@@ -314,7 +314,7 @@ object HugeIcons {
                     strokeLineWidth = 2f,
                     strokeLineCap = StrokeCap.Butt,
                     strokeLineJoin = StrokeJoin.Round,
-                    fill = null
+                    fill = SolidColor(Color(0xFF000000))
                 ) {
                     moveTo(15.9351f, 12.6258f)
                     curveTo(15.6807f, 13.8374f, 14.327f, 14.7077f, 11.6198f, 16.4481f)
@@ -362,7 +362,7 @@ object HugeIcons {
                     strokeLineWidth = 2f,
                     strokeLineCap = StrokeCap.Butt,
                     strokeLineJoin = StrokeJoin.Round,
-                    fill = null
+                    fill = SolidColor(Color(0xFF000000))
                 ) {
                     moveTo(8.06492f, 12.6258f)
                     curveTo(8.31931f, 13.8374f, 9.67295f, 14.7077f, 12.3802f, 16.4481f)
