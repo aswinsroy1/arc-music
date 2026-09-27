@@ -41,9 +41,10 @@ fun CanvasSettingsScreen(
             modifier = Modifier.fillMaxSize(),
             glowIntensity = glowIntensity
         )
+        val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
         LazyColumn(
             modifier = Modifier.fillMaxSize().haze(state = hazeState),
-            contentPadding = PaddingValues(top = 100.dp, bottom = 40.dp)
+            contentPadding = PaddingValues(top = topPadding, bottom = 40.dp)
         ) {
             item {
                 SettingsGroup(title = "GENERAL") {

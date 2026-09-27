@@ -43,12 +43,13 @@ fun AppIconScreen(
     val hazeState = remember { HazeState() }
 
     Box(modifier = modifier.fillMaxSize()) {
+        val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .physicsBounceOverscroll()
                 .haze(state = hazeState),
-            contentPadding = PaddingValues(top = 100.dp, bottom = 48.dp, start = 24.dp, end = 24.dp),
+            contentPadding = PaddingValues(top = topPadding, bottom = 48.dp, start = 24.dp, end = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
