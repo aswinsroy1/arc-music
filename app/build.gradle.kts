@@ -127,6 +127,7 @@ dependencies {
   implementation(libs.haze)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
+  implementation(libs.google.genai.kotlin)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 

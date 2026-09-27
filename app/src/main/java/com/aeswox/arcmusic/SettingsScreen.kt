@@ -46,6 +46,7 @@ fun SettingsScreen(
     nowPlayingStyle: NowPlayingStyle,
     lastFmApiKey: String?,
     fanartTvApiKey: String?,
+    geminiApiKey: String?,
     onThemeModeChange: (ThemeMode) -> Unit,
     onHeroCardPlayingStateEnabledChange: (Boolean) -> Unit,
     heroCardIncludeArtistsAndAlbums: Boolean = false,
@@ -53,6 +54,7 @@ fun SettingsScreen(
     onNowPlayingStyleChange: (NowPlayingStyle) -> Unit,
     onLastFmApiKeyChange: (String) -> Unit,
     onFanartTvApiKeyChange: (String) -> Unit,
+    onGeminiApiKeyChange: (String) -> Unit,
     coilDiskCacheLimitMb: Int,
     onCoilDiskCacheLimitMbChange: (Int) -> Unit,
     onNavigateToAppearance: () -> Unit,
@@ -148,6 +150,41 @@ fun SettingsScreen(
             },
             dismissButton = {
                 JellyTextButton(onClick = { showFanartTvApiKeyDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    var showGeminiApiKeyDialog by remember { mutableStateOf(false) }
+    var geminiApiKeyInput by remember { mutableStateOf("") }
+
+    if (showGeminiApiKeyDialog) {
+        AlertDialog(
+            onDismissRequest = { showGeminiApiKeyDialog = false },
+            title = { Text("Gemini API Key") },
+            text = {
+                Column {
+                    Text(
+                        text = "Get a free key from aistudio.google.com",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = geminiApiKeyInput,
+                        onValueChange = { geminiApiKeyInput = it },
+                        label = { Text("Enter API Key") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                JellyTextButton(onClick = {
+                    onGeminiApiKeyChange(geminiApiKeyInput)
+                    showGeminiApiKeyDialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                JellyTextButton(onClick = { showGeminiApiKeyDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -321,6 +358,19 @@ fun SettingsScreen(
                             onClick = {
                                 fanartTvApiKeyInput = fanartTvApiKey ?: ""
                                 showFanartTvApiKeyDialog = true
+                            },
+                            showArrow = false
+                        )
+
+                        val isGeminiKeySet = !geminiApiKey.isNullOrBlank()
+                        val maskedGeminiKey = if (isGeminiKeySet) "••••" + geminiApiKey!!.takeLast(4.coerceAtMost(geminiApiKey.length)) else "Not set"
+                        SettingsItem(
+                            icon = Icons.Outlined.AutoAwesome,
+                            text = "Gemini API Key",
+                            trailingText = maskedGeminiKey,
+                            onClick = {
+                                geminiApiKeyInput = geminiApiKey ?: ""
+                                showGeminiApiKeyDialog = true
                             },
                             showArrow = false
                         )

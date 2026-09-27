@@ -87,6 +87,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val SEEKBAR_BLOOM_DURATION_KEY = floatPreferencesKey("seekbar_bloom_duration")
     private val AUTOPLAY_ENABLED_KEY = booleanPreferencesKey("autoplay_enabled")
     private val APP_ICON_VARIANT_KEY = stringPreferencesKey("app_icon_variant")
+    private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
 
     val appIconVariant: Flow<AppIconVariant> = context.dataStore.data.map { preferences ->
         when (preferences[APP_ICON_VARIANT_KEY]) {
@@ -114,6 +115,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     val fanartTvApiKey: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[FANART_TV_KEY]
+    }
+
+    val geminiApiKey: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[GEMINI_API_KEY]
     }
 
     /** Persisted theme preference. Emits [ThemeMode.System] by default (first-run). */
@@ -211,6 +216,16 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 preferences.remove(FANART_TV_KEY)
             } else {
                 preferences[FANART_TV_KEY] = key.trim()
+            }
+        }
+    }
+
+    suspend fun setGeminiApiKey(key: String) {
+        context.dataStore.edit { preferences ->
+            if (key.isBlank()) {
+                preferences.remove(GEMINI_API_KEY)
+            } else {
+                preferences[GEMINI_API_KEY] = key.trim()
             }
         }
     }

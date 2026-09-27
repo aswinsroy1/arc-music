@@ -43,6 +43,14 @@ sealed class SearchResultsUiState {
     ) : SearchResultsUiState()
 }
 
+sealed class AiSearchUiState {
+    object Idle : AiSearchUiState()
+    object Loading : AiSearchUiState()
+    object Empty : AiSearchUiState()
+    data class Success(val tracks: List<Track>) : AiSearchUiState()
+    data class Error(val message: String) : AiSearchUiState()
+}
+
 // --- Listening Stats data model ---
 
 data class ArtistStatEntry(
@@ -210,7 +218,6 @@ class MusicViewModel @Inject constructor(
     val recentlyPlayed: StateFlow<List<Track>>
     val homescreenRecommendations: StateFlow<List<GrowthCard>>
     
-    var lastViewedHeroCardItem: HeroCardItem? = null
     val heroCardPlayingStateEnabled: StateFlow<Boolean> = settingsRepository.heroCardPlayingStateEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     
@@ -1846,6 +1853,102 @@ class MusicViewModel @Inject constructor(
             settingsRepository.setFanartTvApiKey(key)
         }
     }
+
+    val geminiApiKey = settingsRepository.geminiApiKey.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        null
+    )
+
+    fun setGeminiApiKey(key: String) {
+        viewModelScope.launch {
+            settingsRepository.setGeminiApiKey(key)
+        }
+    }
+
+    // ------- AI Search -------
+
+    private val _aiSearchResult = MutableStateFlow<AiSearchUiState>(AiSearchUiState.Idle)
+    val aiSearchResult: StateFlow<AiSearchUiState> = _aiSearchResult.asStateFlow()
+
+    fun performAiSearch(prompt: String) {
+        val apiKey = geminiApiKey.value
+        if (apiKey.isNullOrBlank()) {
+            _aiSearchResult.value = AiSearchUiState.Error("Gemini API key not set. Add it in Settings > Integrations.")
+            return
+        }
+        _aiSearchResult.value = AiSearchUiState.Loading
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val tracks = libraryTracks.value
+                if (tracks.isEmpty()) {
+                    _aiSearchResult.value = AiSearchUiState.Error("Your library is empty.")
+                    return@launch
+                }
+                // Build a compact catalog for the prompt (limit to avoid token overflow)
+                val catalog = tracks.take(500).joinToString("\n") { t ->
+                    "${t.id}|${t.title}|${t.artist}|${t.album}|${t.genre ?: ""}|${t.durationMs / 1000}s|${t.year ?: ""}"
+                }
+                val systemPrompt = """You are Arc Music's AI DJ assistant. The user will describe what they want to listen to in natural language. Your job is to select songs from their LOCAL music library that best match their request.
+
+RULES:
+- ONLY select songs from the catalog provided below. Never invent or suggest songs that aren't in the catalog.
+- Return ONLY a JSON array of track IDs (strings), ordered by relevance. Example: ["id1","id2","id3"]
+- Select between 1 and 25 tracks.
+- If no songs match, return an empty array: []
+- Do NOT include any explanation, markdown, or text outside the JSON array.
+
+CATALOG (format: id|title|artist|album|genre|duration|year):
+$catalog"""
+
+                val userMessage = prompt.trim()
+
+                val client = com.google.genai.Client(com.google.genai.types.ApiKey(apiKey))
+                val response = client.models.generateContent(
+                    model = "gemini-2.0-flash",
+                    contents = com.google.genai.types.Content(
+                        role = "user",
+                        parts = listOf(
+                            com.google.genai.types.Part.fromText(systemPrompt + "\n\nUSER REQUEST: " + userMessage)
+                        )
+                    )
+                )
+
+                val responseText = response.text?.trim() ?: "[]"
+                // Extract JSON array from response (handle possible markdown wrapping)
+                val jsonStr = responseText
+                    .removePrefix("```json").removePrefix("```")
+                    .removeSuffix("```").trim()
+
+                val trackIds = try {
+                    val arr = org.json.JSONArray(jsonStr)
+                    (0 until arr.length()).map { arr.getString(it) }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                if (trackIds.isEmpty()) {
+                    _aiSearchResult.value = AiSearchUiState.Empty
+                } else {
+                    val trackMap = tracks.associateBy { it.id }
+                    val matchedTracks = trackIds.mapNotNull { trackMap[it] }
+                    if (matchedTracks.isEmpty()) {
+                        _aiSearchResult.value = AiSearchUiState.Empty
+                    } else {
+                        _aiSearchResult.value = AiSearchUiState.Success(matchedTracks)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MusicViewModel", "AI search failed", e)
+                _aiSearchResult.value = AiSearchUiState.Error(e.message ?: "AI search failed")
+            }
+        }
+    }
+
+    fun clearAiSearch() {
+        _aiSearchResult.value = AiSearchUiState.Idle
+    }
+
 
     // ------- Media Management Settings -------
 

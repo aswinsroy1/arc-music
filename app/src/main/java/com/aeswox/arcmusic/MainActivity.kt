@@ -56,6 +56,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.ErrorOutline
 
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Mic
@@ -782,6 +784,7 @@ class MainActivity : ComponentActivity() {
                             val settingsPermissionsState = rememberMultiplePermissionsState(permissions = settingsPermissionsList)
                             val lastFmApiKey by viewModel.lastFmApiKey.collectAsState()
                             val fanartTvApiKey by viewModel.fanartTvApiKey.collectAsState()
+                            val geminiApiKey by viewModel.geminiApiKey.collectAsState()
                             val coilDiskCacheLimitMb by viewModel.coilDiskCacheLimitMb.collectAsState()
                             val heroCardPlayingStateEnabled by viewModel.heroCardPlayingStateEnabled.collectAsState()
                             val heroCardIncludeArtistsAndAlbums by viewModel.heroCardIncludeArtistsAndAlbums.collectAsState()
@@ -808,9 +811,11 @@ class MainActivity : ComponentActivity() {
                                     onNowPlayingStyleChange = { viewModel.setNowPlayingStyle(it) },
                                     lastFmApiKey = lastFmApiKey,
                                     fanartTvApiKey = fanartTvApiKey,
+                                    geminiApiKey = geminiApiKey,
                                     onThemeModeChange = { viewModel.setThemeMode(it) },
                                     onLastFmApiKeyChange = { viewModel.setLastFmApiKey(it) },
                                     onFanartTvApiKeyChange = { viewModel.setFanartTvApiKey(it) },
+                                    onGeminiApiKeyChange = { viewModel.setGeminiApiKey(it) },
                                     coilDiskCacheLimitMb = coilDiskCacheLimitMb,
                                     onCoilDiskCacheLimitMbChange = { viewModel.setCoilDiskCacheLimitMb(it) },
                                     onNavigateToAppearance = { navController.navigate("appearance") },
@@ -2397,12 +2402,24 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
     val searchResults by viewModel.searchResults.collectAsState()
     val genreCounts by viewModel.genreCounts.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
+    val aiSearchResult by viewModel.aiSearchResult.collectAsState()
+    val geminiApiKey by viewModel.geminiApiKey.collectAsState()
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     var selectedFilter by rememberSaveable { mutableStateOf("All") }
+    val isAiMode = selectedFilter == "AI"
     
     // Reset selected filter when search query transitions between empty and active
     LaunchedEffect(searchQuery.isEmpty()) {
-        selectedFilter = "All"
+        if (!isAiMode) {
+            selectedFilter = "All"
+        }
+    }
+
+    // Clear AI results when switching away from AI mode
+    LaunchedEffect(isAiMode) {
+        if (!isAiMode) {
+            viewModel.clearAiSearch()
+        }
     }
     
     LazyColumn(
@@ -2417,25 +2434,80 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
             )
         }
         item {
-            SearchBar(
-                query = searchQuery,
-                onQueryChange = { viewModel.updateSearchQuery(it) },
-                onSearch = { 
-                    viewModel.saveRecentSearch(searchQuery)
-                    keyboardController?.hide()
-                },
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
+            if (isAiMode) {
+                AiSearchBar(
+                    onSearch = { prompt ->
+                        viewModel.performAiSearch(prompt)
+                        keyboardController?.hide()
+                    },
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            } else {
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = { viewModel.updateSearchQuery(it) },
+                    onSearch = { 
+                        viewModel.saveRecentSearch(searchQuery)
+                        keyboardController?.hide()
+                    },
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            }
         }
         item {
             FilterChips(
-                isSearchActive = searchQuery.isNotEmpty(),
+                isSearchActive = if (isAiMode) false else searchQuery.isNotEmpty(),
                 selectedFilter = selectedFilter,
-                onFilterSelected = { selectedFilter = it }
+                onFilterSelected = { selectedFilter = it },
+                showAiChip = !geminiApiKey.isNullOrBlank()
             )
         }
-        
-        if (searchQuery.isEmpty()) {
+
+        if (isAiMode) {
+            // AI Search results
+            when (aiSearchResult) {
+                is AiSearchUiState.Idle -> {
+                    item {
+                        AiSearchPromptHint(modifier = Modifier.padding(horizontal = 24.dp))
+                    }
+                }
+                is AiSearchUiState.Loading -> {
+                    item {
+                        AiSearchLoadingState(modifier = Modifier.padding(horizontal = 24.dp))
+                    }
+                }
+                is AiSearchUiState.Empty -> {
+                    item {
+                        SearchEmptyState(modifier = Modifier.padding(horizontal = 24.dp))
+                    }
+                }
+                is AiSearchUiState.Success -> {
+                    val tracks = (aiSearchResult as AiSearchUiState.Success).tracks
+                    item {
+                        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                            Text(
+                                text = "AI picks for you",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                            SongsResultSection(
+                                tracks = tracks,
+                                onTrackClick = { viewModel.setCurrentlyPlaying(it, tracks) }
+                            )
+                        }
+                    }
+                }
+                is AiSearchUiState.Error -> {
+                    item {
+                        AiSearchErrorState(
+                            message = (aiSearchResult as AiSearchUiState.Error).message,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                    }
+                }
+            }
+        } else if (searchQuery.isEmpty()) {
             if (selectedFilter == "All" || selectedFilter == "Recent") {
                 if (recentSearches.isNotEmpty()) {
                     item { 
@@ -2616,12 +2688,156 @@ fun SearchBar(
 }
 
 @Composable
-fun FilterChips(isSearchActive: Boolean = false, selectedFilter: String, onFilterSelected: (String) -> Unit, modifier: Modifier = Modifier) {
-    val filters = if (isSearchActive) {
+fun AiSearchBar(
+    onSearch: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var textFieldValue by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue("")) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+            .padding(horizontal = 24.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.AutoAwesome,
+            contentDescription = "AI Search",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        androidx.compose.foundation.text.BasicTextField(
+            value = textFieldValue,
+            onValueChange = { textFieldValue = it },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+            singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch(textFieldValue.text) }),
+            decorationBox = { innerTextField ->
+                if (textFieldValue.text.isEmpty()) {
+                    Text(
+                        text = "Describe the music you want...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+                innerTextField()
+            }
+        )
+        if (textFieldValue.text.isNotEmpty()) {
+            JellyIconButton(onClick = { 
+                textFieldValue = androidx.compose.ui.text.input.TextFieldValue("")
+            }) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Clear",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AiSearchPromptHint(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.AutoAwesome,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Try things like:",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "\"Upbeat songs from the 80s\"\n\"Relaxing acoustic music\"\n\"Electronic dance tracks\"",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            lineHeight = 24.sp
+        )
+    }
+}
+
+@Composable
+fun AiSearchLoadingState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Gemini is picking songs...",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun AiSearchErrorState(message: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Oops",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun FilterChips(isSearchActive: Boolean = false, selectedFilter: String, onFilterSelected: (String) -> Unit, modifier: Modifier = Modifier, showAiChip: Boolean = false) {
+    val baseFilters = if (isSearchActive) {
         listOf("All", "Top result", "Songs", "Albums", "Artists", "Playlists")
     } else {
         listOf("All", "Songs", "Albums", "Artists", "Playlists", "Genres")
     }
+    
+    val filters = if (showAiChip && !isSearchActive) {
+        listOf("AI") + baseFilters
+    } else if (showAiChip && isSearchActive && selectedFilter == "AI") {
+        listOf("AI") + baseFilters
+    } else {
+        baseFilters
+    }
+
     LazyRow(
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
