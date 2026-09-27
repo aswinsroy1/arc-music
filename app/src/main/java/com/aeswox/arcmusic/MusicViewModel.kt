@@ -1903,15 +1903,15 @@ $catalog"""
 
                 val userMessage = prompt.trim()
 
-                val client = com.google.genai.Client(com.google.genai.types.ApiKey(apiKey))
-                val response = client.models.generateContent(
-                    model = "gemini-2.0-flash",
-                    contents = com.google.genai.types.Content(
-                        role = "user",
-                        parts = listOf(
-                            com.google.genai.types.Part.fromText(systemPrompt + "\n\nUSER REQUEST: " + userMessage)
-                        )
-                    )
+                val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
+                    modelName = "gemini-2.0-flash",
+                    apiKey = apiKey
+                )
+                
+                val response = generativeModel.generateContent(
+                    com.google.ai.client.generativeai.type.content {
+                        text(systemPrompt + "\n\nUSER REQUEST: " + userMessage)
+                    }
                 )
 
                 val responseText = response.text?.trim() ?: "[]"
