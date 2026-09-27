@@ -1923,7 +1923,7 @@ $catalog"""
                 val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
 
                 val request = okhttp3.Request.Builder()
-                    .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
+                    .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent")
                     .addHeader("x-goog-api-key", apiKey)
                     .addHeader("Content-Type", "application/json")
                     .post(requestBody)
