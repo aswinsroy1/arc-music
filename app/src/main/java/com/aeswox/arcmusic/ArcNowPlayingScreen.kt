@@ -453,8 +453,6 @@ fun ArcNowPlayingScreen(
 
     val canvasUrl by viewModel.canvasUrl.collectAsState()
     val canvasEnabled by viewModel.canvasEnabled.collectAsState()
-    val canvasLoading by viewModel.canvasLoading.collectAsState()
-    val canvasNotFound by viewModel.canvasNotFound.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
 
     // Trigger canvas fetch whenever the playing track changes
@@ -633,38 +631,6 @@ fun ArcNowPlayingScreen(
                     )
                 }
 
-                // Badges
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = canvasEnabled && (canvasLoading || canvasNotFound),
-                    enter = androidx.compose.animation.fadeIn(),
-                    exit = androidx.compose.animation.fadeOut(),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.5f))
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (canvasLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else if (canvasNotFound) {
-                            Icon(
-                                imageVector = Icons.Outlined.VideocamOff,
-                                contentDescription = "Canvas Unavailable",
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
             }
 
             
