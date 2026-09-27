@@ -1938,9 +1938,9 @@ $catalog"""
                         _aiSearchResult.value = AiSearchUiState.Success(matchedTracks)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 android.util.Log.e("MusicViewModel", "AI search failed", e)
-                _aiSearchResult.value = AiSearchUiState.Error(e.message ?: "AI search failed")
+                _aiSearchResult.value = AiSearchUiState.Error(e.message ?: "AI search failed (Check logs for details)")
             }
         }
     }
