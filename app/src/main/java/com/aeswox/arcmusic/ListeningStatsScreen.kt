@@ -249,9 +249,8 @@ fun TimelineActivitySection(
 ) {
     val maxMinutes = stats.chartData.maxOfOrNull { it.value }?.takeIf { it > 0L } ?: 1L
 
-    val animatedProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val animatedProgress = remember(stats.timeRange) { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(stats.timeRange) {
-        animatedProgress.snapTo(0f)
         animatedProgress.animateTo(
             targetValue = 1f,
             animationSpec = androidx.compose.animation.core.tween(
@@ -791,11 +790,11 @@ fun PopInText(
             LaunchedEffect(isVisible, text) {
                 if (isVisible) {
                     animatable.snapTo(0f)
-                    kotlinx.coroutines.delay(index * 70L)
+                    kotlinx.coroutines.delay(index * 40L)
                     animatable.animateTo(
                         targetValue = 1f,
                         animationSpec = androidx.compose.animation.core.tween(
-                            durationMillis = 500,
+                            durationMillis = 350,
                             easing = androidx.compose.animation.core.CubicBezierEasing(0.34f, 1.45f, 0.64f, 1f)
                         )
                     )
