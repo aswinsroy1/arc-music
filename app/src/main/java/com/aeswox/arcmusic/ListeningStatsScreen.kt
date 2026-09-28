@@ -203,8 +203,8 @@ fun TotalListeningTimeCard(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.ExtraBold
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = FontWeight.Black
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
