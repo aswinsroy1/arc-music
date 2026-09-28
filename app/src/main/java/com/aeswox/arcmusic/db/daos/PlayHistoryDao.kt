@@ -13,11 +13,17 @@ interface PlayHistoryDao {
     fun getFullPlayHistory(): Flow<List<PlayHistory>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlayHistory(playHistory: PlayHistory)
+    suspend fun insertPlayHistory(playHistory: PlayHistory): Long
 
     @Query("UPDATE play_history SET completed = 1, playedMs = :playedMs WHERE id = (SELECT MAX(id) FROM play_history WHERE trackId = :trackId)")
     suspend fun markMostRecentCompleted(trackId: String, playedMs: Long)
 
     @Query("UPDATE play_history SET playedMs = :playedMs WHERE id = (SELECT MAX(id) FROM play_history WHERE trackId = :trackId)")
     suspend fun updatePlayedMs(trackId: String, playedMs: Long)
+
+    @Query("UPDATE play_history SET completed = 1, playedMs = :playedMs WHERE id = :id")
+    suspend fun markCompletedById(id: Long, playedMs: Long)
+
+    @Query("UPDATE play_history SET playedMs = :playedMs WHERE id = :id")
+    suspend fun updatePlayedMsById(id: Long, playedMs: Long)
 }

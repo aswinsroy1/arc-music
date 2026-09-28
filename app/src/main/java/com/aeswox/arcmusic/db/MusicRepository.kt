@@ -398,9 +398,9 @@ class MusicRepository(
         result
     }
     
-    suspend fun logPlayStart(trackId: String) = withContext(Dispatchers.IO) {
+    suspend fun logPlayStart(trackId: String): Long = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        playHistoryDao.insertPlayHistory(
+        val id = playHistoryDao.insertPlayHistory(
             PlayHistory(
                 trackId = trackId,
                 timestamp = now,
@@ -410,14 +410,23 @@ class MusicRepository(
             )
         )
         trackDao.incrementPlayCountAndUpdateLastPlayed(trackId, now)
+        id
     }
 
     suspend fun markPlayCompleted(trackId: String, playedMs: Long) = withContext(Dispatchers.IO) {
         playHistoryDao.markMostRecentCompleted(trackId, playedMs)
     }
 
+    suspend fun markPlayCompletedById(id: Long, playedMs: Long) = withContext(Dispatchers.IO) {
+        playHistoryDao.markCompletedById(id, playedMs)
+    }
+
     suspend fun updatePlayedMs(trackId: String, playedMs: Long) = withContext(Dispatchers.IO) {
         playHistoryDao.updatePlayedMs(trackId, playedMs)
+    }
+
+    suspend fun updatePlayedMsById(id: Long, playedMs: Long) = withContext(Dispatchers.IO) {
+        playHistoryDao.updatePlayedMsById(id, playedMs)
     }
 
     suspend fun deleteTracks(trackIds: List<String>) = withContext(Dispatchers.IO) {

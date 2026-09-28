@@ -81,6 +81,8 @@ class MusicPlayerConnection @Inject constructor(
     private var lastPlayStateChangeTimeMs: Long = 0L
     // Accumulated listening time across pauses and seeks for the current track
     private var accumulatedPlayTimeMs: Long = 0L
+    // Database ID of the current play session's row
+    private var lastLoggedHistoryId: Long = -1L
 
     init {
         val sessionToken = SessionToken(
@@ -163,9 +165,18 @@ class MusicPlayerConnection @Inject constructor(
                     else
                         (mediaController?.duration?.takeIf { it > 0 } ?: 0L)
                     Log.d("PlayHistory", "Track ended naturally, marking completed: $trackId, playedMs=$playedMs")
-                    scope.launch(Dispatchers.IO) {
-                        repository.markPlayCompleted(trackId, playedMs)
+                    
+                    val historyId = lastLoggedHistoryId
+                    if (historyId != -1L) {
+                        scope.launch(Dispatchers.IO) {
+                            repository.markPlayCompletedById(historyId, playedMs)
+                        }
+                    } else {
+                        scope.launch(Dispatchers.IO) {
+                            repository.markPlayCompleted(trackId, playedMs)
+                        }
                     }
+                    
                     accumulatedPlayTimeMs = 0L
                     lastPlayStateChangeTimeMs = 0L
                 }
@@ -207,8 +218,17 @@ class MusicPlayerConnection @Inject constructor(
                     accumulatedPlayTimeMs += (System.currentTimeMillis() - lastPlayStateChangeTimeMs)
                 }
                 if (accumulatedPlayTimeMs > 0L) {
-                    scope.launch(Dispatchers.IO) {
-                        repository.updatePlayedMs(previousId, accumulatedPlayTimeMs)
+                    val timeToSave = accumulatedPlayTimeMs
+                    val historyId = lastLoggedHistoryId
+                    
+                    if (historyId != -1L) {
+                        scope.launch(Dispatchers.IO) {
+                            repository.updatePlayedMsById(historyId, timeToSave)
+                        }
+                    } else {
+                        scope.launch(Dispatchers.IO) {
+                            repository.updatePlayedMs(previousId, timeToSave)
+                        }
                     }
                 }
             }
@@ -219,9 +239,11 @@ class MusicPlayerConnection @Inject constructor(
                 lastLoggedMediaId = trackId
                 accumulatedPlayTimeMs = 0L
                 lastPlayStateChangeTimeMs = if (_isPlaying.value) System.currentTimeMillis() else 0L
+                lastLoggedHistoryId = -1L
                 Log.d("PlayHistory", "Logging play start: trackId=$trackId, reason=$reason")
                 scope.launch(Dispatchers.IO) {
-                    repository.logPlayStart(trackId)
+                    val newId = repository.logPlayStart(trackId)
+                    lastLoggedHistoryId = newId
                 }
             }
         }
