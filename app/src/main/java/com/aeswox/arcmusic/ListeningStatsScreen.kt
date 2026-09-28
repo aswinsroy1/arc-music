@@ -246,17 +246,17 @@ fun TimelineActivitySection(
 ) {
     val maxMinutes = stats.chartData.maxOfOrNull { it.value }?.takeIf { it > 0L } ?: 1L
 
-    val animationTargetState = remember { mutableStateOf(0f) }
+    val animatedProgress = remember { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(stats.timeRange) {
-        animationTargetState.value = 0f
-        kotlinx.coroutines.delay(50)
-        animationTargetState.value = 1f
+        animatedProgress.snapTo(0f)
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(
+                durationMillis = 1000,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
+            )
+        )
     }
-    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = animationTargetState.value,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-        label = "GraphAnimation"
-    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -302,7 +302,7 @@ fun TimelineActivitySection(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     stats.chartData.forEach { entry ->
-                        val heightFraction = (entry.value.toFloat() / maxMinutes).coerceIn(0.04f, 1f) * animatedProgress
+                        val heightFraction = (entry.value.toFloat() / maxMinutes).coerceIn(0.04f, 1f) * animatedProgress.value
                         val opacity = (heightFraction * 0.85f + 0.15f).coerceIn(0.15f, 1f)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
