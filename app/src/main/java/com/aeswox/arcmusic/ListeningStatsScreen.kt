@@ -22,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -199,13 +201,14 @@ fun TotalListeningTimeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
+                PopInText(
                     text = displayText,
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontWeight = FontWeight.Black,
                         fontSize = 48.sp
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    isVisible = pagerState.targetPage == page
                 )
                 
                 if (stats.weekOverWeekPct != null) {
@@ -770,6 +773,52 @@ fun PersonalityLockedCard(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun PopInText(
+    text: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    isVisible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        text.forEachIndexed { index, char ->
+            val animatable = remember { androidx.compose.animation.core.Animatable(0f) }
+            LaunchedEffect(isVisible, text) {
+                if (isVisible) {
+                    animatable.snapTo(0f)
+                    kotlinx.coroutines.delay(index * 70L)
+                    animatable.animateTo(
+                        targetValue = 1f,
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 500,
+                            easing = androidx.compose.animation.core.CubicBezierEasing(0.34f, 1.45f, 0.64f, 1f)
+                        )
+                    )
+                } else {
+                    animatable.snapTo(0f)
+                }
+            }
+            Text(
+                text = char.toString(),
+                style = style,
+                color = color,
+                modifier = Modifier
+                    .graphicsLayer {
+                        val progress = animatable.value
+                        val distance = 8.dp.toPx()
+                        translationY = distance * (1f - progress)
+                        alpha = progress.coerceIn(0f, 1f)
+                    }
+                    .blur(
+                        radiusX = (2f * (1f - animatable.value)).dp,
+                        radiusY = (2f * (1f - animatable.value)).dp
+                    )
+            )
         }
     }
 }
