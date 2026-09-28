@@ -167,14 +167,21 @@ class ShareViewModel @Inject constructor(
 
                 if (files.isEmpty()) return@launch
 
+                withContext(Dispatchers.Main) {
+                    if (files.size > 1) {
+                        android.widget.Toast.makeText(context, "Preparing ${files.size} files for sharing...", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+
                 val fileToShare = if (files.size > 1) {
                     val zipFile = File(context.cacheDir, "shared_music_${System.currentTimeMillis()}.zip")
-                    java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
+                    java.util.zip.ZipOutputStream(java.io.BufferedOutputStream(java.io.FileOutputStream(zipFile))).use { zos ->
+                        zos.setLevel(java.util.zip.Deflater.NO_COMPRESSION)
                         files.forEach { file ->
                             if (file.exists()) {
                                 val entry = java.util.zip.ZipEntry(file.name)
                                 zos.putNextEntry(entry)
-                                file.inputStream().use { it.copyTo(zos) }
+                                file.inputStream().buffered().use { it.copyTo(zos) }
                                 zos.closeEntry()
                             }
                         }
