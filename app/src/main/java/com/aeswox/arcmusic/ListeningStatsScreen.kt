@@ -173,21 +173,19 @@ fun TotalListeningTimeCard(
         }
     }
 
-    androidx.compose.foundation.pager.HorizontalPager(
-        state = pagerState,
-        contentPadding = PaddingValues(horizontal = 24.dp),
-        pageSpacing = 16.dp,
-        modifier = modifier.fillMaxWidth()
-    ) { page ->
-        val range = TimeRange.entries[page]
-        val displayHours = stats.totalMinutes / 60L
-        val displayMins  = stats.totalMinutes % 60L
-        val displayText = when {
-            displayHours > 0 -> if (displayMins > 0) "$displayHours hr $displayMins min" else "$displayHours Hours"
-            else -> "$displayMins min"
-        }
+    GlassCard(modifier = modifier.fillMaxWidth().height(180.dp).padding(horizontal = 24.dp)) {
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val range = TimeRange.entries[page]
+            val displayHours = stats.totalMinutes / 60L
+            val displayMins  = stats.totalMinutes % 60L
+            val displayText = when {
+                displayHours > 0 -> if (displayMins > 0) "$displayHours hr $displayMins min" else "$displayHours Hours"
+                else -> "$displayMins min"
+            }
 
-        GlassCard(modifier = Modifier.fillMaxWidth().height(180.dp)) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -203,8 +201,9 @@ fun TotalListeningTimeCard(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = FontWeight.Black
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 48.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -246,6 +245,18 @@ fun TimelineActivitySection(
     modifier: Modifier = Modifier
 ) {
     val maxMinutes = stats.chartData.maxOfOrNull { it.value }?.takeIf { it > 0L } ?: 1L
+
+    val animationTargetState = remember { mutableStateOf(0f) }
+    LaunchedEffect(stats.timeRange) {
+        animationTargetState.value = 0f
+        kotlinx.coroutines.delay(50)
+        animationTargetState.value = 1f
+    }
+    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = animationTargetState.value,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "GraphAnimation"
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -291,7 +302,7 @@ fun TimelineActivitySection(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     stats.chartData.forEach { entry ->
-                        val heightFraction = (entry.value.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
+                        val heightFraction = (entry.value.toFloat() / maxMinutes).coerceIn(0.04f, 1f) * animatedProgress
                         val opacity = (heightFraction * 0.85f + 0.15f).coerceIn(0.15f, 1f)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
