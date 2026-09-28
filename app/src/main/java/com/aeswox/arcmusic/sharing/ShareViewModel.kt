@@ -140,6 +140,24 @@ class ShareViewModel @Inject constructor(
                     }
                     is SharePayload.Playlist -> {
                         val tracks = repository.getTracksForPlaylistById(payload.playlistId).first()
+                        
+                        if (tracks.isNotEmpty()) {
+                            val sb = StringBuilder()
+                            sb.append("#EXTM3U\n")
+                            sb.append("#PLAYLIST:${payload.playlistId}\n")
+                            for (track in tracks) {
+                                val durationSec = track.durationMs / 1000
+                                sb.append("#EXTINF:${durationSec},${track.artist} - ${track.title}\n")
+                                val file = File(track.filePath)
+                                sb.append("${file.name}\n")
+                            }
+                            
+                            val sanitizedName = payload.playlistId.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                            val m3uFile = File(context.cacheDir, "$sanitizedName.m3u")
+                            m3uFile.writeText(sb.toString())
+                            files.add(m3uFile)
+                        }
+                        
                         tracks.forEach { track ->
                             val f = File(track.filePath)
                             if (f.exists()) files.add(f)

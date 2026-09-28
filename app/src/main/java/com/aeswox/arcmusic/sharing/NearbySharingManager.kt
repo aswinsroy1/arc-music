@@ -59,6 +59,7 @@ class NearbySharingManager @Inject constructor(
     private val serviceId = "com.aeswox.arcmusic.SERVICE_ID"
     private val userName = android.os.Build.MODEL // Use device name
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    private val processingJobs = mutableListOf<kotlinx.coroutines.Job>()
 
     private val _sharingState = MutableStateFlow(SharingState.IDLE)
     val sharingState: StateFlow<SharingState> = _sharingState.asStateFlow()
@@ -149,6 +150,23 @@ class NearbySharingManager @Inject constructor(
                 }
             } else if (update.status == PayloadTransferUpdate.Status.SUCCESS) {
                 activePayloads.remove(update.payloadId)
+                
+                val receivedUri = incomingUris[update.payloadId]
+                val receivedFile = incomingFiles[update.payloadId]
+                
+                if (receivedUri != null || receivedFile != null) {
+                    val metadata = expectedMetadata[update.payloadId]
+                    if (metadata != null) {
+                        val job = coroutineScope.launch {
+                            importMediaUseCase.processReceivedPayload(receivedUri, receivedFile, metadata)
+                        }
+                        processingJobs.add(job)
+                        expectedMetadata.remove(update.payloadId)
+                    }
+                    incomingUris.remove(update.payloadId)
+                    incomingFiles.remove(update.payloadId)
+                }
+
                 if (activePayloads.isEmpty()) {
                     if (payloadQueue.isNotEmpty()) {
                         processNextInQueue()
@@ -156,6 +174,12 @@ class NearbySharingManager @Inject constructor(
                         _sharingState.value = SharingState.IDLE
                         _transferProgress.value = 0f
                         updateTransferService(SharingState.IDLE)
+                        
+                        coroutineScope.launch {
+                            kotlinx.coroutines.joinAll(*processingJobs.toTypedArray())
+                            processingJobs.clear()
+                            importMediaUseCase.finalizeImport()
+                        }
                     }
                 }
                 
@@ -164,21 +188,6 @@ class NearbySharingManager @Inject constructor(
                         file.delete()
                     }
                     sentFiles.remove(update.payloadId)
-                }
-
-                val receivedUri = incomingUris[update.payloadId]
-                val receivedFile = incomingFiles[update.payloadId]
-                
-                if (receivedUri != null || receivedFile != null) {
-                    val metadata = expectedMetadata[update.payloadId]
-                    if (metadata != null) {
-                        coroutineScope.launch {
-                            importMediaUseCase.processReceivedPayload(receivedUri, receivedFile, metadata)
-                        }
-                        expectedMetadata.remove(update.payloadId)
-                    }
-                    incomingUris.remove(update.payloadId)
-                    incomingFiles.remove(update.payloadId)
                 }
             } else if (update.status == PayloadTransferUpdate.Status.FAILURE || update.status == PayloadTransferUpdate.Status.CANCELED) {
                 incomingUris.remove(update.payloadId)
@@ -276,6 +285,7 @@ class NearbySharingManager @Inject constructor(
                         if (tracks.isNotEmpty()) {
                             val sb = StringBuilder()
                             sb.append("#EXTM3U\n")
+                            sb.append("#PLAYLIST:${payload.playlistId}\n")
                             for (track in tracks) {
                                 val durationSec = track.durationMs / 1000
                                 sb.append("#EXTINF:${durationSec},${track.artist} - ${track.title}\n")
@@ -290,6 +300,7 @@ class NearbySharingManager @Inject constructor(
                             val m3uMetadata = JSONObject().apply {
                                 put("type", "playlist_m3u")
                                 put("payloadId", m3uPayload.id)
+                                put("playlistName", payload.playlistId)
                             }
                             
                             val metadataPayload = Payload.fromBytes(m3uMetadata.toString().toByteArray(Charsets.UTF_8))

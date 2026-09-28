@@ -13,9 +13,17 @@ import org.json.JSONObject
 import java.io.File
 import javax.inject.Inject
 
+import com.aeswox.arcmusic.db.MusicRepository
+import com.aeswox.arcmusic.db.MediaScannerManager
+import kotlinx.coroutines.flow.first
+
 class ImportMediaUseCase @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val repository: MusicRepository,
+    private val mediaScannerManager: MediaScannerManager
 ) {
+    private var receivedPlaylistFile: File? = null
+    private var receivedPlaylistName: String? = null
     suspend fun processReceivedPayload(receivedUri: android.net.Uri?, receivedFile: File?, metadata: JSONObject) = withContext(Dispatchers.IO) {
         try {
             val type = metadata.getString("type")
@@ -70,14 +78,15 @@ class ImportMediaUseCase @Inject constructor(
                     values.clear()
                     values.put(MediaStore.Audio.Media.IS_PENDING, 0)
                     resolver.update(uri, values, null, null)
-                    
-                    triggerMediaScanner()
                 }
             } else if (type == "playlist_m3u") {
+                val playlistName = metadata.optString("playlistName", "Playlist_${System.currentTimeMillis()}")
+                val sanitizedName = playlistName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                
                 val destDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "ArcMusic")
                 if (!destDir.exists()) destDir.mkdirs()
                 
-                val m3uFile = File(destDir, "Playlist_${System.currentTimeMillis()}.m3u")
+                val m3uFile = File(destDir, "$sanitizedName.m3u")
                 m3uFile.outputStream().use { outStream ->
                     getInputStream()?.use { inStream ->
                         inStream.copyTo(outStream)
@@ -85,23 +94,58 @@ class ImportMediaUseCase @Inject constructor(
                 }
                 receivedFile?.delete()
                 
-                triggerMediaScanner()
+                receivedPlaylistFile = m3uFile
+                receivedPlaylistName = playlistName
             }
         } catch (e: Exception) {
             Log.e("ImportMediaUseCase", "Failed to process received payload", e)
         }
     }
 
-    private fun triggerMediaScanner() {
-        val targetFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).absolutePath + "/ArcMusic"
+    suspend fun finalizeImport() {
+        // Trigger quick incremental scan for new files
         val intent = Intent(context, com.aeswox.arcmusic.playback.MediaScannerService::class.java).apply {
-            action = com.aeswox.arcmusic.playback.MediaScannerService.ACTION_SCAN_TARGET
-            putExtra(com.aeswox.arcmusic.playback.MediaScannerService.EXTRA_TARGET_FOLDER, targetFolder)
+            action = com.aeswox.arcmusic.playback.MediaScannerService.ACTION_INCREMENTAL_SCAN
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             context.startForegroundService(intent)
         } else {
             context.startService(intent)
+        }
+
+        // Wait for scanner to finish
+        mediaScannerManager.scanProgress.first { !it.isRunning }
+
+        // Now parse the M3U and create the Playlist using the newly scanned tracks!
+        receivedPlaylistFile?.let { m3uFile ->
+            try {
+                val lines = m3uFile.readLines()
+                val paths = lines.map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+                
+                val allTracks = repository.getAllTracks().first()
+                val trackIds = mutableListOf<String>()
+                
+                for (path in paths) {
+                    val fileName = File(path).name
+                    val matchedTrack = allTracks.find { it.filePath == path } 
+                        ?: allTracks.find { it.filePath.endsWith(path) }
+                        ?: allTracks.find { File(it.filePath).name == fileName }
+                        
+                    if (matchedTrack != null) {
+                        trackIds.add(matchedTrack.id)
+                    }
+                }
+                
+                val finalName = receivedPlaylistName ?: "Imported Playlist"
+                if (trackIds.isNotEmpty()) {
+                    repository.createPlaylist(finalName, "Received via Nearby Share", null, trackIds)
+                    Log.i("ImportMediaUseCase", "Successfully created playlist $finalName with ${trackIds.size} tracks")
+                }
+            } catch (e: Exception) {
+                Log.e("ImportMediaUseCase", "Failed to parse imported M3U", e)
+            }
+            receivedPlaylistFile = null
+            receivedPlaylistName = null
         }
     }
 }
