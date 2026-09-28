@@ -2136,18 +2136,27 @@ $catalog"""
     private var canvasFetchJob: kotlinx.coroutines.Job? = null
 
     /** Triggers a canvas fetch for the given track. Call whenever the playing track changes. */
-    fun fetchCanvasForTrack(title: String, artist: String, album: String?) {
-        android.util.Log.d("CanvasFetch", "fetchCanvasForTrack called for: $title - $artist")
+    fun fetchCanvasForTrack(track: Track) {
+        android.util.Log.d("CanvasFetch", "fetchCanvasForTrack called for: ${track.title} - ${track.artist}")
         canvasFetchJob?.cancel()
         _canvasUrl.value = null
         _canvasNotFound.value = false
         if (!canvasEnabled.value) return
         canvasFetchJob = viewModelScope.launch {
-            android.util.Log.d("CanvasFetch", "Job started, fetching url...")
+            if (track.canvasUrl != null) {
+                android.util.Log.d("CanvasFetch", "Found url in DB: ${track.canvasUrl}")
+                _canvasUrl.value = track.canvasUrl
+                return@launch
+            }
+            
+            android.util.Log.d("CanvasFetch", "Job started, fetching url from API...")
             _canvasLoading.value = true
             try {
-                val url = canvasProvider.getCanvasUrl(title, artist, album)
+                val url = canvasProvider.getCanvasUrl(track.title, track.artist, track.album)
                 android.util.Log.d("CanvasFetch", "Fetched url: $url")
+                if (url != null) {
+                    repository.updateCanvasUrl(track.id, url, System.currentTimeMillis())
+                }
                 _canvasUrl.value = url
             } catch (e: Exception) {
                 android.util.Log.e("CanvasFetch", "Error fetching url", e)

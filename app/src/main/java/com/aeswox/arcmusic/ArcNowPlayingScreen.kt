@@ -457,10 +457,9 @@ fun ArcNowPlayingScreen(
 
     // Trigger canvas fetch whenever the playing track changes
     LaunchedEffect(songToPlay?.id) {
-        val title = songToPlay?.title ?: return@LaunchedEffect
-        val artist = songToPlay?.artist ?: return@LaunchedEffect
-        val album = songToPlay?.album
-        viewModel.fetchCanvasForTrack(title, artist, album)
+        val track = songToPlay ?: return@LaunchedEffect
+        if (track.title == "<unknown>" || track.title.isBlank()) return@LaunchedEffect
+        viewModel.fetchCanvasForTrack(track)
     }
 
     @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
