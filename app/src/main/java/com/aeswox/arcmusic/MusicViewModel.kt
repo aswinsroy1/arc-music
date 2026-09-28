@@ -75,13 +75,28 @@ data class GenreStatEntry(
  * @param topGenres  Ranked by library track count (not listening time).
  * @param nightOwlMinutesByHour  24 values of total minutes per hour-of-day â€” null if < 30 play events.
  */
+enum class TimeRange(val title: String) {
+    DAILY("Daily"), 
+    WEEKLY("Weekly"), 
+    MONTHLY("Monthly"), 
+    YEARLY("Yearly"), 
+    ALL_TIME("All Time")
+}
+
+data class ChartDataEntry(
+    val label: String,
+    val value: Long
+)
+
 data class ListeningStatsData(
-    val totalMinutes: Long,
-    val weekOverWeekPct: Int?,          // null = hide the trend line
-    val weeklyMinutesByDay: List<Long>, // 7 entries Mon-Sun
-    val topArtists: List<ArtistStatEntry>,
-    val topGenres: List<GenreStatEntry>,
-    val nightOwlMinutesByHour: List<Long> // 24 values of total minutes per hour-of-day
+    val timeRange: TimeRange = TimeRange.WEEKLY,
+    val totalMinutes: Long = 0L,
+    val totalPlays: Int = 0,
+    val weekOverWeekPct: Int? = null,
+    val chartData: List<ChartDataEntry> = emptyList(),
+    val topArtists: List<ArtistStatEntry> = emptyList(),
+    val topGenres: List<GenreStatEntry> = emptyList(),
+    val nightOwlMinutesByHour: List<Long> = emptyList()
 )
 
 // --- Collection Health data model ---
@@ -1426,6 +1441,13 @@ class MusicViewModel @Inject constructor(
         }
     }
 
+    private val _selectedTimeRange = MutableStateFlow(TimeRange.WEEKLY)
+    val selectedTimeRange: StateFlow<TimeRange> = _selectedTimeRange.asStateFlow()
+
+    fun setTimeRange(range: TimeRange) {
+        _selectedTimeRange.value = range
+    }
+
     val listeningStats: StateFlow<ListeningStatsData>
 
     init {
@@ -1504,13 +1526,14 @@ class MusicViewModel @Inject constructor(
         listeningStats = combine(
             repository.getFullPlayHistory(),
             repository.getAllTracks(),
-            repository.getAllArtists()
-        ) { history, tracks, artists ->
-            computeListeningStats(history, tracks, artists)
+            repository.getAllArtists(),
+            selectedTimeRange
+        ) { history, tracks, artists, timeRange ->
+            computeListeningStats(history, tracks, artists, timeRange)
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            ListeningStatsData(0L, null, List(7) { 0L }, emptyList(), emptyList(), List(24) { 0L })
+            ListeningStatsData()
         )
 
         // --- Collection Health computation ---
@@ -2217,70 +2240,168 @@ $catalog"""
     private fun computeListeningStats(
         history: List<PlayHistory>,
         tracks: List<Track>,
-        artists: List<Artist>
+        artists: List<Artist>,
+        timeRange: TimeRange
     ): ListeningStatsData {
         if (history.isEmpty() || tracks.isEmpty()) {
-            return ListeningStatsData(
-                totalMinutes = 0,
-                weekOverWeekPct = null,
-                weeklyMinutesByDay = List(7) { 0L },
-                topArtists = emptyList(),
-                topGenres = computeTopGenresByCount(tracks),
-                nightOwlMinutesByHour = List(24) { 0L }
-            )
+            return ListeningStatsData(timeRange = timeRange)
         }
 
         val trackById: Map<String, Track> = tracks.associateBy { it.id }
 
-        // --- Week-over-week trend ---
         val now = System.currentTimeMillis()
-        val thisWeekStart = now - 7L * 24 * 3600 * 1000
-        val prevWeekStart = now - 14L * 24 * 3600 * 1000
-
-        val thisWeekHistory = history.filter { it.timestamp >= thisWeekStart }
-        val thisWeekMs = thisWeekHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
-
-        // --- Total listening time (weekly) ---
-        val totalMinutes = thisWeekMs / 60_000L
-
-        // Only show the trend if we have actual history in the *prior* week
-        val prevWeekHistory = history.filter { it.timestamp in prevWeekStart until thisWeekStart }
-        val weekOverWeekPct: Int? = if (prevWeekHistory.isEmpty()) {
-            null // Not enough history yet â€” hide the line
-        } else {
-            val prevWeekMs = prevWeekHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
-            if (prevWeekMs == 0L) null
-            else ((thisWeekMs - prevWeekMs) * 100L / prevWeekMs).toInt()
-        }
-
-        // --- Weekly activity: minutes per day of current 7-day window (Mon..Sun) ---
         val cal = java.util.Calendar.getInstance()
         cal.timeInMillis = now
-        // Roll back to start of today
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
-        val dayMs = 24L * 3600 * 1000
 
-        // Build 7 buckets: index 0 = 6 days ago, index 6 = today
-        val weeklyMinutesByDay = (6 downTo 0).map { daysAgo ->
-            val dayStart = cal.timeInMillis - daysAgo * dayMs
-            val dayEnd = dayStart + dayMs
-            history
-                .filter { it.timestamp in dayStart until dayEnd }
-                .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+        val rangeStart = when (timeRange) {
+            TimeRange.DAILY -> {
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                cal.set(java.util.Calendar.MILLISECOND, 0)
+                cal.timeInMillis
+            }
+            TimeRange.WEEKLY -> {
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                cal.set(java.util.Calendar.MILLISECOND, 0)
+                cal.timeInMillis - 6L * 24 * 3600 * 1000
+            }
+            TimeRange.MONTHLY -> {
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                cal.set(java.util.Calendar.MILLISECOND, 0)
+                cal.timeInMillis - 27L * 24 * 3600 * 1000 // 4 weeks (28 days)
+            }
+            TimeRange.YEARLY -> {
+                cal.set(java.util.Calendar.DAY_OF_YEAR, 1)
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                cal.set(java.util.Calendar.MILLISECOND, 0)
+                cal.timeInMillis
+            }
+            TimeRange.ALL_TIME -> 0L
         }
 
-        // --- Top Artists (by approximate listening time, weekly) ---
+        val rangeHistory = history.filter { it.timestamp >= rangeStart }
+        val totalMs = rangeHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+        val totalMinutes = totalMs / 60_000L
+        val totalPlays = rangeHistory.size
+
+        val prevRangeStart = when (timeRange) {
+            TimeRange.WEEKLY -> rangeStart - 7L * 24 * 3600 * 1000
+            TimeRange.MONTHLY -> rangeStart - 28L * 24 * 3600 * 1000
+            TimeRange.YEARLY -> {
+                val pCal = java.util.Calendar.getInstance()
+                pCal.timeInMillis = rangeStart
+                pCal.add(java.util.Calendar.YEAR, -1)
+                pCal.timeInMillis
+            }
+            else -> 0L
+        }
+
+        val prevRangeHistory = if (timeRange == TimeRange.DAILY || timeRange == TimeRange.ALL_TIME) emptyList() 
+                               else history.filter { it.timestamp in prevRangeStart until rangeStart }
+
+        val weekOverWeekPct: Int? = if (prevRangeHistory.isEmpty() || (timeRange != TimeRange.WEEKLY && timeRange != TimeRange.MONTHLY && timeRange != TimeRange.YEARLY)) {
+            null
+        } else {
+            val prevMs = prevRangeHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+            if (prevMs == 0L) null else ((totalMs - prevMs) * 100L / prevMs).toInt()
+        }
+
+        val chartData = mutableListOf<ChartDataEntry>()
+        val dayMs = 24L * 3600 * 1000
+        when (timeRange) {
+            TimeRange.DAILY -> {
+                for (hour in 0..23) {
+                    val hStart = rangeStart + hour * 3600 * 1000L
+                    val hEnd = hStart + 3600 * 1000L
+                    val min = rangeHistory.filter { it.timestamp in hStart until hEnd }
+                        .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+                    chartData.add(ChartDataEntry("${hour}h", min))
+                }
+            }
+            TimeRange.WEEKLY -> {
+                for (daysAgo in 6 downTo 0) {
+                    val dStart = cal.timeInMillis - daysAgo * dayMs
+                    val dEnd = dStart + dayMs
+                    val min = rangeHistory.filter { it.timestamp in dStart until dEnd }
+                        .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+                    val tempCal = java.util.Calendar.getInstance().apply { timeInMillis = dStart }
+                    val label = when (tempCal.get(java.util.Calendar.DAY_OF_WEEK)) {
+                        java.util.Calendar.MONDAY -> "Mon"
+                        java.util.Calendar.TUESDAY -> "Tue"
+                        java.util.Calendar.WEDNESDAY -> "Wed"
+                        java.util.Calendar.THURSDAY -> "Thu"
+                        java.util.Calendar.FRIDAY -> "Fri"
+                        java.util.Calendar.SATURDAY -> "Sat"
+                        else -> "Sun"
+                    }
+                    chartData.add(ChartDataEntry(label, min))
+                }
+            }
+            TimeRange.MONTHLY -> {
+                for (weekIndex in 3 downTo 0) {
+                    val wStart = cal.timeInMillis - (weekIndex * 7 + 6) * dayMs
+                    val wEnd = wStart + 7 * dayMs
+                    val min = rangeHistory.filter { it.timestamp in wStart until wEnd }
+                        .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+                    chartData.add(ChartDataEntry("Week ${4 - weekIndex}", min))
+                }
+            }
+            TimeRange.YEARLY -> {
+                val currentMonth = cal.get(java.util.Calendar.MONTH)
+                for (month in 0..currentMonth) {
+                    val mCal = java.util.Calendar.getInstance().apply {
+                        timeInMillis = rangeStart
+                        set(java.util.Calendar.MONTH, month)
+                    }
+                    val mStart = mCal.timeInMillis
+                    mCal.add(java.util.Calendar.MONTH, 1)
+                    val mEnd = mCal.timeInMillis
+                    val min = rangeHistory.filter { it.timestamp in mStart until mEnd }
+                        .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+                    val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                    chartData.add(ChartDataEntry(monthLabels[month], min))
+                }
+            }
+            TimeRange.ALL_TIME -> {
+                if (history.isNotEmpty()) {
+                    val firstPlay = history.minByOrNull { it.timestamp }?.timestamp ?: now
+                    val firstCal = java.util.Calendar.getInstance().apply { timeInMillis = firstPlay }
+                    val startYear = firstCal.get(java.util.Calendar.YEAR)
+                    val currYear = cal.get(java.util.Calendar.YEAR)
+                    for (year in startYear..currYear) {
+                        val yCal = java.util.Calendar.getInstance().apply {
+                            set(java.util.Calendar.YEAR, year)
+                            set(java.util.Calendar.DAY_OF_YEAR, 1)
+                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                            set(java.util.Calendar.MINUTE, 0)
+                            set(java.util.Calendar.SECOND, 0)
+                            set(java.util.Calendar.MILLISECOND, 0)
+                        }
+                        val yStart = yCal.timeInMillis
+                        yCal.add(java.util.Calendar.YEAR, 1)
+                        val yEnd = yCal.timeInMillis
+                        val min = history.filter { it.timestamp in yStart until yEnd }
+                            .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+                        chartData.add(ChartDataEntry(year.toString(), min))
+                    }
+                }
+            }
+        }
+
         val artistMinutes = mutableMapOf<String, Long>()
-        thisWeekHistory.forEach { ph ->
+        rangeHistory.forEach { ph ->
             val track = trackById[ph.trackId] ?: return@forEach
             val artist = track.artist.ifBlank { return@forEach }
             val playedMin = getEffectivePlayedMs(ph, track) / 60_000L
             artistMinutes[artist] = (artistMinutes[artist] ?: 0L) + playedMin
         }
-        // Build artist entries â€” photoUri comes from the Artists table via libraryArtists
         val topArtists = artistMinutes.entries
             .sortedByDescending { it.value }
             .take(10)
@@ -2289,13 +2410,11 @@ $catalog"""
                 ArtistStatEntry(name, photoUri, minutes) 
             }
 
-        // --- Top Genres (ranked by actual listening time, weekly) ---
-        val topGenres = computeTopGenresByListeningTime(thisWeekHistory, trackById)
+        val topGenres = computeTopGenresByListeningTime(rangeHistory, trackById)
 
-        // --- Listening Personality: computed from this week's history ---
         val nightOwlData: List<Long> = run {
             val minutesByHour = LongArray(24)
-            thisWeekHistory.forEach { ph ->
+            rangeHistory.forEach { ph ->
                 val track = trackById[ph.trackId]
                 val durationMin = getEffectivePlayedMs(ph, track) / 60_000L
                 val hourCal = java.util.Calendar.getInstance()
@@ -2307,9 +2426,11 @@ $catalog"""
         }
 
         return ListeningStatsData(
+            timeRange = timeRange,
             totalMinutes = totalMinutes,
+            totalPlays = totalPlays,
             weekOverWeekPct = weekOverWeekPct,
-            weeklyMinutesByDay = weeklyMinutesByDay,
+            chartData = chartData,
             topArtists = topArtists,
             topGenres = topGenres,
             nightOwlMinutesByHour = nightOwlData

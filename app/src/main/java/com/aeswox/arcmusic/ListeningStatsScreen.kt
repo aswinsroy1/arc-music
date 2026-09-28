@@ -6,6 +6,8 @@ import androidx.compose.animation.core.spring
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -62,6 +64,7 @@ private val genreContainerColors = listOf(
 @Composable
 fun ListeningStatsScreenContent(
     stats: ListeningStatsData,
+    onTimeRangeSelected: (TimeRange) -> Unit,
     bottomPadding: Dp,
     onNavigateBack: () -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
@@ -77,14 +80,13 @@ fun ListeningStatsScreenContent(
         }
         item {
             TotalListeningTimeCard(
-                totalMinutes = stats.totalMinutes,
-                weekOverWeekPct = stats.weekOverWeekPct,
-                modifier = Modifier.padding(horizontal = 24.dp)
+                stats = stats,
+                onTimeRangeSelected = onTimeRangeSelected
             )
         }
         item {
-            WeeklyActivitySection(
-                weeklyMinutesByDay = stats.weeklyMinutesByDay,
+            TimelineActivitySection(
+                stats = stats,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
@@ -145,65 +147,118 @@ fun StatsHeader(onBackClick: () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun TotalListeningTimeCard(
-    totalMinutes: Long,
-    weekOverWeekPct: Int?,
+    stats: ListeningStatsData,
+    onTimeRangeSelected: (TimeRange) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hours = totalMinutes / 60L
-    val mins  = totalMinutes % 60L
-    val displayText = when {
-        hours > 0 -> if (mins > 0) "$hours hr $mins min" else "$hours Hours"
-        else      -> "$mins min"
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = 1, // WEEKLY
+        pageCount = { TimeRange.entries.size }
+    )
+
+    LaunchedEffect(pagerState.currentPage) {
+        val newRange = TimeRange.entries[pagerState.currentPage]
+        if (stats.timeRange != newRange) {
+            onTimeRangeSelected(newRange)
+        }
     }
 
-    GlassCard(modifier = modifier.fillMaxWidth()) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .padding(32.dp)
-                .fillMaxWidth()
-        ) {
-            Text(
-                text = "TOTAL LISTENING TIME",
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = displayText,
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 52.sp,
-                    lineHeight = 62.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            // Trend line: only shown when we have prior-week data to compare
-            if (weekOverWeekPct != null) {
+    LaunchedEffect(stats.timeRange) {
+        val targetPage = TimeRange.entries.indexOf(stats.timeRange)
+        if (targetPage >= 0 && pagerState.currentPage != targetPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
+    }
+
+    androidx.compose.foundation.pager.HorizontalPager(
+        state = pagerState,
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        pageSpacing = 16.dp,
+        modifier = modifier.fillMaxWidth()
+    ) { page ->
+        val range = TimeRange.entries[page]
+        val displayHours = stats.totalMinutes / 60L
+        val displayMins  = stats.totalMinutes % 60L
+        val displayText = when {
+            displayHours > 0 -> if (displayMins > 0) "$displayHours hr $displayMins min" else "$displayHours Hours"
+            else -> "$displayMins min"
+        }
+
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(32.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "${range.title.uppercase()} LISTENING TIME",
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val (icon, tintColor) = if (weekOverWeekPct >= 0) {
-                        Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.colorScheme.onSurface
-                    } else {
-                        Icons.AutoMirrored.Filled.TrendingDown to MaterialTheme.colorScheme.onSurface
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = displayText,
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Listening",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = tintColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    val sign = if (weekOverWeekPct >= 0) "+" else ""
-                    Text(
-                        text = "${sign}${weekOverWeekPct}% from last week",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = stats.totalPlays.toString(),
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Plays",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                if (stats.weekOverWeekPct != null) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val (icon, tintColor) = if (stats.weekOverWeekPct >= 0) {
+                            Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.colorScheme.onSurface
+                        } else {
+                            Icons.AutoMirrored.Filled.TrendingDown to MaterialTheme.colorScheme.onSurface
+                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = tintColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        val sign = if (stats.weekOverWeekPct >= 0) "+" else ""
+                        Text(
+                            text = "${sign}${stats.weekOverWeekPct}% from last period",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
@@ -211,27 +266,11 @@ fun TotalListeningTimeCard(
 }
 
 @Composable
-fun WeeklyActivitySection(
-    weeklyMinutesByDay: List<Long>,
+fun TimelineActivitySection(
+    stats: ListeningStatsData,
     modifier: Modifier = Modifier
 ) {
-    // Day labels starting from 6 days ago → today
-    val cal = java.util.Calendar.getInstance()
-    val labels = (6 downTo 0).map { daysAgo ->
-        val tmp = java.util.Calendar.getInstance()
-        tmp.timeInMillis = cal.timeInMillis - daysAgo * 24L * 3600 * 1000
-        when (tmp.get(java.util.Calendar.DAY_OF_WEEK)) {
-            java.util.Calendar.MONDAY    -> "M"
-            java.util.Calendar.TUESDAY   -> "T"
-            java.util.Calendar.WEDNESDAY -> "W"
-            java.util.Calendar.THURSDAY  -> "T"
-            java.util.Calendar.FRIDAY    -> "F"
-            java.util.Calendar.SATURDAY  -> "S"
-            else                         -> "S" // SUNDAY
-        }
-    }
-
-    val maxMinutes = weeklyMinutesByDay.maxOrNull()?.takeIf { it > 0L } ?: 1L
+    val maxMinutes = stats.chartData.maxOfOrNull { it.value }?.takeIf { it > 0L } ?: 1L
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -240,12 +279,12 @@ fun WeeklyActivitySection(
             verticalAlignment = Alignment.Bottom
         ) {
             Text(
-                text = "Weekly Activity",
+                text = "Activity Timeline",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Past 7 Days",
+                text = stats.timeRange.title,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -254,41 +293,54 @@ fun WeeklyActivitySection(
         GlassCard(modifier = Modifier
             .fillMaxWidth()
             .height(256.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                weeklyMinutesByDay.forEachIndexed { index, minutes ->
-                    val heightFraction = (minutes.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
-                    val opacity = (heightFraction * 0.85f + 0.15f).coerceIn(0.15f, 1f)
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Bottom,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.BottomCenter,
-                            modifier = Modifier.weight(1f).fillMaxWidth()
+            
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                val totalAvailableWidth = maxWidth
+                val minItemWidth = 40.dp
+                val spacing = 8.dp
+                val itemCount = stats.chartData.size
+                if (itemCount == 0) return@BoxWithConstraints
+                
+                val requiredWidth = (minItemWidth + spacing) * itemCount - spacing
+                val itemWidth = if (requiredWidth > totalAvailableWidth) minItemWidth else (totalAvailableWidth - spacing * (itemCount - 1)) / itemCount
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    stats.chartData.forEach { entry ->
+                        val heightFraction = (entry.value.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
+                        val opacity = (heightFraction * 0.85f + 0.15f).coerceIn(0.15f, 1f)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom,
+                            modifier = Modifier.width(itemWidth).fillMaxHeight()
                         ) {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.6f)
-                                    .fillMaxHeight(heightFraction)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = opacity)
-                                    )
+                                contentAlignment = Alignment.BottomCenter,
+                                modifier = Modifier.weight(1f).fillMaxWidth()
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.6f)
+                                        .fillMaxHeight(heightFraction)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = opacity)
+                                        )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = entry.label,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
                             )
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = labels[index],
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }

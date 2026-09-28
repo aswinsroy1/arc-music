@@ -1538,7 +1538,7 @@ fun MusicHomeScreen(
                     }
                     3 -> {
                         val stats by viewModel.listeningStats.collectAsState()
-                        ListeningStatsScreenContent(stats = stats, bottomPadding = dynamicBottomPadding, onNavigateBack = { onTabSelected(0) }, onNavigateToArtist = onNavigateToArtistDetails)
+                        ListeningStatsScreenContent(stats = stats, onTimeRangeSelected = { viewModel.setTimeRange(it) }, bottomPadding = dynamicBottomPadding, onNavigateBack = { onTabSelected(0) }, onNavigateToArtist = onNavigateToArtistDetails)
                     }
                 }
         }
@@ -2231,8 +2231,8 @@ fun ListeningStatsSection(
     val topArtist = stats.topArtists.firstOrNull()
     val topGenre  = stats.topGenres.firstOrNull()
 
-    // Weekly total: sum of the last 7 days
-    val weeklyMinutes = stats.weeklyMinutesByDay.sum()
+    // Weekly total: sum of the last 7 days (or currently selected dynamic range)
+    val weeklyMinutes = stats.totalMinutes
     val weeklyHours   = weeklyMinutes / 60L
     val weeklyMins    = weeklyMinutes % 60L
     val weeklyText    = when {
@@ -2353,15 +2353,15 @@ fun ListeningStatsSection(
                         )
                     }
 
-                    // Mini bar chart from real weekly data
-                    val maxMinutes = stats.weeklyMinutesByDay.maxOrNull()?.takeIf { it > 0L } ?: 1L
+                    // Mini bar chart from real dynamic data
+                    val maxMinutes = stats.chartData.maxOfOrNull { it.value }?.takeIf { it > 0L } ?: 1L
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.Bottom,
                         modifier = Modifier.height(40.dp)
                     ) {
-                        stats.weeklyMinutesByDay.forEach { minutes ->
-                            val heightFraction = (minutes.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
+                        stats.chartData.takeLast(7).forEach { entry ->
+                            val heightFraction = (entry.value.toFloat() / maxMinutes).coerceIn(0.04f, 1f)
                             val alpha = if (heightFraction >= 0.95f) 1f else heightFraction * 0.75f + 0.15f
                             Box(
                                 modifier = Modifier
