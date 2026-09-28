@@ -2232,18 +2232,16 @@ $catalog"""
 
         val trackById: Map<String, Track> = tracks.associateBy { it.id }
 
-        // --- Total listening time (actual played ms, not full duration) ---
-        val totalMs = history.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
-        val totalMinutes = totalMs / 60_000L
-
         // --- Week-over-week trend ---
         val now = System.currentTimeMillis()
         val thisWeekStart = now - 7L * 24 * 3600 * 1000
         val prevWeekStart = now - 14L * 24 * 3600 * 1000
 
-        val thisWeekMs = history
-            .filter { it.timestamp >= thisWeekStart }
-            .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+        val thisWeekHistory = history.filter { it.timestamp >= thisWeekStart }
+        val thisWeekMs = thisWeekHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
+
+        // --- Total listening time (weekly) ---
+        val totalMinutes = thisWeekMs / 60_000L
 
         // Only show the trend if we have actual history in the *prior* week
         val prevWeekHistory = history.filter { it.timestamp in prevWeekStart until thisWeekStart }
@@ -2274,9 +2272,9 @@ $catalog"""
                 .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
         }
 
-        // --- Top Artists (by approximate listening time) ---
+        // --- Top Artists (by approximate listening time, weekly) ---
         val artistMinutes = mutableMapOf<String, Long>()
-        history.forEach { ph ->
+        thisWeekHistory.forEach { ph ->
             val track = trackById[ph.trackId] ?: return@forEach
             val artist = track.artist.ifBlank { return@forEach }
             val playedMin = getEffectivePlayedMs(ph, track) / 60_000L
@@ -2291,13 +2289,13 @@ $catalog"""
                 ArtistStatEntry(name, photoUri, minutes) 
             }
 
-        // --- Top Genres (ranked by actual listening time) ---
-        val topGenres = computeTopGenresByListeningTime(history, trackById)
+        // --- Top Genres (ranked by actual listening time, weekly) ---
+        val topGenres = computeTopGenresByListeningTime(thisWeekHistory, trackById)
 
-        // --- Listening Personality: computed from any available history ---
+        // --- Listening Personality: computed from this week's history ---
         val nightOwlData: List<Long> = run {
             val minutesByHour = LongArray(24)
-            history.forEach { ph ->
+            thisWeekHistory.forEach { ph ->
                 val track = trackById[ph.trackId]
                 val durationMin = getEffectivePlayedMs(ph, track) / 60_000L
                 val hourCal = java.util.Calendar.getInstance()
