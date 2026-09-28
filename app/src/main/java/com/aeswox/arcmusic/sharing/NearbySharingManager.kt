@@ -83,6 +83,21 @@ class NearbySharingManager @Inject constructor(
         currentPayload = payload
     }
 
+    private val payloadQueue = mutableListOf<com.aeswox.arcmusic.db.entities.Track>()
+    private var activeEndpointId: String? = null
+
+    private fun processNextInQueue() {
+        val endpointId = activeEndpointId ?: return
+        if (payloadQueue.isEmpty()) {
+            _sharingState.value = SharingState.IDLE
+            _transferProgress.value = 0f
+            updateTransferService(SharingState.IDLE)
+            return
+        }
+        val track = payloadQueue.removeAt(0)
+        sendTrackFile(endpointId, track)
+    }
+
     private fun updateTransferService(state: SharingState, progress: Float = 0f) {
         val intent = Intent(context, NearbyTransferService::class.java)
         if (state == SharingState.TRANSFERRING) {
@@ -134,9 +149,13 @@ class NearbySharingManager @Inject constructor(
             } else if (update.status == PayloadTransferUpdate.Status.SUCCESS) {
                 activePayloads.remove(update.payloadId)
                 if (activePayloads.isEmpty()) {
-                    _sharingState.value = SharingState.IDLE
-                    _transferProgress.value = 0f
-                    updateTransferService(SharingState.IDLE)
+                    if (payloadQueue.isNotEmpty()) {
+                        processNextInQueue()
+                    } else {
+                        _sharingState.value = SharingState.IDLE
+                        _transferProgress.value = 0f
+                        updateTransferService(SharingState.IDLE)
+                    }
                 }
                 
                 sentFiles[update.payloadId]?.let { file ->
@@ -215,19 +234,21 @@ class NearbySharingManager @Inject constructor(
 
     private fun sendPayloadPackage(endpointId: String, payload: SharePayload) {
         coroutineScope.launch {
+            activeEndpointId = endpointId
+            payloadQueue.clear()
             try {
                 when (payload) {
                     is SharePayload.SingleTrack -> {
                         val track = repository.getTrackById(payload.trackId)
                         if (track != null) {
-                            sendTrackFile(endpointId, track)
+                            payloadQueue.add(track)
                         }
                     }
                     is SharePayload.MultipleTracks -> {
                         for (id in payload.trackIds) {
                             val track = repository.getTrackById(id)
                             if (track != null) {
-                                sendTrackFile(endpointId, track)
+                                payloadQueue.add(track)
                             }
                         }
                     }
@@ -235,9 +256,14 @@ class NearbySharingManager @Inject constructor(
                         val artist = repository.getArtistById(payload.artistId).first()
                         if (artist != null) {
                             val tracks = repository.getTracksByArtist(artist.name).first()
-                            for (track in tracks) {
-                                sendTrackFile(endpointId, track)
-                            }
+                            payloadQueue.addAll(tracks)
+                        }
+                    }
+                    is SharePayload.Album -> {
+                        val album = repository.getAlbumById(payload.albumId).first()
+                        if (album != null) {
+                            val tracks = repository.getTracksByAlbum(album.title).first()
+                            payloadQueue.addAll(tracks)
                         }
                     }
                     is SharePayload.Playlist -> {
@@ -269,11 +295,13 @@ class NearbySharingManager @Inject constructor(
                             connectionsClient.sendPayload(endpointId, metadataPayload)
                             connectionsClient.sendPayload(endpointId, m3uPayload)
                             
-                            for (track in tracks) {
-                                sendTrackFile(endpointId, track)
-                            }
+                            payloadQueue.addAll(tracks)
                         }
                     }
+                }
+                
+                if (activePayloads.isEmpty() && payloadQueue.isNotEmpty()) {
+                    processNextInQueue()
                 }
             } catch (e: Exception) {
                 Log.e("NearbySharingManager", "Failed to send payload", e)

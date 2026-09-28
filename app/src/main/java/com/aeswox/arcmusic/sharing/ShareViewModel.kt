@@ -61,6 +61,7 @@ class ShareViewModel @Inject constructor(
                 "tracks" -> SharePayload.MultipleTracks(payloadId.split(","))
                 "playlist" -> SharePayload.Playlist(payloadId)
                 "artist" -> SharePayload.Artist(payloadId)
+                "album" -> SharePayload.Album(payloadId)
                 else -> null
             }
             currentPayload?.let { nearbySharingManager.setPayload(it) }
@@ -128,6 +129,15 @@ class ShareViewModel @Inject constructor(
                             }
                         }
                     }
+                    is SharePayload.Album -> {
+                        repository.getAlbumById(payload.albumId).first()?.let { album ->
+                            val tracks = repository.getTracksByAlbum(album.title).first()
+                            tracks.forEach { track ->
+                                val f = File(track.filePath)
+                                if (f.exists()) files.add(f)
+                            }
+                        }
+                    }
                     is SharePayload.Playlist -> {
                         val tracks = repository.getTracksForPlaylistById(payload.playlistId).first()
                         tracks.forEach { track ->
@@ -139,17 +149,28 @@ class ShareViewModel @Inject constructor(
 
                 if (files.isEmpty()) return@launch
 
-                val uris = files.map {
-                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it)
+                val fileToShare = if (files.size > 1) {
+                    val zipFile = File(context.cacheDir, "shared_music_${System.currentTimeMillis()}.zip")
+                    java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
+                        files.forEach { file ->
+                            if (file.exists()) {
+                                val entry = java.util.zip.ZipEntry(file.name)
+                                zos.putNextEntry(entry)
+                                file.inputStream().use { it.copyTo(zos) }
+                                zos.closeEntry()
+                            }
+                        }
+                    }
+                    zipFile
+                } else {
+                    files.first()
                 }
 
-                val intent = Intent(if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE).apply {
-                    type = "audio/*"
-                    if (uris.size == 1) {
-                        putExtra(Intent.EXTRA_STREAM, uris.first())
-                    } else {
-                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                    }
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", fileToShare)
+
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = if (files.size > 1) "application/zip" else "audio/*"
+                    putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
 
