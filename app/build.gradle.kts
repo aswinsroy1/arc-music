@@ -26,7 +26,7 @@ android {
 
   defaultConfig {
     applicationId = "com.aeswox.arcmusic"
-    minSdk = 31
+    minSdk = 24
     targetSdk = 36
     versionCode = 1
     versionName = "1.0"
