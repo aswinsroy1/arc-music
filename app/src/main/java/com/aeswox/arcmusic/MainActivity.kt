@@ -2493,21 +2493,26 @@ fun SearchScreenContent(viewModel: MusicViewModel, modifier: Modifier = Modifier
                 }
             }
         } else if (searchQuery.isEmpty()) {
-            if (selectedFilter == "All" || selectedFilter == "Recent") {
-                if (recentSearches.isNotEmpty()) {
-                    item { 
-                        RecentSearchesSection(
-                            recentSearches = recentSearches, 
-                            onClearAll = { viewModel.clearAllRecentSearches() },
-                            onClearItem = { viewModel.deleteRecentSearch(it) },
-                            onItemClick = { 
-                                viewModel.updateSearchQuery(it)
-                                viewModel.saveRecentSearch(it)
-                                keyboardController?.hide()
-                            },
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        ) 
-                    }
+            if ((selectedFilter == "All" || selectedFilter == "Recent") && recentSearches.isNotEmpty()) {
+                item { 
+                    RecentSearchesSection(
+                        recentSearches = recentSearches, 
+                        onClearAll = { viewModel.clearAllRecentSearches() },
+                        onClearItem = { viewModel.deleteRecentSearch(it) },
+                        onItemClick = { 
+                            viewModel.updateSearchQuery(it)
+                            viewModel.saveRecentSearch(it)
+                            keyboardController?.hide()
+                        },
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) 
+                }
+            } else {
+                item {
+                    EmptyRecentSearches(
+                        filter = selectedFilter,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
                 }
             }
 
@@ -2869,46 +2874,122 @@ fun RecentSearchesSection(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "Clear all",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.jellyClick { onClearAll() }
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            recentSearches.forEach { search ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = { onClearItem(search.query) },
-                                onTap = { onItemClick(search.query) }
-                            )
-                        }
-                        .padding(vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = HugeIcons.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
+                if (recentSearches.isNotEmpty()) {
                     Text(
-                        text = search.query,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Clear all",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.jellyClick { onClearAll() }
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            if (recentSearches.isEmpty()) {
+                Text(
+                    text = "No recent searches",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                recentSearches.forEach { search ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = { onClearItem(search.query) },
+                                    onTap = { onItemClick(search.query) }
+                                )
+                            }
+                            .padding(vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = HugeIcons.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = search.query,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyRecentSearches(
+    filter: String = "All",
+    modifier: Modifier = Modifier
+) {
+    val title = when (filter) {
+        "Songs" -> "Search for songs"
+        "Albums" -> "Search for albums"
+        "Artists" -> "Search for artists"
+        "Playlists" -> "Search for playlists"
+        "Genres" -> "Search for genres"
+        else -> "No recent searches"
+    }
+
+    val subtitle = when (filter) {
+        "Songs" -> "Type a song name in the search bar above"
+        "Albums" -> "Type an album name in the search bar above"
+        "Artists" -> "Type an artist name in the search bar above"
+        "Playlists" -> "Type a playlist name in the search bar above"
+        "Genres" -> "Type a genre in the search bar above"
+        else -> "Songs, albums, and artists you search for will appear here"
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 48.dp, bottom = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = HugeIcons.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
         }
     }
 }
