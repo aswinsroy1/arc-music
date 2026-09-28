@@ -55,7 +55,7 @@ class NearbySharingManager @Inject constructor(
     private val importMediaUseCase: ImportMediaUseCase
 ) {
     private val connectionsClient: ConnectionsClient = Nearby.getConnectionsClient(context)
-    private val strategy = Strategy.P2P_STAR
+    private val strategy = Strategy.P2P_POINT_TO_POINT
     private val serviceId = "com.aeswox.arcmusic.SERVICE_ID"
     private val userName = android.os.Build.MODEL // Use device name
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
