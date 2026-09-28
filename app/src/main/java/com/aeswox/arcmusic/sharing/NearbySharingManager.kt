@@ -73,6 +73,7 @@ class NearbySharingManager @Inject constructor(
     val connectionRequest: StateFlow<ConnectionRequest?> = _connectionRequest.asStateFlow()
 
     private var currentPayload: SharePayload? = null
+    private var isInitiator = false
 
     // Store expected metadata by Payload ID (for receiving)
     private val expectedMetadata = mutableMapOf<Long, JSONObject>()
@@ -206,7 +207,11 @@ class NearbySharingManager @Inject constructor(
 
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, info: ConnectionInfo) {
-            _connectionRequest.value = ConnectionRequest(endpointId, info.endpointName, info.authenticationToken)
+            if (isInitiator) {
+                acceptConnection(endpointId)
+            } else {
+                _connectionRequest.value = ConnectionRequest(endpointId, info.endpointName, info.authenticationToken)
+            }
         }
 
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
@@ -345,6 +350,7 @@ class NearbySharingManager @Inject constructor(
     }
 
     fun startAdvertising() {
+        isInitiator = false
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(strategy).build()
         connectionsClient.startAdvertising(
             userName, serviceId, connectionLifecycleCallback, advertisingOptions
@@ -384,6 +390,7 @@ class NearbySharingManager @Inject constructor(
     }
 
     fun requestConnection(endpointId: String) {
+        isInitiator = true
         connectionsClient.requestConnection(userName, endpointId, connectionLifecycleCallback)
             .addOnFailureListener {
                 _sharingState.value = SharingState.ERROR
