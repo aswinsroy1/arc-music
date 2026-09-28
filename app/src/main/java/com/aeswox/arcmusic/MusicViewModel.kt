@@ -2359,8 +2359,7 @@ $catalog"""
                 }
             }
             TimeRange.YEARLY -> {
-                val currentMonth = cal.get(java.util.Calendar.MONTH)
-                for (month in 0..currentMonth) {
+                for (month in 0..11) {
                     val mCal = java.util.Calendar.getInstance().apply {
                         timeInMillis = rangeStart
                         set(java.util.Calendar.MONTH, month)
@@ -2375,27 +2374,28 @@ $catalog"""
                 }
             }
             TimeRange.ALL_TIME -> {
-                if (history.isNotEmpty()) {
-                    val firstPlay = history.minByOrNull { it.timestamp }?.timestamp ?: now
-                    val firstCal = java.util.Calendar.getInstance().apply { timeInMillis = firstPlay }
-                    val startYear = firstCal.get(java.util.Calendar.YEAR)
-                    val currYear = cal.get(java.util.Calendar.YEAR)
-                    for (year in startYear..currYear) {
-                        val yCal = java.util.Calendar.getInstance().apply {
-                            set(java.util.Calendar.YEAR, year)
-                            set(java.util.Calendar.DAY_OF_YEAR, 1)
-                            set(java.util.Calendar.HOUR_OF_DAY, 0)
-                            set(java.util.Calendar.MINUTE, 0)
-                            set(java.util.Calendar.SECOND, 0)
-                            set(java.util.Calendar.MILLISECOND, 0)
-                        }
-                        val yStart = yCal.timeInMillis
-                        yCal.add(java.util.Calendar.YEAR, 1)
-                        val yEnd = yCal.timeInMillis
-                        val min = history.filter { it.timestamp in yStart until yEnd }
-                            .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
-                        chartData.add(ChartDataEntry(year.toString(), min))
+                val firstPlay = if (history.isNotEmpty()) history.minByOrNull { it.timestamp }?.timestamp ?: now else now
+                val firstCal = java.util.Calendar.getInstance().apply { timeInMillis = firstPlay }
+                var startYear = firstCal.get(java.util.Calendar.YEAR)
+                val currYear = cal.get(java.util.Calendar.YEAR)
+                if (currYear - startYear < 4) {
+                    startYear = currYear - 4
+                }
+                for (year in startYear..currYear) {
+                    val yCal = java.util.Calendar.getInstance().apply {
+                        set(java.util.Calendar.YEAR, year)
+                        set(java.util.Calendar.DAY_OF_YEAR, 1)
+                        set(java.util.Calendar.HOUR_OF_DAY, 0)
+                        set(java.util.Calendar.MINUTE, 0)
+                        set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
                     }
+                    val yStart = yCal.timeInMillis
+                    yCal.add(java.util.Calendar.YEAR, 1)
+                    val yEnd = yCal.timeInMillis
+                    val min = history.filter { it.timestamp in yStart until yEnd }
+                        .sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) } / 60_000L
+                    chartData.add(ChartDataEntry(year.toString(), min))
                 }
             }
         }
