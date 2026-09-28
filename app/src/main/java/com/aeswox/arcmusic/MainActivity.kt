@@ -2064,21 +2064,6 @@ fun RecommendedDownloadsSection(onNavigateToCollectionGrowth: () -> Unit = {}, m
     val cards by viewModel.homescreenRecommendations.collectAsState()
     
     if (cards.isEmpty()) {
-        Column(
-            modifier = modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = "Recommended Downloads", 
-                style = MaterialTheme.typography.headlineMedium, 
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No new songs or trending tracks right now. Favorite more artists or listen to more music!", 
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
         return
     }
     
