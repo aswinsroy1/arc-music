@@ -1880,8 +1880,8 @@ class MusicViewModel @Inject constructor(
                     _aiSearchResult.value = AiSearchUiState.Error("Your library is empty.")
                     return@launch
                 }
-                // Build a compact catalog for the prompt (limit to avoid token overflow)
-                val catalog = tracks.take(500).joinToString("\n") { t ->
+                // Build a compact catalog for the prompt (Limit to 20,000 to prevent OutOfMemory string builder issues)
+                val catalog = tracks.take(20000).joinToString("\n") { t ->
                     "${t.id}|${t.title}|${t.artist}|${t.album}|${t.genre ?: ""}|${t.durationMs / 1000}s|${t.year ?: ""}"
                 }
                 val systemPrompt = """You are Arc Music's AI DJ assistant. The user will describe what they want to listen to in natural language. Your job is to select songs from their LOCAL music library that best match their request.
