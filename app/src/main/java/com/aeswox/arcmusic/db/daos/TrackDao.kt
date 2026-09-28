@@ -38,7 +38,7 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE album = :albumTitle")
     fun getTracksByAlbum(albumTitle: String): Flow<List<Track>>
 
-    @Query("SELECT * FROM tracks WHERE artist = :artistName OR albumArtist = :artistName")
+    @Query("SELECT * FROM tracks WHERE artist LIKE '%' || :artistName || '%' OR albumArtist LIKE '%' || :artistName || '%'")
     fun getTracksByArtist(artistName: String): Flow<List<Track>>
 
     @Query("SELECT * FROM tracks ORDER BY lastPlayedAt DESC LIMIT :limit")

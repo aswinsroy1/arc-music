@@ -39,7 +39,13 @@ class AppleMusicCanvasProvider @Inject constructor() {
 
     // ── Result cache ──────────────────────────────────────────────────────────
     private data class CacheEntry(val url: String?, val expiresAtMs: Long)
-    private val resultCache = ConcurrentHashMap<String, CacheEntry>()
+    private val resultCache = java.util.Collections.synchronizedMap(
+        object : java.util.LinkedHashMap<String, CacheEntry>(200, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean {
+                return size > 200
+            }
+        }
+    )
     private val CACHE_TTL_MS = 1000L * 60 * 60 * 24 // 24 hours
 
     // ── Public API ────────────────────────────────────────────────────────────

@@ -241,11 +241,9 @@ class MusicViewModel @Inject constructor(
     val genreCounts: StateFlow<List<GenreCount>>
     
     val genreTopTracks: StateFlow<List<Track>>
-    val genreTopAlbums: StateFlow<List<Album>>
-    val genreTopArtists: StateFlow<List<Artist>>
+
     
-    private val _healthState = MutableStateFlow(CollectionHealthState())
-    val healthState: StateFlow<CollectionHealthState> = _healthState.asStateFlow()
+    val healthState: StateFlow<CollectionHealthState>
     
     private val _showWelcomeOverlay = MutableStateFlow(false)
     val showWelcomeOverlay: StateFlow<Boolean> = _showWelcomeOverlay.asStateFlow()
@@ -1500,8 +1498,7 @@ class MusicViewModel @Inject constructor(
         favoriteArtists = libraryArtists.map { artists -> artists.filter { it.isFavorite } }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
         
         genreTopTracks = repository.getRandomTracks(10).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-        genreTopAlbums = repository.getAllAlbums().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-        genreTopArtists = repository.getAllArtists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
 
         // --- Listening Stats: computed from PlayHistory + Track library ---
         listeningStats = combine(
@@ -1512,13 +1509,12 @@ class MusicViewModel @Inject constructor(
             computeListeningStats(history, tracks, artists)
         }.stateIn(
             viewModelScope,
-            SharingStarted.Eagerly,
+            SharingStarted.WhileSubscribed(5000),
             ListeningStatsData(0L, null, List(7) { 0L }, emptyList(), emptyList(), List(24) { 0L })
         )
 
         // --- Collection Health computation ---
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            combine(
+        healthState = combine(
                 combine(
                     repository.getTracksMissingArtwork(),
                     repository.getTracksMissingMetadata(),
@@ -1602,10 +1598,7 @@ class MusicViewModel @Inject constructor(
                     favoritedArtistsCount = favoritedArtists.size,
                     missingArtworkTracks = missingArtwork
                 )
-            }.collectLatest { state ->
-                _healthState.value = state
-            }
-        }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CollectionHealthState())
         
         // Background sync for discography gaps
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {

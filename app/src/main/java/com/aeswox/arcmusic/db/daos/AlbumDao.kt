@@ -21,7 +21,7 @@ interface AlbumDao {
     @Query("SELECT * FROM albums WHERE id = :id")
     fun getAlbumById(id: String): Flow<Album?>
 
-    @Query("SELECT * FROM albums WHERE artist = :artistName")
+    @Query("SELECT * FROM albums WHERE artist LIKE '%' || :artistName || '%'")
     fun getAlbumsByArtist(artistName: String): Flow<List<Album>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

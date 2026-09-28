@@ -122,14 +122,14 @@ class MusicRepository(
 
     fun getAlbumById(id: String): Flow<Album?> = albumDao.getAlbumById(id)
     fun getTracksByAlbum(albumTitle: String): Flow<List<Track>> = trackDao.getTracksByAlbum(albumTitle)
-    fun getAlbumsByArtist(artistName: String): Flow<List<Album>> = albumDao.getAllAlbums().map { albums ->
+    fun getAlbumsByArtist(artistName: String): Flow<List<Album>> = albumDao.getAlbumsByArtist(artistName).map { albums ->
         albums.filter { album ->
             ArtistUtils.splitArtists(album.artist).contains(artistName)
         }
     }
     
     fun getArtistById(id: String): Flow<Artist?> = artistDao.getArtistById(id)
-    fun getTracksByArtist(artistName: String): Flow<List<Track>> = trackDao.getAllTracks().map { tracks ->
+    fun getTracksByArtist(artistName: String): Flow<List<Track>> = trackDao.getTracksByArtist(artistName).map { tracks ->
         tracks.filter { track ->
             ArtistUtils.splitArtists(track.artist).contains(artistName) ||
             ArtistUtils.splitArtists(track.albumArtist).contains(artistName)
