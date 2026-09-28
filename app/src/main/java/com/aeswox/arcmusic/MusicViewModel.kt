@@ -2376,13 +2376,7 @@ $catalog"""
                     if (success) {
                         // Update the DB so the Room query stops returning this track as missing
                         repository.updateTrackArtwork(track.id, uri.toString())
-                        // Also update the in-memory list immediately for instant UI feedback
-                        val currentList = _healthState.value.missingArtworkTracks.toMutableList()
-                        currentList.removeIf { it.id == track.id }
-                        _healthState.value = _healthState.value.copy(
-                            missingArtworkTracks = currentList,
-                            missingArtworkCount = currentList.size
-                        )
+                        // No manual update needed, the Flow will automatically re-emit when DB updates.
                         withContext(Dispatchers.Main) {
                             android.widget.Toast.makeText(context, "Artwork embedded successfully!", android.widget.Toast.LENGTH_SHORT).show()
                         }
@@ -2414,7 +2408,7 @@ $catalog"""
         if (_isAutoFindingArtwork.value) return
         viewModelScope.launch {
             _isAutoFindingArtwork.value = true
-            val missingTracks = _healthState.value.missingArtworkTracks.toList()
+            val missingTracks = healthState.value.missingArtworkTracks.toList()
             val total = missingTracks.size
             var current = 0
             _autoFindProgress.value = current to total
@@ -2429,13 +2423,7 @@ $catalog"""
                             if (success) {
                                 // Update the DB so the Room query stops returning this track as missing
                                 repository.updateTrackArtwork(track.id, url)
-                                // Also update in-memory list for instant UI feedback
-                                val currentList = _healthState.value.missingArtworkTracks.toMutableList()
-                                currentList.removeIf { it.id == track.id }
-                                _healthState.value = _healthState.value.copy(
-                                    missingArtworkTracks = currentList,
-                                    missingArtworkCount = currentList.size
-                                )
+                                // No manual update needed, the Flow will automatically re-emit when DB updates.
                             }
                         }
                     }
@@ -2462,15 +2450,7 @@ $catalog"""
                         val success = com.aeswox.arcmusic.utils.TaggingHelper.embedArtworkBytes(context, track.filePath, bytes)
                         if (success) {
                             repository.updateTrackArtwork(track.id, url)
-                            // Update health state if it was in the missing list
-                            val currentList = _healthState.value.missingArtworkTracks.toMutableList()
-                            val removed = currentList.removeAll { it.id == track.id }
-                            if (removed) {
-                                _healthState.value = _healthState.value.copy(
-                                    missingArtworkTracks = currentList,
-                                    missingArtworkCount = currentList.size
-                                )
-                            }
+                            // No manual update needed, the Flow will automatically re-emit when DB updates.
                             
                             withContext(Dispatchers.Main) {
                                 android.widget.Toast.makeText(context, "Artwork fetched and embedded successfully", android.widget.Toast.LENGTH_SHORT).show()
