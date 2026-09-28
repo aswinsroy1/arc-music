@@ -187,12 +187,13 @@ fun TotalListeningTimeCard(
             else -> "$displayMins min"
         }
 
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
+        GlassCard(modifier = Modifier.fillMaxWidth().height(180.dp)) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .padding(32.dp)
-                    .fillMaxWidth()
+                    .padding(24.dp)
+                    .fillMaxSize()
             ) {
                 Text(
                     text = "${range.title.uppercase()} LISTENING TIME",
@@ -200,46 +201,20 @@ fun TotalListeningTimeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = displayText,
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = FontWeight.ExtraBold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Listening",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = stats.totalPlays.toString(),
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = FontWeight.ExtraBold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Plays",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                Text(
+                    text = displayText,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.ExtraBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 
                 if (stats.weekOverWeekPct != null) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         val (icon, tintColor) = if (stats.weekOverWeekPct >= 0) {
                             Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.colorScheme.onSurface
@@ -296,13 +271,17 @@ fun TimelineActivitySection(
             
             BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(24.dp)) {
                 val totalAvailableWidth = maxWidth
-                val minItemWidth = 40.dp
                 val spacing = 8.dp
                 val itemCount = stats.chartData.size
                 if (itemCount == 0) return@BoxWithConstraints
                 
-                val requiredWidth = (minItemWidth + spacing) * itemCount - spacing
-                val itemWidth = if (requiredWidth > totalAvailableWidth) minItemWidth else (totalAvailableWidth - spacing * (itemCount - 1)) / itemCount
+                val itemWidth = if (itemCount <= 7) {
+                    (totalAvailableWidth - spacing * (itemCount - 1)) / itemCount
+                } else {
+                    val minItemWidth = 40.dp
+                    val requiredWidth = (minItemWidth + spacing) * itemCount - spacing
+                    if (requiredWidth > totalAvailableWidth) minItemWidth else (totalAvailableWidth - spacing * (itemCount - 1)) / itemCount
+                }
 
                 Row(
                     modifier = Modifier

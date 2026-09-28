@@ -2292,6 +2292,7 @@ $catalog"""
         val totalPlays = rangeHistory.size
 
         val prevRangeStart = when (timeRange) {
+            TimeRange.DAILY -> rangeStart - 24L * 3600 * 1000
             TimeRange.WEEKLY -> rangeStart - 7L * 24 * 3600 * 1000
             TimeRange.MONTHLY -> rangeStart - 28L * 24 * 3600 * 1000
             TimeRange.YEARLY -> {
@@ -2303,14 +2304,18 @@ $catalog"""
             else -> 0L
         }
 
-        val prevRangeHistory = if (timeRange == TimeRange.DAILY || timeRange == TimeRange.ALL_TIME) emptyList() 
+        val prevRangeHistory = if (timeRange == TimeRange.ALL_TIME) emptyList() 
                                else history.filter { it.timestamp in prevRangeStart until rangeStart }
 
-        val weekOverWeekPct: Int? = if (prevRangeHistory.isEmpty() || (timeRange != TimeRange.WEEKLY && timeRange != TimeRange.MONTHLY && timeRange != TimeRange.YEARLY)) {
+        val weekOverWeekPct: Int? = if (timeRange == TimeRange.ALL_TIME) {
             null
         } else {
             val prevMs = prevRangeHistory.sumOf { ph -> getEffectivePlayedMs(ph, trackById[ph.trackId]) }
-            if (prevMs == 0L) null else ((totalMs - prevMs) * 100L / prevMs).toInt()
+            if (prevMs == 0L) {
+                if (totalMs > 0L) 100 else 0
+            } else {
+                ((totalMs - prevMs) * 100L / prevMs).toInt()
+            }
         }
 
         val chartData = mutableListOf<ChartDataEntry>()
