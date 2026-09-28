@@ -3,6 +3,12 @@ package com.aeswox.arcmusic
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import com.aeswox.arcmusic.ui.animations.physicsBounceOverscroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -350,14 +356,33 @@ fun TopArtistsSection(artists: List<ArtistStatEntry>, onArtistClick: (String) ->
             modifier = Modifier.padding(horizontal = 24.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
-        LazyRow(
-modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
+        AnimatedContent(
+            targetState = artists,
+            transitionSpec = {
+                fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+            },
+            label = "top_artists_refresh"
+        ) { targetArtists ->
+            val blurAmount by transition.animateFloat(
+                transitionSpec = { tween(400) },
+                label = "blur"
+            ) { state ->
+                when (state) {
+                    androidx.compose.animation.EnterExitState.PreEnter -> 1f
+                    androidx.compose.animation.EnterExitState.Visible -> 0f
+                    androidx.compose.animation.EnterExitState.PostExit -> 1f
+                }
+            }
 
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            items(artists.size) { index ->
-                val artist = artists[index]
+            LazyRow(
+                modifier = Modifier
+                    .physicsBounceOverscroll(isHorizontal = true)
+                    .blur(radiusX = (blurAmount * 24f).dp, radiusY = 0.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                items(targetArtists.size) { index ->
+                    val artist = targetArtists[index]
                 val hours = artist.totalMinutes / 60L
                 val mins  = artist.totalMinutes % 60L
                 val timeText = if (hours > 0) "$hours hr" else "$mins min"
@@ -389,6 +414,7 @@ modifier = Modifier.physicsBounceOverscroll(isHorizontal = true),
                     )
                 }
             }
+        }
         }
     }
 }
